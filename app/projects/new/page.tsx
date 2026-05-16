@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TopBar } from "@/components/topbar";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createProjectAction } from "@/app/actions";
@@ -90,7 +91,9 @@ export default async function NewProjectPage() {
             <Button asChild variant="outline">
               <Link href="/projects">Cancel</Link>
             </Button>
-            <Button type="submit">Create project</Button>
+            <SubmitButton pendingLabel="Provisioning…">
+              Create project
+            </SubmitButton>
           </div>
         </form>
       </main>

@@ -2,6 +2,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -129,9 +130,13 @@ export function DeleteConfirmDialog({
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" variant="destructive" disabled={!matches}>
+            <SubmitButton
+              variant="destructive"
+              disabled={!matches}
+              pendingLabel="Deleting…"
+            >
               {confirmText}
-            </Button>
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

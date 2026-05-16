@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import {
   renameProjectAction,
   deleteProjectAction,
@@ -70,7 +71,7 @@ export default async function SettingsPage({
                 />
               </div>
               <div className="flex justify-end">
-                <Button type="submit">Save changes</Button>
+                <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
               </div>
             </form>
           </CardContent>
@@ -138,7 +139,9 @@ export default async function SettingsPage({
                 Apply only to protected branches
               </label>
               <div className="flex justify-end">
-                <Button type="submit">Save allowlist</Button>
+                <SubmitButton pendingLabel="Saving…">
+                  Save allowlist
+                </SubmitButton>
               </div>
             </form>
           </CardContent>

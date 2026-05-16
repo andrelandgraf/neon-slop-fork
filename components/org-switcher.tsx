@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { switchOrgAction, createOrgAction } from "@/app/actions";
@@ -93,7 +94,11 @@ export function OrgSwitcher({
                   {o.slug}
                 </div>
               </div>
-              {o.id === activeOrg.id && <Check className="h-4 w-4" />}
+              {pending && o.id !== activeOrg.id ? (
+                <Loader2 className="h-4 w-4 animate-spin opacity-60" />
+              ) : o.id === activeOrg.id ? (
+                <Check className="h-4 w-4" />
+              ) : null}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -148,9 +153,12 @@ export function OrgSwitcher({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!orgName.trim()}>
+              <SubmitButton
+                disabled={!orgName.trim()}
+                pendingLabel="Creating…"
+              >
                 Create
-              </Button>
+              </SubmitButton>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,6 +1,7 @@
 import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -80,7 +81,9 @@ export default async function RolesPage({
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit">Create role</Button>
+                <SubmitButton pendingLabel="Creating…">
+                  Create role
+                </SubmitButton>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -132,15 +135,15 @@ export default async function RolesPage({
                         await deleteRoleAction(id, activeBranch.id, r.name);
                       }}
                     >
-                      <Button
-                        type="submit"
+                      <SubmitButton
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:bg-destructive/10"
+                        pendingLabel="Deleting…"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete
-                      </Button>
+                      </SubmitButton>
                     </form>
                   )}
                 </td>

@@ -1,6 +1,7 @@
 import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -96,7 +97,9 @@ export default async function DatabasesPage({
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit">Create database</Button>
+                <SubmitButton pendingLabel="Creating…">
+                  Create database
+                </SubmitButton>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -141,15 +144,15 @@ export default async function DatabasesPage({
                         await deleteDatabaseAction(id, activeBranch.id, d.name);
                       }}
                     >
-                      <Button
-                        type="submit"
+                      <SubmitButton
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:bg-destructive/10"
+                        pendingLabel="Deleting…"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete
-                      </Button>
+                      </SubmitButton>
                     </form>
                   )}
                 </td>

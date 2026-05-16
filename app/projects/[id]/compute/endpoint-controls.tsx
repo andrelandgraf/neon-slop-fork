@@ -1,7 +1,7 @@
 "use client";
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Play, PauseCircle } from "lucide-react";
+import { Play, PauseCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { startEndpointAction, suspendEndpointAction } from "@/app/actions";
 
@@ -46,7 +46,11 @@ export function EndpointControls({
         onClick={handleStart}
         disabled={pending || state === "active"}
       >
-        <Play className="h-3.5 w-3.5" />
+        {pending && state !== "active" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Play className="h-3.5 w-3.5" />
+        )}
         Start
       </Button>
       <Button
@@ -55,7 +59,11 @@ export function EndpointControls({
         onClick={handleSuspend}
         disabled={pending || state !== "active"}
       >
-        <PauseCircle className="h-3.5 w-3.5" />
+        {pending && state === "active" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <PauseCircle className="h-3.5 w-3.5" />
+        )}
         Suspend
       </Button>
     </>

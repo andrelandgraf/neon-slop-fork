@@ -1,5 +1,6 @@
 import { neon } from "@/lib/neon";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ export default async function BranchesPage({
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit">Create</Button>
+                <SubmitButton pendingLabel="Forking…">Create</SubmitButton>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -121,15 +122,15 @@ export default async function BranchesPage({
                           await deleteBranchAction(id, b.id);
                         }}
                       >
-                        <Button
-                          type="submit"
+                        <SubmitButton
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:bg-destructive/10"
+                          pendingLabel="Deleting…"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Delete
-                        </Button>
+                        </SubmitButton>
                       </form>
                     )}
                   </td>

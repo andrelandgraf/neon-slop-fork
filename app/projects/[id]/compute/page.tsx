@@ -1,7 +1,7 @@
 import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { EndpointControls } from "./endpoint-controls";
 import { relativeTime } from "@/lib/utils";
 import { Cpu, Play, PauseCircle } from "lucide-react";
@@ -182,8 +182,7 @@ function EndpointAutoscalingForm({
       />
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="endpointId" value={endpointId} />
-      <Button
-        type="submit"
+      <SubmitButton
         size="sm"
         formAction={async (formData: FormData) => {
           "use server";
@@ -193,9 +192,10 @@ function EndpointAutoscalingForm({
           await updateEndpointAutoscalingAction(formData);
         }}
         className="col-span-3 justify-self-end"
+        pendingLabel="Saving…"
       >
         Save autoscaling
-      </Button>
+      </SubmitButton>
     </form>
   );
 }
