@@ -219,14 +219,19 @@ function AutoscalingEditor({
   );
   const [pending, startTransition] = useTransition();
 
+  const suspendChanged = suspendSeconds !== endpoint.suspend_timeout_seconds;
   const dirty =
     minCu !== endpoint.autoscaling_limit_min_cu ||
     maxCu !== endpoint.autoscaling_limit_max_cu ||
-    suspendSeconds !== endpoint.suspend_timeout_seconds;
+    suspendChanged;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    // Tell the action whether to include suspend_timeout_seconds in
+    // the PATCH. Sending it unchanged on a Free-plan project would
+    // 400 with "modifying the suspend interval is not permitted".
+    fd.set("suspendChanged", suspendChanged ? "1" : "0");
     startTransition(async () => {
       const res = await updateEndpointAutoscalingAction(fd);
       if (res.ok) toast.success("Autoscaling updated.");

@@ -417,7 +417,16 @@ export async function updateEndpointAutoscalingAction(
   const endpointId = String(formData.get("endpointId") ?? "");
   const minCu = Number(formData.get("minCu") ?? 0.25);
   const maxCu = Number(formData.get("maxCu") ?? 0.25);
-  const suspendSeconds = Number(formData.get("suspendSeconds") ?? 0);
+  // Diff flags from the client so we only patch fields the user
+  // actually changed. Sending an unchanged `suspend_timeout_seconds`
+  // is rejected on the Free plan with "modifying the suspend interval
+  // is not permitted on this account" — even when the value matches
+  // the existing one — because Neon treats any explicit value as an
+  // override attempt.
+  const suspendChanged = formData.get("suspendChanged") === "1";
+  const suspendSeconds = suspendChanged
+    ? Number(formData.get("suspendSeconds") ?? 0)
+    : null;
   if (!projectId || !endpointId) {
     return { ok: false, error: "Missing fields." };
   }
@@ -430,7 +439,9 @@ export async function updateEndpointAutoscalingAction(
       endpoint: {
         autoscaling_limit_min_cu: minCu,
         autoscaling_limit_max_cu: maxCu,
-        suspend_timeout_seconds: suspendSeconds,
+        ...(suspendSeconds !== null && Number.isFinite(suspendSeconds)
+          ? { suspend_timeout_seconds: suspendSeconds }
+          : {}),
       },
     });
   } catch (err) {
@@ -458,7 +469,14 @@ export async function createReadReplicaAction(
   const branchId = String(formData.get("branchId") ?? "");
   const minCu = Number(formData.get("minCu") ?? 0.25);
   const maxCu = Number(formData.get("maxCu") ?? 0.25);
-  const suspendSeconds = Number(formData.get("suspendSeconds") ?? 300);
+  // suspendSeconds is optional — leaving it off makes Neon pick the
+  // project default (and the Free plan rejects any explicit value
+  // here with "modifying the suspend interval is not permitted").
+  const suspendRaw = formData.get("suspendSeconds");
+  const suspendSeconds =
+    suspendRaw === null || String(suspendRaw).trim() === ""
+      ? null
+      : Number(suspendRaw);
   if (!projectId || !branchId) {
     return { ok: false, error: "Missing projectId or branchId." };
   }
@@ -473,7 +491,9 @@ export async function createReadReplicaAction(
         type: EndpointType.ReadOnly,
         autoscaling_limit_min_cu: minCu,
         autoscaling_limit_max_cu: maxCu,
-        suspend_timeout_seconds: suspendSeconds,
+        ...(suspendSeconds !== null && Number.isFinite(suspendSeconds)
+          ? { suspend_timeout_seconds: suspendSeconds }
+          : {}),
       },
     });
   } catch (err) {

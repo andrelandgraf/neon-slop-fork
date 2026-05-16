@@ -41,13 +41,16 @@ export function AddReadReplica({
   const [open, setOpen] = useState(false);
   const [minCu, setMinCu] = useState(0.25);
   const [maxCu, setMaxCu] = useState(0.25);
-  const [suspendSeconds, setSuspendSeconds] = useState(300);
+  // Empty string = "use project default" — sending the field at all
+  // is rejected on the Free plan ("modifying the suspend interval is
+  // not permitted"). The action treats blank as omitted.
+  const [suspendSeconds, setSuspendSeconds] = useState<string>("");
   const [pending, startTransition] = useTransition();
 
   function reset() {
     setMinCu(0.25);
     setMaxCu(0.25);
-    setSuspendSeconds(300);
+    setSuspendSeconds("");
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -117,7 +120,12 @@ export function AddReadReplica({
               onChange={setMaxCu}
             />
             <div className="col-span-2 space-y-1.5">
-              <Label htmlFor="replica-suspend">Suspend after (seconds)</Label>
+              <Label htmlFor="replica-suspend">
+                Suspend after (seconds){" "}
+                <span className="text-muted-foreground/70 font-normal">
+                  · optional
+                </span>
+              </Label>
               <input
                 id="replica-suspend"
                 name="suspendSeconds"
@@ -125,12 +133,13 @@ export function AddReadReplica({
                 min={0}
                 step={60}
                 value={suspendSeconds}
-                onChange={(e) => setSuspendSeconds(Number(e.target.value))}
+                placeholder="Project default (300 = 5 min)"
+                onChange={(e) => setSuspendSeconds(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm font-mono"
               />
               <p className="text-[11px] text-muted-foreground">
-                0 means never suspend. Default is 300 (5 minutes of
-                inactivity). Suspended replicas wake on the next query.
+                Leave blank to inherit the project default. 0 = never
+                suspend. The Free plan refuses an explicit value here.
               </p>
             </div>
           </div>
