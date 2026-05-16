@@ -380,40 +380,146 @@ export async function deleteDatabaseAction(
 export async function startEndpointAction(
   projectId: string,
   endpointId: string
-): Promise<void> {
+): Promise<EndpointResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
-  await neon.startProjectEndpoint(projectId, endpointId);
+  try {
+    await neon.startProjectEndpoint(projectId, endpointId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to start endpoint." };
+  }
   revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
 }
 
 export async function suspendEndpointAction(
   projectId: string,
   endpointId: string
-): Promise<void> {
+): Promise<EndpointResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
-  await neon.suspendProjectEndpoint(projectId, endpointId);
+  try {
+    await neon.suspendProjectEndpoint(projectId, endpointId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to suspend endpoint." };
+  }
   revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
 }
 
-export async function updateEndpointAutoscalingAction(formData: FormData): Promise<void> {
+export type EndpointResult = { ok: true } | { ok: false; error: string };
+
+export async function updateEndpointAutoscalingAction(
+  formData: FormData
+): Promise<EndpointResult> {
   const tenant = await requireTenant();
   const projectId = String(formData.get("projectId") ?? "");
   const endpointId = String(formData.get("endpointId") ?? "");
   const minCu = Number(formData.get("minCu") ?? 0.25);
   const maxCu = Number(formData.get("maxCu") ?? 0.25);
   const suspendSeconds = Number(formData.get("suspendSeconds") ?? 0);
-  if (!projectId || !endpointId) throw new Error("Missing fields.");
+  if (!projectId || !endpointId) {
+    return { ok: false, error: "Missing fields." };
+  }
+  if (!Number.isFinite(minCu) || !Number.isFinite(maxCu) || minCu > maxCu) {
+    return { ok: false, error: "Min CU must be ≤ Max CU." };
+  }
   await requireProjectAccess(tenant, projectId);
-  await neon.updateProjectEndpoint(projectId, endpointId, {
-    endpoint: {
-      autoscaling_limit_min_cu: minCu,
-      autoscaling_limit_max_cu: maxCu,
-      suspend_timeout_seconds: suspendSeconds,
-    },
-  });
+  try {
+    await neon.updateProjectEndpoint(projectId, endpointId, {
+      endpoint: {
+        autoscaling_limit_min_cu: minCu,
+        autoscaling_limit_max_cu: maxCu,
+        suspend_timeout_seconds: suspendSeconds,
+      },
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to update endpoint." };
+  }
   revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
+}
+
+/**
+ * Create a new compute endpoint (read replica) on a branch.
+ *
+ * Read replicas serve `read_only` traffic from the same data as the
+ * branch's primary read/write endpoint, at their own connection
+ * string. A branch can have at most one read/write endpoint but as
+ * many read replicas as the plan allows; we don't enforce a count
+ * here — the Neon API returns a clear plan-limit error if exceeded
+ * and we surface it inline via `EndpointResult`.
+ */
+export async function createReadReplicaAction(
+  formData: FormData
+): Promise<EndpointResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const minCu = Number(formData.get("minCu") ?? 0.25);
+  const maxCu = Number(formData.get("maxCu") ?? 0.25);
+  const suspendSeconds = Number(formData.get("suspendSeconds") ?? 300);
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  if (!Number.isFinite(minCu) || !Number.isFinite(maxCu) || minCu > maxCu) {
+    return { ok: false, error: "Min CU must be ≤ Max CU." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createProjectEndpoint(projectId, {
+      endpoint: {
+        branch_id: branchId,
+        type: EndpointType.ReadOnly,
+        autoscaling_limit_min_cu: minCu,
+        autoscaling_limit_max_cu: maxCu,
+        suspend_timeout_seconds: suspendSeconds,
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to create read replica.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
+}
+
+export async function deleteEndpointAction(
+  projectId: string,
+  endpointId: string
+): Promise<EndpointResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteProjectEndpoint(projectId, endpointId);
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to delete endpoint.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
+}
+
+export async function restartEndpointAction(
+  projectId: string,
+  endpointId: string
+): Promise<EndpointResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.restartProjectEndpoint(projectId, endpointId);
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to restart endpoint.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/compute`);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
