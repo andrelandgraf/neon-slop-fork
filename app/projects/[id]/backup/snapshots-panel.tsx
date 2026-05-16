@@ -125,21 +125,14 @@ export function SnapshotsPanel({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
-            <colgroup>
-              <col className="w-[42%]" />
-              <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-            </colgroup>
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                 <th className="py-2 font-medium">Name</th>
                 <th className="py-2 font-medium">Source branch</th>
                 <th className="py-2 font-medium">Captured</th>
                 <th className="py-2 font-medium">Expires</th>
-                <th className="py-2 text-right" />
+                <th className="py-2 text-right w-[1%] whitespace-nowrap" />
               </tr>
             </thead>
             <tbody>
@@ -212,7 +205,7 @@ function SnapshotRow({
             })
           : "—"}
       </td>
-      <td className="py-3 align-middle text-right whitespace-nowrap">
+      <td className="py-3 pl-3 align-middle text-right whitespace-nowrap w-[1%]">
         <div className="inline-flex items-center gap-1">
           <RestoreSnapshotButton
             projectId={projectId}
