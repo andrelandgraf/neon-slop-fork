@@ -129,7 +129,7 @@ export default async function MonitoringPage({
             />
           </div>
           <a
-            href={`/projects/${id}/compute`}
+            href={`/projects/${id}/overview?tab=computes`}
             className="mt-3 inline-block text-[11px] underline text-primary"
           >
             EDIT ENDPOINT

@@ -59,7 +59,8 @@ export function ResetPasswordButton({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="ghost"
+        className="text-muted-foreground"
         onClick={() => setOpen(true)}
       >
         <KeyRound className="h-3.5 w-3.5" />
@@ -74,8 +75,7 @@ export function ResetPasswordButton({
                 New password for {roleName}
               </DialogTitle>
               <DialogDescription>
-                Copy it now — Neon does not show this value again, only its
-                hash on the role.
+                Copy it now — Neon does not show this value again.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-3 rounded-md border bg-muted/30 p-3 font-mono text-[12px] break-all">
@@ -104,8 +104,8 @@ export function ResetPasswordButton({
               <DialogTitle>Reset password for {roleName}?</DialogTitle>
               <DialogDescription>
                 A new random password is generated server-side. Existing
-                connections continue to work with their old credentials, but
-                they will fail to reconnect.
+                connections continue with their old credentials but will
+                fail to reconnect.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">

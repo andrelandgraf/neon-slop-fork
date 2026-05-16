@@ -6,6 +6,7 @@ import {
   GitBranch,
   Settings,
   ChevronsUpDown,
+  Eye,
   Activity,
   Terminal,
   TableProperties,
@@ -14,10 +15,7 @@ import {
   Database,
   Lock,
   PanelLeftClose,
-  KeySquare,
-  Users,
-  Cpu,
-  ScrollText,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BranchSwitcher } from "@/components/branch-switcher";
@@ -41,25 +39,22 @@ export function Sidebar({
   const project = [
     { href: base, label: "Dashboard", icon: LayoutGrid },
     { href: `${base}/branches`, label: "Branches", icon: GitBranch },
-    { href: `${base}/operations`, label: "Operations", icon: ScrollText },
     {
-      href: `${base}/api-keys`,
-      label: "API Keys",
-      icon: KeySquare,
+      href: `${base}/integrations`,
+      label: "Integrations",
+      icon: Plug,
       disabled: true,
       disabledReason:
-        "Project-scoped API keys aren't exposed by the public Neon REST API — only personal and organization-level keys exist. Use the Neon Console at console.neon.tech to mint keys.",
+        "Project integrations (GitHub, Vercel, Toolbox add-ons) are configured through Neon's OAuth flows, which aren't exposed in the public REST API.",
     },
     { href: `${base}/settings`, label: "Settings", icon: Settings },
   ];
 
   const branch = [
+    { href: `${base}/overview`, label: "Overview", icon: Eye },
     { href: `${base}/monitoring`, label: "Monitoring", icon: Activity },
     { href: `${base}/sql`, label: "SQL Editor", icon: Terminal },
     { href: `${base}/tables`, label: "Tables", icon: TableProperties },
-    { href: `${base}/databases`, label: "Databases", icon: Database },
-    { href: `${base}/roles`, label: "Roles", icon: Users },
-    { href: `${base}/compute`, label: "Compute", icon: Cpu },
     { href: `${base}/backup`, label: "Backup & Restore", icon: History },
     {
       href: `${base}/masking`,
