@@ -42,7 +42,14 @@ export function Sidebar({
     { href: base, label: "Dashboard", icon: LayoutGrid },
     { href: `${base}/branches`, label: "Branches", icon: GitBranch },
     { href: `${base}/operations`, label: "Operations", icon: ScrollText },
-    { href: `${base}/api-keys`, label: "API Keys", icon: KeySquare },
+    {
+      href: `${base}/api-keys`,
+      label: "API Keys",
+      icon: KeySquare,
+      disabled: true,
+      disabledReason:
+        "Project-scoped API keys aren't exposed by the public Neon REST API — only personal and organization-level keys exist. Use the Neon Console at console.neon.tech to mint keys.",
+    },
     { href: `${base}/settings`, label: "Settings", icon: Settings },
   ];
 

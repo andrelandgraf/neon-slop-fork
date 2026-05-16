@@ -146,62 +146,6 @@ export async function setDefaultBranchAction(
   revalidatePath(`/projects/${projectId}/branches`);
 }
 
-export interface CreatedProjectApiKey {
-  id: number;
-  key: string;
-  name: string;
-  created_at: string;
-}
-
-export async function createProjectApiKeyAction(
-  projectId: string,
-  name: string
-): Promise<CreatedProjectApiKey> {
-  const tenant = await requireTenant();
-  await requireProjectAccess(tenant, projectId);
-  const trimmed = name.trim();
-  if (trimmed.length === 0) throw new Error("Key name is required.");
-  const apiKey = process.env.NEON_API_KEY!;
-  const r = await fetch(
-    `https://console.neon.tech/api/v2/projects/${projectId}/api_keys`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ key_name: trimmed }),
-    }
-  );
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`Failed to create API key: ${r.status} ${text}`);
-  }
-  const json = (await r.json()) as CreatedProjectApiKey;
-  revalidatePath(`/projects/${projectId}/api-keys`);
-  return json;
-}
-
-export async function revokeProjectApiKeyAction(
-  projectId: string,
-  keyId: number
-): Promise<void> {
-  const tenant = await requireTenant();
-  await requireProjectAccess(tenant, projectId);
-  const apiKey = process.env.NEON_API_KEY!;
-  const r = await fetch(
-    `https://console.neon.tech/api/v2/projects/${projectId}/api_keys/${keyId}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${apiKey}` },
-    }
-  );
-  if (!r.ok) {
-    throw new Error(`Failed to revoke API key: ${r.status}`);
-  }
-  revalidatePath(`/projects/${projectId}/api-keys`);
-}
-
 export async function restoreToTimestampAction(
   projectId: string,
   branchId: string,

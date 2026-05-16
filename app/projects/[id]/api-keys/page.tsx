@@ -1,138 +1,81 @@
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreateApiKeyDialog } from "@/components/api-keys/create-dialog";
-import { RevokeApiKeyButton } from "@/components/api-keys/revoke-button";
+import { KeySquare, ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-interface NeonApiKey {
-  id: number;
-  name: string;
-  created_at: string;
-  last_used_at?: string;
-  created_by?: { id: string; name?: string; image?: string };
-}
-
-async function listProjectApiKeys(projectId: string): Promise<NeonApiKey[]> {
-  const apiKey = process.env.NEON_API_KEY!;
-  const r = await fetch(
-    `https://console.neon.tech/api/v2/projects/${projectId}/api_keys`,
-    {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      cache: "no-store",
-    }
-  );
-  if (!r.ok) return [];
-  const json = (await r.json()) as NeonApiKey[];
-  return Array.isArray(json) ? json : [];
-}
-
 /**
- * `/projects/[id]/api-keys`
+ * `/projects/[id]/api-keys` — informational only.
  *
- * Real Neon project-scoped API keys, fetched and managed via the
- * public Neon control-plane endpoints under
- * `/projects/{projectId}/api_keys`. The plaintext key is only ever
- * returned on creation — the dialog surfaces it once.
+ * The Neon public REST API exposes two kinds of API keys:
+ *
+ *   - **Personal** (`GET/POST /api_keys`) — tied to the calling user,
+ *     not scoped to a project. Useful for personal automation.
+ *   - **Organization-level** (`/organizations/{org_id}/api_keys`) —
+ *     shared across every project in the org.
+ *
+ * There is **no** `/projects/{id}/api_keys` endpoint. console.neon.tech
+ * historically surfaced "project keys" as a UI affordance over the
+ * org-level endpoint scoped client-side; our multi-tenant clone can't
+ * faithfully reproduce that without leaking keys across tenants.
+ *
+ * We render an empty state pointing the user at the upstream console
+ * for personal/org key management. The sidebar item is disabled and
+ * direct URL hits land here.
  */
 export default async function ApiKeysPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: projectId } = await params;
-  const keys = await listProjectApiKeys(projectId);
-
+  await params;
   return (
-    <div className="px-8 py-6 max-w-4xl">
+    <div className="px-8 py-6 max-w-2xl">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-semibold mb-1">API keys</h1>
+          <h1 className="text-xl font-semibold mb-1 flex items-center gap-2">
+            API keys
+            <Badge variant="muted">Not available</Badge>
+          </h1>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Project-scoped Neon API keys. Each key authenticates calls to the
-            public Neon API under{" "}
-            <code className="font-mono text-xs">
-              /projects/{projectId.length > 24 ? projectId.slice(0, 12) + "…" : projectId}/…
-            </code>{" "}
-            with the same permissions you have in the console.
+            Project-scoped API keys aren&apos;t surfaced by the public Neon
+            REST API. Only personal keys and organization-level keys exist,
+            and exposing the org&apos;s keys through this multi-tenant clone
+            would leak credentials across users.
           </p>
         </div>
-        <CreateApiKeyDialog projectId={projectId} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active keys</CardTitle>
-          <CardDescription>
-            {keys.length === 0
-              ? "No keys yet. Create one to authenticate a downstream app."
-              : `${keys.length} key${keys.length === 1 ? "" : "s"} in this project.`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {keys.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="py-2 font-medium">Name</th>
-                  <th className="py-2 font-medium">Created</th>
-                  <th className="py-2 font-medium">Last used</th>
-                  <th className="py-2 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map((k) => (
-                  <tr key={k.id} className="border-b last:border-0">
-                    <td className="py-3 font-medium">{k.name}</td>
-                    <td className="py-3 text-muted-foreground">
-                      {new Date(k.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 text-muted-foreground">
-                      {k.last_used_at ? (
-                        new Date(k.last_used_at).toLocaleString()
-                      ) : (
-                        <Badge variant="muted">Never</Badge>
-                      )}
-                    </td>
-                    <td className="py-3 text-right">
-                      <RevokeApiKeyButton
-                        projectId={projectId}
-                        keyId={k.id}
-                        keyName={k.name}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
+      <Card className="p-5">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-md bg-muted grid place-items-center shrink-0">
+            <KeySquare className="h-4 w-4" />
+          </div>
+          <div className="space-y-2 text-sm">
+            <p>
+              Mint personal or org-level Neon API keys on{" "}
+              <a
+                href="https://console.neon.tech/app/settings/api-keys"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                console.neon.tech/app/settings/api-keys
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              . Both flavors are usable against{" "}
+              <code className="text-xs">https://console.neon.tech/api/v2/…</code>
+              .
+            </p>
+            <p className="text-xs text-muted-foreground">
+              SDK references: <code>listApiKeys</code> /{" "}
+              <code>createApiKey</code> (personal) and{" "}
+              <code>listOrgApiKeys</code> / <code>createOrgApiKey</code>{" "}
+              (organization) in <code>@neondatabase/api-client</code>.
+            </p>
+          </div>
+        </div>
       </Card>
-
-      <p className="text-xs text-muted-foreground mt-4 max-w-xl">
-        The plaintext token is shown exactly once at creation — copy it then.
-        Revoking a key is immediate and irreversible.
-      </p>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="py-10 text-center text-sm text-muted-foreground">
-      <p>No keys yet.</p>
-      <p className="mt-1 text-xs">
-        Use the <strong>Create key</strong> button to mint one. The token is
-        shown once, then never again.
-      </p>
     </div>
   );
 }
