@@ -60,13 +60,12 @@ function LandingHeader() {
           </a>
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <span
-            className="cursor-not-allowed rounded-md px-3 py-1.5 text-[13px] text-white/40"
-            title="Sign in is intentionally disabled in this clone"
-            aria-disabled="true"
+          <Link
+            href="/login"
+            className="rounded-md px-3 py-1.5 text-[13px] text-white/70 transition-colors hover:text-white"
           >
             Sign in
-          </span>
+          </Link>
           <Link
             href="/projects"
             className="rounded-md bg-[#00e599] px-3 py-1.5 text-[13px] font-semibold text-black transition-colors hover:bg-[#00ffaa]"
