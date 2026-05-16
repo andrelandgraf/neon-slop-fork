@@ -8,14 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   renameProjectAction,
   deleteProjectAction,
-  updateIpAllowlistAction,
 } from "@/app/actions";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { IpAllowlistForm } from "./ip-allowlist-form";
 
 export const dynamic = "force-dynamic";
 
@@ -113,37 +112,11 @@ export default async function SettingsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={updateIpAllowlistAction} className="space-y-3">
-              <input type="hidden" name="projectId" value={id} />
-              <div className="space-y-1.5">
-                <Label htmlFor="ips">Allowed IPs</Label>
-                <textarea
-                  id="ips"
-                  name="ips"
-                  rows={4}
-                  defaultValue={allowedIps.join("\n")}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                  placeholder={`203.0.113.0/24\n198.51.100.42`}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  One per line, comma- or whitespace-separated. Validation
-                  happens server-side via the Neon API.
-                </p>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="protectedOnly"
-                  defaultChecked={protectedOnly}
-                />
-                Apply only to protected branches
-              </label>
-              <div className="flex justify-end">
-                <SubmitButton pendingLabel="Saving…">
-                  Save allowlist
-                </SubmitButton>
-              </div>
-            </form>
+            <IpAllowlistForm
+              projectId={id}
+              initialIps={allowedIps}
+              protectedOnly={protectedOnly}
+            />
           </CardContent>
         </Card>
 
