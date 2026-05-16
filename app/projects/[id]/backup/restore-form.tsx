@@ -63,78 +63,93 @@ export function RestoreForm({
     }
   }
 
+  // Pre-computed in render so the helper line stays in lockstep with
+  // the picker without any extra state — the input value is local UI
+  // state already.
+  let utc = "";
+  try {
+    utc = new Date(timestamp).toISOString();
+  } catch {
+    utc = "";
+  }
+
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <div className="flex flex-col gap-1">
-        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Source branch
-        </Label>
-        <select
-          value={branchId}
-          onChange={(e) => setBranchId(e.target.value)}
-          className="h-9 rounded-md border bg-background px-2 text-sm min-w-[180px]"
-        >
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-              {b.default ? " (default)" : ""}
-            </option>
-          ))}
-        </select>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Source branch
+          </Label>
+          <select
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="h-9 rounded-md border bg-background px-2 text-sm min-w-[200px]"
+          >
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+                {b.default ? " (default)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Point in time
+          </Label>
+          <Input
+            type="datetime-local"
+            value={timestamp}
+            onChange={(e) => setTimestamp(e.target.value)}
+            className="h-9 min-w-[220px]"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            title="Preview-before-restore needs a temporary endpoint on the historic LSN — not yet exposed via the public API."
+          >
+            Preview data
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={!branchId}>Restore</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleSubmit}>
+                <DialogHeader>
+                  <DialogTitle>Restore branch to {timestamp}?</DialogTitle>
+                  <DialogDescription>
+                    The current branch state will be preserved under a new
+                    branch so this action is reversible. Reads from existing
+                    endpoints may briefly fail while the restore completes.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    disabled={pending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={pending}>
+                    {pending ? "Restoring…" : "Confirm restore"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Point in time
-        </Label>
-        <Input
-          type="datetime-local"
-          value={timestamp}
-          onChange={(e) => setTimestamp(e.target.value)}
-          className="h-9 min-w-[200px]"
-        />
-        <span className="text-[10px] text-muted-foreground">
-          Anywhere in the last {retentionDays} day
-          {retentionDays === 1 ? "" : "s"} (UTC: {new Date(timestamp).toISOString()})
-        </span>
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        disabled
-        title="Preview-before-restore needs a temporary endpoint on the historic LSN — not yet exposed via the public API."
-      >
-        Preview data
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button disabled={!branchId}>Restore</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>Restore branch to {timestamp}?</DialogTitle>
-              <DialogDescription>
-                The current branch state will be preserved under a new branch
-                so this action is reversible. Reads from existing endpoints
-                may briefly fail while the restore completes.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={pending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Restoring…" : "Confirm restore"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <p className="text-[11px] text-muted-foreground">
+        Anywhere in the last {retentionDays} day
+        {retentionDays === 1 ? "" : "s"}
+        {utc && ` · UTC: ${utc}`}
+      </p>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   Eye,
   PencilLine,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   createSnapshotAction,
   deleteSnapshotAction,
@@ -117,32 +124,41 @@ export function SnapshotsPanel({
           No snapshots yet.
         </div>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="py-2 font-medium">Name</th>
-              <th className="py-2 font-medium">Source branch</th>
-              <th className="py-2 font-medium">Captured</th>
-              <th className="py-2 font-medium">Expires</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {snapshots.map((s) => (
-              <SnapshotRow
-                key={s.id}
-                projectId={projectId}
-                snapshot={s}
-                sourceBranchName={
-                  s.source_branch_id
-                    ? branchById.get(s.source_branch_id)?.name ?? s.source_branch_id
-                    : "—"
-                }
-                branches={branches}
-              />
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[42%]" />
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th className="py-2 font-medium">Name</th>
+                <th className="py-2 font-medium">Source branch</th>
+                <th className="py-2 font-medium">Captured</th>
+                <th className="py-2 font-medium">Expires</th>
+                <th className="py-2 text-right" />
+              </tr>
+            </thead>
+            <tbody>
+              {snapshots.map((s) => (
+                <SnapshotRow
+                  key={s.id}
+                  projectId={projectId}
+                  snapshot={s}
+                  sourceBranchName={
+                    s.source_branch_id
+                      ? branchById.get(s.source_branch_id)?.name ?? s.source_branch_id
+                      : "—"
+                  }
+                  branches={branches}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );
@@ -161,47 +177,121 @@ function SnapshotRow({
 }) {
   return (
     <tr className="border-b last:border-0">
-      <td className="py-3">
-        <div className="flex items-center gap-2">
-          <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="font-medium">{snapshot.name || "(unnamed)"}</span>
+      <td className="py-3 pr-3 align-top">
+        <div className="flex items-center gap-2 min-w-0">
+          <Camera className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="font-medium truncate">
+            {snapshot.name || "(unnamed)"}
+          </span>
           {snapshot.manual === false && (
-            <Badge variant="muted">Scheduled</Badge>
+            <Badge variant="muted" className="shrink-0">
+              Scheduled
+            </Badge>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+        <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
           {snapshot.id}
         </div>
       </td>
-      <td className="py-3 text-muted-foreground font-mono text-xs">
+      <td className="py-3 pr-3 text-muted-foreground font-mono text-xs truncate align-middle">
         {sourceBranchName}
       </td>
-      <td className="py-3 text-muted-foreground">
-        {new Date(snapshot.created_at).toLocaleString()}
+      <td className="py-3 pr-3 text-muted-foreground text-xs whitespace-nowrap align-middle">
+        {new Date(snapshot.created_at).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
       </td>
-      <td className="py-3 text-muted-foreground">
+      <td className="py-3 pr-3 text-muted-foreground text-xs whitespace-nowrap align-middle">
         {snapshot.expires_at
-          ? new Date(snapshot.expires_at).toLocaleDateString()
+          ? new Date(snapshot.expires_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })
           : "—"}
       </td>
-      <td className="py-3 text-right space-x-1 whitespace-nowrap">
-        <RestoreSnapshotButton
-          projectId={projectId}
-          snapshot={snapshot}
-          branches={branches}
-        />
-        <RenameSnapshotButton
-          projectId={projectId}
-          snapshotId={snapshot.id}
-          currentName={snapshot.name}
-        />
-        <DeleteSnapshotButton
-          projectId={projectId}
-          snapshotId={snapshot.id}
-          name={snapshot.name}
-        />
+      <td className="py-3 align-middle text-right whitespace-nowrap">
+        <div className="inline-flex items-center gap-1">
+          <RestoreSnapshotButton
+            projectId={projectId}
+            snapshot={snapshot}
+            branches={branches}
+          />
+          <SnapshotRowMenu
+            projectId={projectId}
+            snapshotId={snapshot.id}
+            currentName={snapshot.name}
+          />
+        </div>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Kebab menu for the less-frequent snapshot ops (rename, delete).
+ * Keeps the action cell narrow so the time columns don't have to
+ * truncate on a max-w-4xl page.
+ */
+function SnapshotRowMenu({
+  projectId,
+  snapshotId,
+  currentName,
+}: {
+  projectId: string;
+  snapshotId: string;
+  currentName: string;
+}) {
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon" variant="ghost" aria-label="Snapshot actions">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[160px]">
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setRenameOpen(true);
+            }}
+          >
+            <PencilLine className="h-3.5 w-3.5" />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setDeleteOpen(true);
+            }}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <RenameSnapshotDialog
+        projectId={projectId}
+        snapshotId={snapshotId}
+        currentName={currentName}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+      />
+      <DeleteSnapshotDialog
+        projectId={projectId}
+        snapshotId={snapshotId}
+        name={currentName}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+    </>
   );
 }
 
@@ -537,16 +627,19 @@ function ModeOption({
 // Rename
 // ---------------------------------------------------------------------------
 
-function RenameSnapshotButton({
+function RenameSnapshotDialog({
   projectId,
   snapshotId,
   currentName,
+  open,
+  onOpenChange,
 }: {
   projectId: string;
   snapshotId: string;
   currentName: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(currentName);
   const [pending, startTransition] = useTransition();
 
@@ -556,7 +649,7 @@ function RenameSnapshotButton({
       const res = await renameSnapshotAction(projectId, snapshotId, name);
       if (res.ok) {
         toast.success("Snapshot renamed.");
-        setOpen(false);
+        onOpenChange(false);
       } else {
         toast.error(res.error);
       }
@@ -564,13 +657,13 @@ function RenameSnapshotButton({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="text-muted-foreground">
-          <PencilLine className="h-3.5 w-3.5" />
-          Rename
-        </Button>
-      </DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) setName(currentName);
+      }}
+    >
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -594,7 +687,7 @@ function RenameSnapshotButton({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               disabled={pending}
             >
               Cancel
@@ -614,16 +707,19 @@ function RenameSnapshotButton({
 // Delete
 // ---------------------------------------------------------------------------
 
-function DeleteSnapshotButton({
+function DeleteSnapshotDialog({
   projectId,
   snapshotId,
   name,
+  open,
+  onOpenChange,
 }: {
   projectId: string;
   snapshotId: string;
   name: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleDelete() {
@@ -631,7 +727,7 @@ function DeleteSnapshotButton({
       const res = await deleteSnapshotAction(projectId, snapshotId);
       if (res.ok) {
         toast.success(`Deleted “${name}”.`);
-        setOpen(false);
+        onOpenChange(false);
       } else {
         toast.error(res.error);
       }
@@ -639,17 +735,7 @@ function DeleteSnapshotButton({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive hover:bg-destructive/10"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete snapshot “{name || snapshotId}”?</DialogTitle>
@@ -663,7 +749,7 @@ function DeleteSnapshotButton({
           <Button
             type="button"
             variant="outline"
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             disabled={pending}
           >
             Cancel
