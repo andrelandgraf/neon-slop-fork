@@ -15,6 +15,9 @@ export default async function SignupPage({
   if (session) {
     redirect(next ?? "/projects");
   }
+  const githubEnabled = Boolean(
+    process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+  );
   return (
     <div className="grid min-h-screen bg-black text-white antialiased lg:grid-cols-[480px_1fr]">
       <aside
@@ -58,7 +61,12 @@ export default async function SignupPage({
             <p className="mt-1 text-center text-[13px] text-white/55">
               Sign up to Neon with:
             </p>
-            <AuthForm mode="signup" next={next} initialError={error} />
+            <AuthForm
+              mode="signup"
+              next={next}
+              initialError={error}
+              githubEnabled={githubEnabled}
+            />
             <p className="mt-5 text-[11px] leading-relaxed text-white/45">
               By creating an account you agree to the Terms of Service and our
               Privacy Policy. We&apos;ll occasionally send you emails about news,

@@ -15,12 +15,16 @@ export default async function LoginPage({
   if (session) {
     redirect(next ?? "/projects");
   }
+  const githubEnabled = Boolean(
+    process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+  );
   return (
     <AuthScreen
       title="Log in to Neon"
       mode="login"
       next={next}
       error={error}
+      githubEnabled={githubEnabled}
       footer={
         <>
           New to Neon?{" "}
@@ -42,12 +46,14 @@ function AuthScreen({
   next,
   error,
   footer,
+  githubEnabled,
 }: {
   title: string;
   mode: "login" | "signup";
   next?: string;
   error?: string;
   footer: React.ReactNode;
+  githubEnabled: boolean;
 }) {
   return (
     <div className="grid min-h-screen bg-black text-white antialiased lg:grid-cols-[480px_1fr]">
@@ -92,7 +98,12 @@ function AuthScreen({
             <p className="mt-1 text-center text-[13px] text-white/55">
               {mode === "login" ? "Connect to Neon with:" : "Sign up to Neon with:"}
             </p>
-            <AuthForm mode={mode} next={next} initialError={error} />
+            <AuthForm
+              mode={mode}
+              next={next}
+              initialError={error}
+              githubEnabled={githubEnabled}
+            />
             <div className="mt-6 text-center text-[13px] text-white/65">
               {footer}
             </div>

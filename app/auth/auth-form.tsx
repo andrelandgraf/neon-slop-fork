@@ -21,10 +21,18 @@ export function AuthForm({
   mode,
   next,
   initialError,
+  githubEnabled,
 }: {
   mode: "login" | "signup";
   next?: string;
   initialError?: string;
+  /**
+   * Server-resolved: whether `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`
+   * are configured. GitHub OAuth Apps can't be provisioned through the
+   * CLI (no API endpoint, no `gh app create`), so the button stays off
+   * until the env vars are set by hand at github.com/settings/applications/new.
+   */
+  githubEnabled: boolean;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -76,9 +84,14 @@ export function AuthForm({
             label={p.label}
             icon={<p.icon />}
             badge={"badge" in p ? p.badge : undefined}
-            disabled={p.id !== "github"}
+            disabled={p.id !== "github" || !githubEnabled}
+            disabledReason={
+              p.id === "github" && !githubEnabled
+                ? "GitHub sign-in needs GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET. Create an OAuth App at github.com/settings/applications/new (no API exists for this) and add the values to your env."
+                : `${p.label} sign-in isn’t configured in this clone.`
+            }
             onClick={() => {
-              if (p.id !== "github") return;
+              if (p.id !== "github" || !githubEnabled) return;
               setError(null);
               signIn.social({
                 provider: "github",
@@ -197,11 +210,11 @@ function Field({
 }
 
 function ProviderButton({
-  id,
   label,
   icon,
   badge,
   disabled,
+  disabledReason,
   onClick,
 }: {
   id: string;
@@ -209,6 +222,7 @@ function ProviderButton({
   icon: React.ReactNode;
   badge?: string;
   disabled?: boolean;
+  disabledReason?: string;
   onClick?: () => void;
 }) {
   return (
@@ -217,12 +231,7 @@ function ProviderButton({
       onClick={onClick}
       disabled={disabled}
       title={
-        disabled
-          ? `${label} sign-in is disabled in this clone. ` +
-            (id === "github"
-              ? "Set GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET to enable."
-              : "Not implemented.")
-          : `Continue with ${label}`
+        disabled ? disabledReason ?? `${label} sign-in isn’t configured.` : `Continue with ${label}`
       }
       className="relative inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-white/[0.04] py-2 text-[13px] text-white/85 transition-colors hover:enabled:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-55"
     >
