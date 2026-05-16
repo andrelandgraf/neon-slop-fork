@@ -165,6 +165,147 @@ export async function restoreToTimestampAction(
 }
 
 // ---------------------------------------------------------------------------
+// Snapshots (Beta API). Free plan caps at 1 manual snapshot; paid plans 10.
+// We surface upstream errors as result types so the client can render the
+// real upstream message (max-snapshot limit, etc.) inline.
+// ---------------------------------------------------------------------------
+
+export type SnapshotResult = { ok: true } | { ok: false; error: string };
+
+export async function createSnapshotAction(
+  formData: FormData
+): Promise<SnapshotResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const expiresAtRaw = String(formData.get("expiresAt") ?? "").trim();
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createSnapshot({
+      projectId,
+      branchId,
+      ...(name ? { name } : {}),
+      ...(expiresAtRaw ? { expires_at: new Date(expiresAtRaw).toISOString() } : {}),
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create snapshot." };
+  }
+  revalidatePath(`/projects/${projectId}/backup`);
+  return { ok: true };
+}
+
+export async function deleteSnapshotAction(
+  projectId: string,
+  snapshotId: string
+): Promise<SnapshotResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteSnapshot(projectId, snapshotId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to delete snapshot." };
+  }
+  revalidatePath(`/projects/${projectId}/backup`);
+  return { ok: true };
+}
+
+export async function renameSnapshotAction(
+  projectId: string,
+  snapshotId: string,
+  name: string
+): Promise<SnapshotResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: "Snapshot name is required." };
+  try {
+    await neon.updateSnapshot(projectId, snapshotId, {
+      snapshot: { name: trimmed },
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to rename snapshot." };
+  }
+  revalidatePath(`/projects/${projectId}/backup`);
+  return { ok: true };
+}
+
+/**
+ * Restore a snapshot to a brand-new branch ("Preview" mode).
+ *
+ * `finalize_restore` defaults to false, which means the snapshot data
+ * is materialised on a fresh branch and the caller can connect to it
+ * via the new branch's endpoint. The original active branch is left
+ * untouched — perfect for "diff this version against today" workflows.
+ */
+export async function restoreSnapshotPreviewAction(
+  formData: FormData
+): Promise<SnapshotResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const snapshotId = String(formData.get("snapshotId") ?? "");
+  const branchName = String(formData.get("name") ?? "").trim();
+  if (!projectId || !snapshotId) {
+    return { ok: false, error: "Missing projectId or snapshotId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.restoreSnapshot(
+      { projectId, snapshotId },
+      {
+        ...(branchName ? { name: branchName } : {}),
+        finalize_restore: false,
+      }
+    );
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to restore snapshot." };
+  }
+  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}/branches`);
+  return { ok: true };
+}
+
+/**
+ * Restore a snapshot in-place onto a target branch ("Rollback" mode).
+ *
+ * `finalize_restore: true` moves the compute endpoint from the
+ * existing target branch to the newly-created snapshot branch, which
+ * preserves the connection string. The old branch is orphaned with
+ * `(old)` suffix and stays around until you delete it manually
+ * (Neon's design — gives you a window to undo).
+ */
+export async function restoreSnapshotInPlaceAction(
+  formData: FormData
+): Promise<SnapshotResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const snapshotId = String(formData.get("snapshotId") ?? "");
+  const targetBranchId = String(formData.get("targetBranchId") ?? "").trim();
+  if (!projectId || !snapshotId) {
+    return { ok: false, error: "Missing projectId or snapshotId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.restoreSnapshot(
+      { projectId, snapshotId },
+      {
+        ...(targetBranchId ? { target_branch_id: targetBranchId } : {}),
+        finalize_restore: true,
+      }
+    );
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to restore snapshot." };
+  }
+  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}/branches`);
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Roles & databases (per-branch)
 // ---------------------------------------------------------------------------
 
