@@ -19,7 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { switchOrgAction, createOrgAction } from "@/app/actions";
@@ -41,6 +40,7 @@ export function OrgSwitcher({
   const [createOpen, setCreateOpen] = useState(false);
   const [orgName, setOrgName] = useState("");
   const [pending, startTransition] = useTransition();
+  const [createPending, startCreateTransition] = useTransition();
 
   function handleSwitch(orgId: string) {
     if (orgId === activeOrg.id) {
@@ -54,6 +54,46 @@ export function OrgSwitcher({
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to switch org."
+        );
+      }
+    });
+  }
+
+  function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Belt-and-braces: even though the submit button is disabled
+    // while `createPending` is true, React can let a second click
+    // land before the disabled state renders. This guard makes the
+    // duplicate POST impossible (a real bug we saw in prod where
+    // two app_org rows landed in the meta DB one second apart).
+    if (createPending) return;
+    const trimmed = orgName.trim();
+    if (!trimmed) return;
+    const formData = new FormData();
+    formData.set("name", trimmed);
+    startCreateTransition(async () => {
+      try {
+        await createOrgAction(formData);
+        // createOrgAction ends with `redirect("/projects")` so this
+        // line only runs if the action threw a non-redirect error;
+        // the redirect path is handled by Next router.
+        setCreateOpen(false);
+        setOrgName("");
+      } catch (err) {
+        // Next redirects throw a special "NEXT_REDIRECT" digest; let
+        // it bubble so the navigation completes. Anything else is a
+        // real failure worth surfacing.
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "digest" in err &&
+          typeof (err as { digest?: string }).digest === "string" &&
+          (err as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+        ) {
+          throw err;
+        }
+        toast.error(
+          err instanceof Error ? err.message : "Failed to create organization."
         );
       }
     });
@@ -116,15 +156,16 @@ export function OrgSwitcher({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(next) => {
+          if (createPending) return;
+          setCreateOpen(next);
+          if (!next) setOrgName("");
+        }}
+      >
         <DialogContent>
-          <form
-            action={async (formData) => {
-              await createOrgAction(formData);
-              setCreateOpen(false);
-              setOrgName("");
-            }}
-          >
+          <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle>Create organization</DialogTitle>
               <DialogDescription>
@@ -150,15 +191,19 @@ export function OrgSwitcher({
                 type="button"
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
+                disabled={createPending}
               >
                 Cancel
               </Button>
-              <SubmitButton
-                disabled={!orgName.trim()}
-                pendingLabel="Creating…"
+              <Button
+                type="submit"
+                disabled={createPending || !orgName.trim()}
               >
-                Create
-              </SubmitButton>
+                {createPending && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                )}
+                {createPending ? "Creating…" : "Create"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
