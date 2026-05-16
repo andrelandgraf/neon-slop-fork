@@ -3,12 +3,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { EndpointType } from "@neondatabase/api-client";
 import { neon, ORG_ID } from "@/lib/neon";
+import {
+  requireTenant,
+  requireProjectAccess,
+  attachProjectToOrg,
+  detachProject,
+  setActiveOrgCookie,
+  getMemberOrgs,
+  createAppOrg,
+} from "@/lib/tenancy";
 
 export async function createProjectAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
   const name = String(formData.get("name") ?? "").trim();
   const region = String(formData.get("region") ?? "aws-us-east-1");
   const pg_version_raw = String(formData.get("pg_version") ?? "17");
-
   if (!name) throw new Error("Project name is required.");
 
   const res = await neon.createProject({
@@ -19,29 +28,41 @@ export async function createProjectAction(formData: FormData): Promise<void> {
       org_id: ORG_ID,
     },
   });
+  await attachProjectToOrg(
+    res.data.project.id,
+    tenant.activeOrg.id,
+    tenant.session.user.id
+  );
   revalidatePath("/projects");
   redirect(`/projects/${res.data.project.id}`);
 }
 
 export async function deleteProjectAction(projectId: string): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   await neon.deleteProject(projectId);
+  await detachProject(projectId);
   revalidatePath("/projects");
   redirect("/projects");
 }
 
 export async function renameProjectAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
   const projectId = String(formData.get("projectId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   if (!projectId || !name) throw new Error("projectId and name are required.");
+  await requireProjectAccess(tenant, projectId);
   await neon.updateProject(projectId, { project: { name } });
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
 }
 
 export async function createBranchAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
   const projectId = String(formData.get("projectId") ?? "");
   const name = String(formData.get("name") ?? "").trim() || undefined;
   if (!projectId) throw new Error("projectId is required.");
+  await requireProjectAccess(tenant, projectId);
   await neon.createProjectBranch(projectId, {
     ...(name ? { branch: { name } } : {}),
     endpoints: [{ type: EndpointType.ReadWrite }],
@@ -54,6 +75,8 @@ export async function deleteBranchAction(
   projectId: string,
   branchId: string
 ): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranch(projectId, branchId);
   revalidatePath(`/projects/${projectId}/branches`);
   revalidatePath(`/projects/${projectId}`);
@@ -63,14 +86,12 @@ export async function setDefaultBranchAction(
   projectId: string,
   branchId: string
 ): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   await neon.setDefaultProjectBranch(projectId, branchId);
   revalidatePath(`/projects/${projectId}/branches`);
 }
 
-/**
- * Mint a real Neon project-scoped API key via the Neon control plane.
- * The plaintext token is returned exactly once and never again.
- */
 export interface CreatedProjectApiKey {
   id: number;
   key: string;
@@ -82,7 +103,8 @@ export async function createProjectApiKeyAction(
   projectId: string,
   name: string
 ): Promise<CreatedProjectApiKey> {
-  if (!projectId) throw new Error("projectId is required.");
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   const trimmed = name.trim();
   if (trimmed.length === 0) throw new Error("Key name is required.");
   const apiKey = process.env.NEON_API_KEY!;
@@ -110,6 +132,8 @@ export async function revokeProjectApiKeyAction(
   projectId: string,
   keyId: number
 ): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   const apiKey = process.env.NEON_API_KEY!;
   const r = await fetch(
     `https://console.neon.tech/api/v2/projects/${projectId}/api_keys/${keyId}`,
@@ -130,10 +154,172 @@ export async function restoreToTimestampAction(
   timestamp: string,
   preserveName?: string
 ): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
   await neon.restoreProjectBranch(projectId, branchId, {
     source_branch_id: branchId,
     source_timestamp: timestamp,
     ...(preserveName ? { preserve_under_name: preserveName } : {}),
   });
   revalidatePath(`/projects/${projectId}/backup`);
+}
+
+// ---------------------------------------------------------------------------
+// Roles & databases (per-branch)
+// ---------------------------------------------------------------------------
+
+export async function createRoleAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!projectId || !branchId || !name) throw new Error("Missing fields.");
+  await requireProjectAccess(tenant, projectId);
+  await neon.createProjectBranchRole(projectId, branchId, { role: { name } });
+  revalidatePath(`/projects/${projectId}/roles`);
+}
+
+export async function deleteRoleAction(
+  projectId: string,
+  branchId: string,
+  roleName: string
+): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  await neon.deleteProjectBranchRole(projectId, branchId, roleName);
+  revalidatePath(`/projects/${projectId}/roles`);
+}
+
+export async function resetRolePasswordAction(
+  projectId: string,
+  branchId: string,
+  roleName: string
+): Promise<{ password: string }> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  const res = await neon.resetProjectBranchRolePassword(
+    projectId,
+    branchId,
+    roleName
+  );
+  revalidatePath(`/projects/${projectId}/roles`);
+  return { password: res.data.role.password ?? "" };
+}
+
+export async function createDatabaseAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const ownerName = String(formData.get("ownerName") ?? "").trim();
+  if (!projectId || !branchId || !name || !ownerName)
+    throw new Error("Missing fields.");
+  await requireProjectAccess(tenant, projectId);
+  await neon.createProjectBranchDatabase(projectId, branchId, {
+    database: { name, owner_name: ownerName },
+  });
+  revalidatePath(`/projects/${projectId}/databases`);
+}
+
+export async function deleteDatabaseAction(
+  projectId: string,
+  branchId: string,
+  databaseName: string
+): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  await neon.deleteProjectBranchDatabase(projectId, branchId, databaseName);
+  revalidatePath(`/projects/${projectId}/databases`);
+}
+
+// ---------------------------------------------------------------------------
+// Compute / endpoint management
+// ---------------------------------------------------------------------------
+
+export async function startEndpointAction(
+  projectId: string,
+  endpointId: string
+): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  await neon.startProjectEndpoint(projectId, endpointId);
+  revalidatePath(`/projects/${projectId}/compute`);
+}
+
+export async function suspendEndpointAction(
+  projectId: string,
+  endpointId: string
+): Promise<void> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  await neon.suspendProjectEndpoint(projectId, endpointId);
+  revalidatePath(`/projects/${projectId}/compute`);
+}
+
+export async function updateEndpointAutoscalingAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const endpointId = String(formData.get("endpointId") ?? "");
+  const minCu = Number(formData.get("minCu") ?? 0.25);
+  const maxCu = Number(formData.get("maxCu") ?? 0.25);
+  const suspendSeconds = Number(formData.get("suspendSeconds") ?? 0);
+  if (!projectId || !endpointId) throw new Error("Missing fields.");
+  await requireProjectAccess(tenant, projectId);
+  await neon.updateProjectEndpoint(projectId, endpointId, {
+    endpoint: {
+      autoscaling_limit_min_cu: minCu,
+      autoscaling_limit_max_cu: maxCu,
+      suspend_timeout_seconds: suspendSeconds,
+    },
+  });
+  revalidatePath(`/projects/${projectId}/compute`);
+}
+
+// ---------------------------------------------------------------------------
+// IP allowlist
+// ---------------------------------------------------------------------------
+
+export async function updateIpAllowlistAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  if (!projectId) throw new Error("projectId is required.");
+  await requireProjectAccess(tenant, projectId);
+  const ipsRaw = String(formData.get("ips") ?? "");
+  const ips = ipsRaw
+    .split(/[\n,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const protectedOnly = formData.get("protectedOnly") === "on";
+  await neon.updateProject(projectId, {
+    project: {
+      settings: {
+        allowed_ips: { ips, protected_branches_only: protectedOnly },
+      },
+    },
+  });
+  revalidatePath(`/projects/${projectId}/settings`);
+}
+
+// ---------------------------------------------------------------------------
+// App-level tenancy
+// ---------------------------------------------------------------------------
+
+export async function switchOrgAction(orgId: string): Promise<void> {
+  const tenant = await requireTenant();
+  const member = (await getMemberOrgs(tenant.session.user.id)).find(
+    (o) => o.id === orgId
+  );
+  if (!member) throw new Error("Not a member of that organization.");
+  await setActiveOrgCookie(member.id);
+  revalidatePath("/", "layout");
+}
+
+export async function createOrgAction(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Organization name is required.");
+  const org = await createAppOrg(tenant.session.user.id, name);
+  await setActiveOrgCookie(org.id);
+  revalidatePath("/", "layout");
+  redirect("/projects");
 }

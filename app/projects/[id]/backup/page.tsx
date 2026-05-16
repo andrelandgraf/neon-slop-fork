@@ -2,7 +2,6 @@ import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mock } from "@/components/ui/mock";
 import { History, RotateCcw, Camera } from "lucide-react";
 import { RestoreForm } from "./restore-form";
 
@@ -30,14 +29,6 @@ export default async function BackupPage({
     <div className="px-8 py-6 max-w-4xl">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-semibold">Backup &amp; Restore</h1>
-        <Mock inline label="Embedded view toggle is mocked">
-          <label className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Embedded view</span>
-            <span className="relative inline-flex h-4 w-7 items-center rounded-full bg-emerald-500">
-              <span className="inline-block h-3 w-3 translate-x-[14px] rounded-full bg-white shadow" />
-            </span>
-          </label>
-        </Mock>
       </div>
       <p className="text-sm text-muted-foreground mb-6">{project.name}</p>
 
@@ -99,14 +90,21 @@ export default async function BackupPage({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Mock inline>
-                <Button variant="outline" size="sm">
-                  Edit schedule
-                </Button>
-              </Mock>
-              <Mock inline>
-                <Button size="sm">Create</Button>
-              </Mock>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Snapshot scheduling is an Early Access Neon feature and is not exposed by the public REST API yet."
+              >
+                Edit schedule
+              </Button>
+              <Button
+                size="sm"
+                disabled
+                title="POST /projects/{id}/branches/{branch}/snapshot is in Early Access. Once it's GA we'll wire this button up."
+              >
+                Create
+              </Button>
             </div>
           </div>
         </div>

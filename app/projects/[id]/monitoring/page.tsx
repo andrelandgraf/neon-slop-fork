@@ -1,7 +1,6 @@
 import { ConsumptionHistoryGranularity } from "@neondatabase/api-client";
 import { neon, ORG_ID } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
-import { Mock } from "@/components/ui/mock";
 import { Activity, RefreshCw, Info } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -71,14 +70,6 @@ export default async function MonitoringPage({
     <div className="px-8 py-6">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-semibold">Monitoring</h1>
-        <Mock inline label="Embedded view toggle is mocked">
-          <label className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Embedded view</span>
-            <span className="relative inline-flex h-4 w-7 items-center rounded-full bg-emerald-500">
-              <span className="inline-block h-3 w-3 translate-x-[14px] rounded-full bg-white shadow" />
-            </span>
-          </label>
-        </Mock>
       </div>
       <p className="text-sm text-muted-foreground mb-4">{project.name}</p>
 
@@ -88,41 +79,38 @@ export default async function MonitoringPage({
 
       <div className="flex items-center gap-4 mb-5">
         <Field label="Compute">
-          <Mock inline>
-            <button className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="font-mono">Primary</span>
-              <span className="text-muted-foreground">Active</span>
-            </button>
-          </Mock>
+          <div
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+            title="The public API does not yet expose per-endpoint live state, only the latest snapshot."
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                primary?.current_state === "active"
+                  ? "bg-emerald-500"
+                  : "bg-gray-400"
+              }`}
+            />
+            <span className="font-mono capitalize">
+              {primary?.type ?? "—"}
+            </span>
+            <span className="text-muted-foreground">
+              {primary?.current_state ?? "—"}
+            </span>
+          </div>
         </Field>
         <div className="ml-auto flex items-center gap-2">
-          <Mock inline>
-            <button className="rounded-md border px-2 py-1 text-xs bg-foreground text-background">
-              Last hour
-            </button>
-          </Mock>
-          <Mock inline>
-            <button className="rounded-md border px-2 py-1 text-xs">
-              Last day
-            </button>
-          </Mock>
-          <Mock inline>
-            <button className="rounded-md border px-2 py-1 text-xs">
-              Last 7 days
-            </button>
-          </Mock>
-          <Mock inline>
-            <button className="rounded-md border px-2 py-1 text-xs">
-              Other
-            </button>
-          </Mock>
-          <Mock inline>
-            <button className="rounded-md border px-2 py-1 text-xs inline-flex items-center gap-1">
-              <RefreshCw className="h-3 w-3" />
-              Refresh
-            </button>
-          </Mock>
+          <RangeButton selected>Last hour</RangeButton>
+          <RangeButton>Last day</RangeButton>
+          <RangeButton>Last 7 days</RangeButton>
+          <RangeButton>Other</RangeButton>
+          <button
+            disabled
+            title="The consumption history API only updates hourly — refreshing the page is enough."
+            className="rounded-md border px-2 py-1 text-xs inline-flex items-center gap-1 text-muted-foreground/70 cursor-not-allowed"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -140,11 +128,12 @@ export default async function MonitoringPage({
               value={suspend > 0 ? `${suspend}s` : "never"}
             />
           </div>
-          <Mock inline className="mt-3">
-            <button className="text-[11px] underline text-muted-foreground">
-              EDIT ENDPOINT
-            </button>
-          </Mock>
+          <a
+            href={`/projects/${id}/compute`}
+            className="mt-3 inline-block text-[11px] underline text-primary"
+          >
+            EDIT ENDPOINT
+          </a>
         </Card>
 
         <ChartCard
@@ -243,6 +232,29 @@ function Tabs() {
         </div>
       ))}
     </div>
+  );
+}
+
+function RangeButton({
+  children,
+  selected,
+}: {
+  children: React.ReactNode;
+  selected?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled
+      title="The consumption history API returns hourly granularity at most; range pickers are informational in this clone."
+      className={
+        selected
+          ? "rounded-md border px-2 py-1 text-xs bg-foreground text-background cursor-not-allowed"
+          : "rounded-md border px-2 py-1 text-xs text-muted-foreground/70 cursor-not-allowed"
+      }
+    >
+      {children}
+    </button>
   );
 }
 

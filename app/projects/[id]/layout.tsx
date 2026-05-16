@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { TopBar } from "@/components/topbar";
 import { Sidebar } from "@/components/sidebar";
 import { neon } from "@/lib/neon";
+import { requireTenant, requireProjectAccess } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,9 @@ export default async function ProjectLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const tenant = await requireTenant(`/projects/${id}`);
+  await requireProjectAccess(tenant, id);
+
   let project;
   let branches: { id: string; name: string; default: boolean }[] = [];
   let defaultBranchId = "";
@@ -35,7 +39,7 @@ export default async function ProjectLayout({
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <TopBar context={project.name} />
+      <TopBar tenant={tenant} context={project.name} />
       <div className="flex flex-1">
         <Sidebar
           projectId={id}

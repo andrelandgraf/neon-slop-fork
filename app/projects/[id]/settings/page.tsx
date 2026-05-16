@@ -1,9 +1,19 @@
 import { neon } from "@/lib/neon";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { renameProjectAction, deleteProjectAction } from "@/app/actions";
+import {
+  renameProjectAction,
+  deleteProjectAction,
+  updateIpAllowlistAction,
+} from "@/app/actions";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 
 export const dynamic = "force-dynamic";
@@ -17,18 +27,25 @@ export default async function SettingsPage({
   const pRes = await neon.getProject(id);
   const project = pRes.data.project;
 
+  const allowedIps = project.settings?.allowed_ips?.ips ?? [];
+  const protectedOnly =
+    project.settings?.allowed_ips?.protected_branches_only ?? false;
+
   return (
     <div className="px-8 py-6 max-w-3xl">
       <h1 className="text-xl font-semibold mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Configure your project. The project ID is permanent and cannot be changed.
+        Configure your project. The project ID is permanent and cannot be
+        changed.
       </p>
 
       <div className="space-y-5">
         <Card>
           <CardHeader>
             <CardTitle>General</CardTitle>
-            <CardDescription>Change the project name or copy its ID.</CardDescription>
+            <CardDescription>
+              Change the project name or copy its ID.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form action={renameProjectAction} className="space-y-3">
@@ -66,15 +83,64 @@ export default async function SettingsPage({
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4 text-sm">
             <Field label="Region" value={project.region_id} />
-            <Field label="Postgres version" value={String(project.pg_version)} />
+            <Field
+              label="Postgres version"
+              value={String(project.pg_version)}
+            />
             <Field
               label="History retention"
-              value={`${Math.round((project.history_retention_seconds ?? 86400) / 86400)} day`}
+              value={`${Math.round(
+                (project.history_retention_seconds ?? 86400) / 3600
+              )} hours`}
             />
             <Field
               label="Default compute size"
-              value={`${project.default_endpoint_settings?.autoscaling_limit_min_cu ?? 0.25} CU`}
+              value={`${
+                project.default_endpoint_settings?.autoscaling_limit_min_cu ??
+                0.25
+              } CU`}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>IP allowlist</CardTitle>
+            <CardDescription>
+              Restrict who can reach the project&apos;s computes. Empty list
+              means &ldquo;allow all&rdquo;. CIDR ranges are accepted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={updateIpAllowlistAction} className="space-y-3">
+              <input type="hidden" name="projectId" value={id} />
+              <div className="space-y-1.5">
+                <Label htmlFor="ips">Allowed IPs</Label>
+                <textarea
+                  id="ips"
+                  name="ips"
+                  rows={4}
+                  defaultValue={allowedIps.join("\n")}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                  placeholder={`203.0.113.0/24\n198.51.100.42`}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  One per line, comma- or whitespace-separated. Validation
+                  happens server-side via the Neon API.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="protectedOnly"
+                  defaultChecked={protectedOnly}
+                />
+                Apply only to protected branches
+              </label>
+              <div className="flex justify-end">
+                <Button type="submit">Save allowlist</Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
@@ -82,8 +148,8 @@ export default async function SettingsPage({
           <CardHeader>
             <CardTitle className="text-destructive">Delete project</CardTitle>
             <CardDescription>
-              Permanently delete this project and all of its branches, databases, and
-              data. This action cannot be undone.
+              Permanently delete this project and all of its branches,
+              databases, and data. This action cannot be undone.
             </CardDescription>
           </CardHeader>
           <CardContent>

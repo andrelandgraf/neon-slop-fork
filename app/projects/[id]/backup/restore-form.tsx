@@ -97,9 +97,14 @@ export function RestoreForm({
           {retentionDays === 1 ? "" : "s"} (UTC: {new Date(timestamp).toISOString()})
         </span>
       </div>
-      <Mock inline>
-        <Button variant="outline">Preview data</Button>
-      </Mock>
+      <Button
+        type="button"
+        variant="outline"
+        disabled
+        title="Preview-before-restore needs a temporary endpoint on the historic LSN — not yet exposed via the public API."
+      >
+        Preview data
+      </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button disabled={!branchId}>Restore</Button>
@@ -134,13 +139,3 @@ export function RestoreForm({
   );
 }
 
-function Mock({ inline, children }: { inline?: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      className={inline ? "inline-flex" : "block"}
-      title="Preview is mocked — the action below uses the real Neon API"
-    >
-      {children}
-    </span>
-  );
-}

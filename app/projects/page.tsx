@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { neon, ORG_ID, ORG_NAME } from "@/lib/neon";
+import { neon, ORG_ID } from "@/lib/neon";
+import { listOrgProjectIds, requireTenant } from "@/lib/tenancy";
 import { TopBar } from "@/components/topbar";
 import { OrgSidebar } from "@/components/org-sidebar";
 import { ProjectsTable } from "@/components/projects-table";
@@ -10,8 +11,15 @@ import { Plus, Info, TrendingUp, HardDrive, History, ArrowLeftRight } from "luci
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsIndex() {
-  const projectsRes = await neon.listProjects({ org_id: ORG_ID });
-  const projects = projectsRes.data.projects;
+  const tenant = await requireTenant("/projects");
+  const ownedIds = await listOrgProjectIds(tenant.activeOrg.id);
+
+  // We could pass `project_ids` to the list endpoint, but it's
+  // limited to 100 and is filtering done server-side. Pulling the
+  // full list and intersecting in memory is simpler and ~free.
+  const projectsRes = await neon.listProjects({ org_id: ORG_ID, limit: 400 });
+  const ownedSet = new Set(ownedIds);
+  const projects = projectsRes.data.projects.filter((p) => ownedSet.has(p.id));
 
   const branchCounts = await Promise.all(
     projects.map(async (p) => {
@@ -59,13 +67,13 @@ export default async function ProjectsIndex() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <TopBar />
+      <TopBar tenant={tenant} />
       <div className="flex flex-1">
         <OrgSidebar />
         <main className="flex-1 min-w-0 px-8 py-6 max-w-[1200px]">
           <div className="flex items-center justify-between mb-5">
             <h1 className="text-2xl font-semibold tracking-tight">
-              {ORG_NAME}&apos;s projects
+              {tenant.activeOrg.name}
             </h1>
             <Button asChild>
               <Link href="/projects/new">

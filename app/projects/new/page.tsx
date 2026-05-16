@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createProjectAction } from "@/app/actions";
+import { requireTenant } from "@/lib/tenancy";
 import { ArrowLeft } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 const REGIONS = [
   { id: "aws-us-east-1", label: "AWS US East 1 (N. Virginia)" },
@@ -17,10 +20,11 @@ const REGIONS = [
 
 const PG_VERSIONS = ["17", "16", "15", "14"];
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  const tenant = await requireTenant("/projects/new");
   return (
     <div className="min-h-screen bg-background">
-      <TopBar />
+      <TopBar tenant={tenant} />
       <main className="max-w-xl mx-auto px-6 py-8">
         <Link
           href="/projects"
@@ -29,12 +33,18 @@ export default function NewProjectPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Projects
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">New project</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+          New project
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Create a new Neon project in your organization. Defaults to a single primary
-          compute on the latest Postgres version.
+          Create a new Neon project in the{" "}
+          <strong>{tenant.activeOrg.name}</strong> workspace. Default compute
+          is a single read/write endpoint on the latest Postgres version.
         </p>
-        <form action={createProjectAction} className="space-y-5 border rounded-lg bg-card p-6">
+        <form
+          action={createProjectAction}
+          className="space-y-5 border rounded-lg bg-card p-6"
+        >
           <div className="space-y-1.5">
             <Label htmlFor="name">Project name</Label>
             <Input
@@ -52,7 +62,7 @@ export default function NewProjectPage() {
               id="region"
               name="region"
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-              defaultValue="aws-us-east-2"
+              defaultValue="aws-us-east-1"
             >
               {REGIONS.map((r) => (
                 <option key={r.id} value={r.id}>

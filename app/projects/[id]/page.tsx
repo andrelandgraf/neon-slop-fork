@@ -4,10 +4,8 @@ import { getDatabaseAndRole } from "@/lib/sql";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mock } from "@/components/ui/mock";
 import { ConnectButton } from "./connect-button";
 import {
-  Database,
   HardDrive,
   History,
   Camera,
@@ -15,6 +13,7 @@ import {
   Share2,
   Info,
   TrendingUp,
+  RefreshCw,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -33,12 +32,10 @@ export default async function ProjectDashboard({
   const branches = bRes.data.branches;
   const defaultBranch = branches.find((b) => b.default) ?? branches[0];
 
-  // Default-branch endpoint (compute), used to show "Primary" pill if active
   const endpoints = await neon
     .listProjectBranchEndpoints(id, defaultBranch.id)
     .then((r) => r.data.endpoints);
 
-  // Connection details for the default branch — used by the Connect modal.
   const { databaseName, roleName } = await getDatabaseAndRole(
     id,
     defaultBranch.id
@@ -60,10 +57,8 @@ export default async function ProjectDashboard({
     }),
   ]);
 
-  // Metrics on the project payload itself
   const computeHrs = (project.compute_time_seconds ?? 0) / 3600;
-  const storageGb = (project.data_storage_bytes_hour ?? 0) / (1024 ** 3) / 24;
-  const historyGb = (project.history_retention_seconds ?? 0) ? 0 : 0;
+  const storageGb = (project.synthetic_storage_size ?? 0) / 1024 ** 3;
 
   return (
     <div className="px-8 py-6">
@@ -77,32 +72,52 @@ export default async function ProjectDashboard({
             pooledUri={pooledRes.data.uri}
             unpooledUri={unpooledRes.data.uri}
           />
-          <Mock inline>
-            <Button variant="outline" size="sm">
-              <ArrowLeftRight className="h-3.5 w-3.5" />
-              Import data
-            </Button>
-          </Mock>
-          <Mock inline>
-            <Button variant="outline" size="sm">
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </Button>
-          </Mock>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            title="Import data isn’t exposed by the public API. Use the SQL editor or a pg_dump/restore via the connection string instead."
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            Import data
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            title="“Share” opens Neon’s collaborator invite flow, which requires the People API and email transport — neither is in this clone."
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </Button>
         </div>
       </div>
 
       <Card className="mb-5">
         <div className="grid grid-cols-5 divide-x">
-          <Metric label="Compute" value={`${computeHrs.toFixed(1)} CU-hrs`} icon={TrendingUp} />
-          <Metric label="Storage" value={`${storageGb.toFixed(2)} GB`} icon={HardDrive} />
-          <Metric label="History" value={`${historyGb.toFixed(2)} GB`} icon={History} />
+          <Metric
+            label="Compute"
+            value={`${computeHrs.toFixed(2)} CU-hrs`}
+            icon={TrendingUp}
+          />
+          <Metric
+            label="Storage"
+            value={`${storageGb.toFixed(3)} GB`}
+            icon={HardDrive}
+          />
+          <Metric label="History" value="0 GB" icon={History} />
           <Metric label="Snapshots" value="0 GB" icon={Camera} />
           <Metric label="Network transfer" value="0 GB" icon={ArrowLeftRight} />
         </div>
         <div className="px-5 py-3 border-t text-xs text-muted-foreground">
-          Usage since {new Date(project.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.
-          Metrics may be delayed by an hour and are not updated for inactive projects.
+          Usage since{" "}
+          {new Date(project.created_at).toLocaleDateString(undefined, {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          . Metrics may be delayed by an hour and are not updated for inactive
+          projects.
         </div>
       </Card>
 
@@ -111,28 +126,41 @@ export default async function ProjectDashboard({
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="font-semibold text-sm">Monitoring</div>
-              <Mock inline label="Monitoring page is mocked">
-                <span className="text-xs text-primary">View all metrics</span>
-              </Mock>
+              <Link
+                href={`/projects/${id}/monitoring`}
+                className="text-xs text-primary hover:underline"
+              >
+                View all metrics
+              </Link>
             </div>
             <div className="flex items-center gap-3 mt-2">
-              <Mock inline>
-                <SmallSelect label="Branch" value={defaultBranch.name} active />
-              </Mock>
-              <Mock inline>
-                <SmallSelect label="Compute" value={`${endpoints.length > 0 ? "Primary" : "—"}`} dot="idle" />
-              </Mock>
-              <Mock inline className="ml-auto">
-                <Button variant="outline" size="sm">
-                  <Refresh className="h-3.5 w-3.5" />
-                  Refresh
-                </Button>
-              </Mock>
+              <SmallSelect
+                label="Branch"
+                value={defaultBranch.name}
+                active
+              />
+              <SmallSelect
+                label="Compute"
+                value={endpoints.length > 0 ? "Primary" : "—"}
+                dot={endpoints[0]?.current_state === "active" ? "active" : "idle"}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Charts on this card are sourced from the public consumption API and only refresh on page reload."
+                className="ml-auto"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="h-[220px] flex flex-col items-center justify-center text-muted-foreground">
             <TrendingUp className="h-7 w-7 mb-2 opacity-30" />
-            <div className="text-sm">There is no data to display at the moment.</div>
+            <div className="text-sm">
+              Open the Monitoring tab for the full grid.
+            </div>
           </CardContent>
         </Card>
 
@@ -141,8 +169,12 @@ export default async function ProjectDashboard({
             <div className="flex items-center justify-between">
               <div className="font-semibold text-sm">
                 {branches.length} / 5000 Branch
+                {branches.length === 1 ? "" : "es"}
               </div>
-              <Link href={`/projects/${id}/branches`} className="text-xs text-primary hover:underline">
+              <Link
+                href={`/projects/${id}/branches`}
+                className="text-xs text-primary hover:underline"
+              >
                 View all
               </Link>
             </div>
@@ -163,7 +195,9 @@ export default async function ProjectDashboard({
                       <div className="flex items-center gap-1.5">
                         <GitBranchIcon />
                         <span className="font-medium">{b.name}</span>
-                        {b.default && <Badge variant="muted">Default</Badge>}
+                        {b.default && (
+                          <Badge variant="muted">Default</Badge>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
@@ -183,14 +217,13 @@ export default async function ProjectDashboard({
                 Preview Workflow
               </Badge>
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                You don&apos;t have any preview branches yet. Improve your workflow by adding database
-                branching to your development previews.
+                You don&apos;t have any preview branches yet. Use the Branches
+                tab to fork one, or trigger one from your CI by hitting{" "}
+                <code className="text-[10px] font-mono">
+                  POST /projects/{`{id}`}/branches
+                </code>
+                .
               </p>
-              <Mock inline className="mt-2">
-                <Button variant="outline" size="sm">
-                  Install an integration
-                </Button>
-              </Mock>
             </div>
           </CardContent>
         </Card>
@@ -211,19 +244,33 @@ export default async function ProjectDashboard({
             <SettingRow label="Region" value={project.region_id} />
             <SettingRow
               label="Default compute size"
-              value={`${project.default_endpoint_settings?.autoscaling_limit_min_cu ?? 0.25} CU`}
+              value={`${
+                project.default_endpoint_settings?.autoscaling_limit_min_cu ??
+                0.25
+              } CU`}
             />
             <SettingRow
               label="History retention"
-              value={`${Math.round((project.history_retention_seconds ?? 86400) / 86400)} day`}
+              value={`${Math.round(
+                (project.history_retention_seconds ?? 86400) / 3600
+              )} hour${
+                Math.round(
+                  (project.history_retention_seconds ?? 86400) / 3600
+                ) === 1
+                  ? ""
+                  : "s"
+              }`}
             />
-            <SettingRow label="Postgres version" value={String(project.pg_version)} />
+            <SettingRow
+              label="Postgres version"
+              value={String(project.pg_version)}
+            />
             <SettingRow
               label="HIPAA compliance"
               value={
                 <Badge variant="muted">
                   <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  Disabled
+                  {project.settings?.hipaa ? "Enabled" : "Disabled"}
                 </Badge>
               }
               last
@@ -251,7 +298,9 @@ function Metric({
         {label}
         <Info className="h-3 w-3 opacity-50" />
       </div>
-      <div className="text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
+      <div className="text-2xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </div>
     </div>
   );
 }
@@ -270,7 +319,10 @@ function SmallSelect({
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[10px] text-muted-foreground">{label}</span>
-      <button className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-muted">
+      <div
+        className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs"
+        title="Branch/compute selectors live on the Monitoring tab — this card is a read-only summary."
+      >
         {dot && (
           <span
             className={`h-1.5 w-1.5 rounded-full ${
@@ -280,7 +332,7 @@ function SmallSelect({
         )}
         <span className="font-mono">{value}</span>
         {active && <Badge variant="muted">Default</Badge>}
-      </button>
+      </div>
     </div>
   );
 }
@@ -295,7 +347,11 @@ function SettingRow({
   last?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between px-5 py-3 ${last ? "" : "border-b"}`}>
+    <div
+      className={`flex items-center justify-between px-5 py-3 ${
+        last ? "" : "border-b"
+      }`}
+    >
       <div className="text-foreground">{label}</div>
       <div className="text-muted-foreground font-mono text-sm">{value}</div>
     </div>
@@ -304,16 +360,12 @@ function SettingRow({
 
 function GitBranchIcon() {
   return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-muted-foreground" fill="currentColor">
+    <svg
+      viewBox="0 0 16 16"
+      className="h-3.5 w-3.5 text-muted-foreground"
+      fill="currentColor"
+    >
       <path d="M5 3.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm0 9a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm6.75-6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-7 1.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm0 9a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm6.75-9a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM5.75 7a4.252 4.252 0 0 0 4.085 3.043l.04.001A.75.75 0 0 1 9.875 11.5l-.04-.001A5.752 5.752 0 0 1 4.25 7H5.75Z" />
-    </svg>
-  );
-}
-
-function Refresh({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} fill="currentColor">
-      <path d="M2 8a6 6 0 0 1 10.243-4.243L11.5 4.5h2.25v-2.25l-.957.957A7.5 7.5 0 1 0 15.5 8h-1.5a6 6 0 1 1-12 0Z" />
     </svg>
   );
 }

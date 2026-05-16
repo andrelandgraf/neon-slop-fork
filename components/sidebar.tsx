@@ -6,7 +6,6 @@ import {
   GitBranch,
   Settings,
   ChevronsUpDown,
-  Eye,
   Activity,
   Terminal,
   TableProperties,
@@ -16,9 +15,11 @@ import {
   Lock,
   PanelLeftClose,
   KeySquare,
+  Users,
+  Cpu,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Mock } from "@/components/ui/mock";
 import { BranchSwitcher } from "@/components/branch-switcher";
 
 interface SidebarProps {
@@ -40,26 +41,51 @@ export function Sidebar({
   const project = [
     { href: base, label: "Dashboard", icon: LayoutGrid },
     { href: `${base}/branches`, label: "Branches", icon: GitBranch },
-    { href: `${base}/integrations`, label: "Integrations", icon: KeySquare, disabled: true },
+    { href: `${base}/operations`, label: "Operations", icon: ScrollText },
+    { href: `${base}/api-keys`, label: "API Keys", icon: KeySquare },
     { href: `${base}/settings`, label: "Settings", icon: Settings },
   ];
 
   const branch = [
-    { href: `${base}/overview`, label: "Overview", icon: Eye, disabled: true },
     { href: `${base}/monitoring`, label: "Monitoring", icon: Activity },
     { href: `${base}/sql`, label: "SQL Editor", icon: Terminal },
     { href: `${base}/tables`, label: "Tables", icon: TableProperties },
+    { href: `${base}/databases`, label: "Databases", icon: Database },
+    { href: `${base}/roles`, label: "Roles", icon: Users },
+    { href: `${base}/compute`, label: "Compute", icon: Cpu },
     { href: `${base}/backup`, label: "Backup & Restore", icon: History },
-    { href: `${base}/masking`, label: "Data Masking", icon: ShieldCheck, beta: true, disabled: true },
+    {
+      href: `${base}/masking`,
+      label: "Data Masking",
+      icon: ShieldCheck,
+      beta: true,
+      disabled: true,
+      disabledReason:
+        "Data masking is a Neon Scale plan feature that isn't surfaced through the public API.",
+    },
   ];
 
   const appBackend = [
-    { href: `${base}/data-api`, label: "Data API", icon: Database, disabled: true },
-    { href: `${base}/auth`, label: "Auth", icon: Lock, disabled: true },
+    {
+      href: `${base}/data-api`,
+      label: "Data API",
+      icon: Database,
+      disabled: true,
+      disabledReason:
+        "The Data API (PostgREST-compatible HTTP endpoint) is configured via the dedicated Neon Cloud workflow and is not exposed in the public API.",
+    },
+    {
+      href: `${base}/auth`,
+      label: "Auth",
+      icon: Lock,
+      disabled: true,
+      disabledReason:
+        "Neon Auth (better-auth + Stack Auth) is provisioned through the Neon integrations system and is not yet in the public REST API.",
+    },
   ];
 
   return (
-    <aside className="w-[240px] shrink-0 border-r bg-background flex flex-col h-[calc(100vh-3.5rem)] sticky top-14">
+    <aside className="w-[240px] shrink-0 border-r bg-background flex flex-col h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto">
       <div className="p-3 border-b">
         <Link
           href="/projects"
@@ -70,15 +96,22 @@ export function Sidebar({
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-1">
           Project
         </div>
-        <Mock label="Project switcher is mocked">
-          <button className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-            <span className="truncate font-mono text-xs">{projectName}</span>
-            <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
-          </button>
-        </Mock>
+        <button
+          type="button"
+          disabled
+          title="Use the topbar org switcher to change orgs; this project label is informational."
+          className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm cursor-not-allowed"
+        >
+          <span className="truncate font-mono text-xs">{projectName}</span>
+          <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
+        </button>
         <nav className="mt-2 space-y-0.5">
           {project.map((item) => (
-            <NavItem key={item.label} {...item} active={pathname === item.href} />
+            <NavItem
+              key={item.label}
+              {...item}
+              active={pathname === item.href}
+            />
           ))}
         </nav>
       </div>
@@ -94,7 +127,11 @@ export function Sidebar({
         />
         <nav className="mt-2 space-y-0.5">
           {branch.map((item) => (
-            <NavItem key={item.label} {...item} active={pathname === item.href} />
+            <NavItem
+              key={item.label}
+              {...item}
+              active={pathname === item.href}
+            />
           ))}
         </nav>
       </div>
@@ -117,18 +154,24 @@ export function Sidebar({
       </div>
 
       <div className="mt-auto p-3 border-t flex flex-col gap-1">
-        <Mock>
-          <button className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted w-full">
-            <span>💬</span>
-            Feedback
-          </button>
-        </Mock>
-        <Mock>
-          <button className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted w-full">
-            <PanelLeftClose className="h-4 w-4" />
-            Collapse menu
-          </button>
-        </Mock>
+        <button
+          type="button"
+          disabled
+          title="Feedback is not collected by this clone — open an issue on the GitHub repo instead."
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground cursor-not-allowed"
+        >
+          <span>💬</span>
+          Feedback
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Sidebar collapse isn’t wired in this clone."
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground cursor-not-allowed"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+          Collapse menu
+        </button>
       </div>
     </aside>
   );
@@ -141,6 +184,7 @@ function NavItem({
   active,
   disabled,
   beta,
+  disabledReason,
 }: {
   href: string;
   label: string;
@@ -148,6 +192,7 @@ function NavItem({
   active?: boolean;
   disabled?: boolean;
   beta?: boolean;
+  disabledReason?: string;
 }) {
   const content = (
     <>
@@ -170,7 +215,11 @@ function NavItem({
 
   if (disabled) {
     return (
-      <div className={className} title="Not implemented in this clone" aria-disabled="true">
+      <div
+        className={className}
+        title={disabledReason ?? "Not available in this clone."}
+        aria-disabled="true"
+      >
         {content}
       </div>
     );

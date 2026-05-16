@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.10",
     "@neondatabase/api-client": "^2.7.1",
     "@neondatabase/serverless": "^1.0.0",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -17,8 +18,11 @@
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
+    "better-auth": "^1.6.10",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
     "lucide-react": "^0.460.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
@@ -33,6 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "^15",
     "postcss": "^8",
