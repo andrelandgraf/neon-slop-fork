@@ -23,23 +23,18 @@ export function IpAllowlistForm({
     setError(null);
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        await updateIpAllowlistAction(formData);
+      const res = await updateIpAllowlistAction(formData);
+      if (res.ok) {
         toast.success("IP allowlist saved.");
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to save allowlist.";
-        // Surface the most common case (plan limit on Free) with a
-        // clear nudge to upgrade. The raw error stays in the inline
-        // banner for everything else (invalid CIDR, etc.).
-        const friendly = /allowed ip entries exceeds allowed maximum/i.test(
-          message
-        )
-          ? "IP allowlists require the Neon Scale plan or above. The Free plan caps allowed_ips at 0."
-          : message;
-        setError(friendly);
-        toast.error(friendly);
+        return;
       }
+      const friendly = /allowed ip entries exceeds allowed maximum/i.test(
+        res.error
+      )
+        ? "IP allowlists require the Neon Scale plan or above. The Free plan caps allowed_ips at 0."
+        : res.error;
+      setError(friendly);
+      toast.error(friendly);
     });
   }
 

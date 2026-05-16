@@ -279,10 +279,24 @@ export async function updateEndpointAutoscalingAction(formData: FormData): Promi
 // IP allowlist
 // ---------------------------------------------------------------------------
 
-export async function updateIpAllowlistAction(formData: FormData): Promise<void> {
+export type IpAllowlistResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Update the project's IP allowlist. Returns a discriminated union
+ * instead of throwing so the calling client component can render the
+ * upstream Neon error inline — Next's production build masks raw
+ * server-action throws as a generic "An error occurred in the Server
+ * Components render." string, which hides genuinely useful messages
+ * like "max 0 allowed_ips" from Free-plan users.
+ */
+export async function updateIpAllowlistAction(
+  formData: FormData
+): Promise<IpAllowlistResult> {
   const tenant = await requireTenant();
   const projectId = String(formData.get("projectId") ?? "");
-  if (!projectId) throw new Error("projectId is required.");
+  if (!projectId) return { ok: false, error: "projectId is required." };
   await requireProjectAccess(tenant, projectId);
   const ipsRaw = String(formData.get("ips") ?? "");
   const ips = ipsRaw
@@ -290,14 +304,36 @@ export async function updateIpAllowlistAction(formData: FormData): Promise<void>
     .map((s) => s.trim())
     .filter(Boolean);
   const protectedOnly = formData.get("protectedOnly") === "on";
-  await neon.updateProject(projectId, {
-    project: {
-      settings: {
-        allowed_ips: { ips, protected_branches_only: protectedOnly },
+  try {
+    await neon.updateProject(projectId, {
+      project: {
+        settings: {
+          allowed_ips: { ips, protected_branches_only: protectedOnly },
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    // The Neon SDK wraps fetch in axios; the most useful detail lives
+    // on `response.data.message`. Fall back to the Error.message if the
+    // shape is unfamiliar, and to a generic string if even that's gone.
+    const upstream = extractApiError(err);
+    return {
+      ok: false,
+      error: upstream ?? "Failed to update IP allowlist.",
+    };
+  }
   revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+function extractApiError(err: unknown): string | null {
+  if (typeof err === "object" && err !== null) {
+    const maybeResponse = (err as { response?: { data?: { message?: string } } })
+      .response;
+    if (maybeResponse?.data?.message) return maybeResponse.data.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
