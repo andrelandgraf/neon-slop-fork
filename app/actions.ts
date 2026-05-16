@@ -57,18 +57,72 @@ export async function renameProjectAction(formData: FormData): Promise<void> {
   revalidatePath("/projects");
 }
 
-export async function createBranchAction(formData: FormData): Promise<void> {
+export type BranchResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Create a new branch on a project.
+ *
+ * Mirrors the real Neon console's "Create new branch" modal:
+ *
+ * - `parentId` selects the parent branch (defaults to the project's
+ *   default branch if blank).
+ * - `name` is optional; Neon picks a slug if omitted.
+ * - Data option: `current` (default, no extra fields), `past` (uses
+ *   `parent_timestamp` to fork from a specific point in time), or
+ *   `schema_only` (uses `init_source: schema-only`, Beta).
+ * - `expiresAt` ISO timestamp opts the branch into Neon's TTL auto-
+ *   delete background job. The field is currently limited to Early
+ *   Access participants — we still send it, and the discriminated
+ *   result lets the dialog show the upstream "early access" error.
+ */
+export async function createBranchAction(
+  formData: FormData
+): Promise<BranchResult> {
   const tenant = await requireTenant();
   const projectId = String(formData.get("projectId") ?? "");
-  const name = String(formData.get("name") ?? "").trim() || undefined;
-  if (!projectId) throw new Error("projectId is required.");
+  const name = String(formData.get("name") ?? "").trim();
+  const parentId = String(formData.get("parentId") ?? "").trim();
+  const dataMode = String(formData.get("dataMode") ?? "current").trim();
+  const pastTimestamp = String(formData.get("pastTimestamp") ?? "").trim();
+  const expiresAtRaw = String(formData.get("expiresAt") ?? "").trim();
+  if (!projectId) return { ok: false, error: "projectId is required." };
   await requireProjectAccess(tenant, projectId);
-  await neon.createProjectBranch(projectId, {
-    ...(name ? { branch: { name } } : {}),
-    endpoints: [{ type: EndpointType.ReadWrite }],
-  });
+
+  let parentTimestamp: string | undefined;
+  if (dataMode === "past" && pastTimestamp) {
+    try {
+      parentTimestamp = new Date(pastTimestamp).toISOString();
+    } catch {
+      return { ok: false, error: "Invalid past data timestamp." };
+    }
+  }
+
+  let expiresAt: string | undefined;
+  if (expiresAtRaw) {
+    try {
+      expiresAt = new Date(expiresAtRaw).toISOString();
+    } catch {
+      return { ok: false, error: "Invalid auto-delete timestamp." };
+    }
+  }
+
+  try {
+    await neon.createProjectBranch(projectId, {
+      branch: {
+        ...(name ? { name } : {}),
+        ...(parentId ? { parent_id: parentId } : {}),
+        ...(parentTimestamp ? { parent_timestamp: parentTimestamp } : {}),
+        ...(dataMode === "schema_only" ? { init_source: "schema-only" } : {}),
+        ...(expiresAt ? { expires_at: expiresAt } : {}),
+      },
+      endpoints: [{ type: EndpointType.ReadWrite }],
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create branch." };
+  }
   revalidatePath(`/projects/${projectId}/branches`);
   revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
 }
 
 export async function deleteBranchAction(
