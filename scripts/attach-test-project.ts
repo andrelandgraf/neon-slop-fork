@@ -1,7 +1,10 @@
 import { neon } from "@neondatabase/serverless";
 
-const url = process.env.META_DATABASE_URL ??
-  "postgresql://neondb_owner:npg_8TegRr2HIjOb@ep-holy-unit-apgu4qfi.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require";
+const url = process.env.META_DATABASE_URL;
+if (!url) {
+  console.error("META_DATABASE_URL is not set. Source .env first.");
+  process.exit(1);
+}
 const sql = neon(url);
 
 const [projectId, email] = process.argv.slice(2);
