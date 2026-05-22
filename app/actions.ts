@@ -57,6 +57,302 @@ export async function renameProjectAction(formData: FormData): Promise<void> {
   revalidatePath("/projects");
 }
 
+// ---------------------------------------------------------------------------
+// Project settings: every setting below maps to a field on
+// `updateProject({ project })`. Each action returns a discriminated
+// result so the UI can render upstream errors inline (Free plan limits
+// surface here a lot — e.g. "max history retention 86400s", "hipaa
+// requires Enterprise", "modifying suspend interval requires upgrade").
+// ---------------------------------------------------------------------------
+
+export type SettingsResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Update the project-level compute defaults. These are the values
+ * new endpoints inherit when they're created — they don't retroactively
+ * resize existing computes (mirrors Neon console behaviour).
+ */
+export async function updateComputeDefaultsAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const minCu = Number(formData.get("minCu") ?? 0.25);
+  const maxCu = Number(formData.get("maxCu") ?? 0.25);
+  const suspendChanged = formData.get("suspendChanged") === "1";
+  const suspendSeconds = suspendChanged
+    ? Number(formData.get("suspendSeconds") ?? 300)
+    : null;
+  if (!projectId) return { ok: false, error: "projectId is required." };
+  if (!Number.isFinite(minCu) || !Number.isFinite(maxCu) || minCu > maxCu) {
+    return { ok: false, error: "Min CU must be ≤ Max CU." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: {
+        default_endpoint_settings: {
+          autoscaling_limit_min_cu: minCu,
+          autoscaling_limit_max_cu: maxCu,
+          ...(suspendSeconds !== null && Number.isFinite(suspendSeconds)
+            ? { suspend_timeout_seconds: suspendSeconds }
+            : {}),
+        },
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to update compute defaults.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Update the shared change-history retention window. Neon caps this
+ * at 30 days (2592000s) and the Free plan caps it at 24h (86400s);
+ * we let the upstream limit error bubble up rather than guessing the
+ * caller's plan.
+ */
+export async function updateHistoryWindowAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const hours = Number(formData.get("hours") ?? 24);
+  if (!projectId) return { ok: false, error: "projectId is required." };
+  if (!Number.isFinite(hours) || hours < 0 || hours > 720) {
+    return { ok: false, error: "History window must be 0–720 hours." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: { history_retention_seconds: Math.round(hours * 3600) },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to update history window.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Update the project's networking gating flags. `block_public_connections`
+ * and `block_vpc_connections` toggle the two transports independently —
+ * blocking both bricks every endpoint, which the Neon API rejects with
+ * "at least one connection method must be allowed". We surface that
+ * error verbatim so the user sees Neon's exact rule.
+ */
+export async function updateNetworkingAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  if (!projectId) return { ok: false, error: "projectId is required." };
+  const blockPublic = formData.get("blockPublic") === "on";
+  const blockVpc = formData.get("blockVpc") === "on";
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: {
+        settings: {
+          block_public_connections: blockPublic,
+          block_vpc_connections: blockVpc,
+        },
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to update networking.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Toggle HIPAA compliance on this project. The Neon API itself
+ * accepts the flag freely, but the org must be on a HIPAA-eligible
+ * plan — otherwise updateProject returns "hipaa requires…". We
+ * forward that error verbatim instead of pre-checking the plan.
+ */
+export async function setHipaaAction(
+  projectId: string,
+  enabled: boolean
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: { settings: { hipaa: enabled } },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to update HIPAA setting.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Enable logical replication. This is a one-way switch in Neon (the
+ * SDK type literally says "cannot be disabled" once on) so we only
+ * expose an enable action — never a disable.
+ */
+export async function enableLogicalReplicationAction(
+  projectId: string
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: { settings: { enable_logical_replication: true } },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to enable logical replication.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Set or clear the project's maintenance window. The Neon API
+ * encodes weekdays as 1–7 (Mon–Sun) and times as "HH:MM" UTC. To
+ * clear a window we pass an empty weekday list, which the upstream
+ * accepts as "no scheduled window".
+ */
+export async function updateMaintenanceWindowAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  if (!projectId) return { ok: false, error: "projectId is required." };
+  const enabled = formData.get("enabled") === "on";
+  const startTime = String(formData.get("startTime") ?? "00:00");
+  const endTime = String(formData.get("endTime") ?? "01:00");
+  const weekdaysRaw = formData.getAll("weekdays").map((w) => Number(w));
+  const weekdays = weekdaysRaw.filter(
+    (n) => Number.isInteger(n) && n >= 1 && n <= 7
+  );
+  if (enabled && weekdays.length === 0) {
+    return { ok: false, error: "Pick at least one weekday." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProject(projectId, {
+      project: {
+        settings: {
+          maintenance_window: enabled
+            ? { weekdays, start_time: startTime, end_time: endTime }
+            : { weekdays: [], start_time: "00:00", end_time: "00:00" },
+        },
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to update maintenance window.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Grant a teammate access to this project by email. Maps to Neon's
+ * `POST /projects/{id}/permissions`. The upstream call validates the
+ * email format and account existence; we surface those errors raw.
+ */
+export async function grantProjectAccessAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
+  if (!projectId || !email) {
+    return { ok: false, error: "projectId and email are required." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.grantPermissionToProject(projectId, { email });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to grant project access.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+export async function revokeProjectAccessAction(
+  projectId: string,
+  permissionId: string
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.revokePermissionFromProject(projectId, permissionId);
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to revoke project access.",
+    };
+  }
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { ok: true };
+}
+
+/**
+ * Transfer this project to another Neon org. The Neon API has two
+ * variants — org→org and user→org. This app keeps every project
+ * inside an app-org tenant, so we always use the org→org endpoint
+ * and target a real Neon org id (defaulting to the same global
+ * `ORG_ID` if the caller didn't pick one).
+ *
+ * The Neon org id is independent of the app org id, so we surface
+ * the upstream error verbatim if the user supplies an invalid target.
+ */
+export async function transferProjectAction(
+  formData: FormData
+): Promise<SettingsResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const destinationOrgId = String(formData.get("destinationOrgId") ?? "").trim();
+  if (!projectId || !destinationOrgId) {
+    return {
+      ok: false,
+      error: "projectId and destinationOrgId are required.",
+    };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.transferProjectsFromOrgToOrg(ORG_ID, {
+      destination_org_id: destinationOrgId,
+      project_ids: [projectId],
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to transfer project.",
+    };
+  }
+  await detachProject(projectId);
+  revalidatePath(`/projects`);
+  return { ok: true };
+}
+
 export type BranchResult = { ok: true } | { ok: false; error: string };
 
 /**

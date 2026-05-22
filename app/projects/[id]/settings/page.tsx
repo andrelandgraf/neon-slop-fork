@@ -1,22 +1,32 @@
-import { neon } from "@/lib/neon";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { SubmitButton } from "@/components/ui/submit-button";
-import {
-  renameProjectAction,
-  deleteProjectAction,
-} from "@/app/actions";
+import { neon, ORG_ID } from "@/lib/neon";
+import { requireTenant } from "@/lib/tenancy";
+import { deleteProjectAction } from "@/app/actions";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
-import { IpAllowlistForm } from "./ip-allowlist-form";
+import { SettingsNav } from "./settings-nav";
+import { GeneralCard } from "./general-card";
+import { ComputeDefaultsCard } from "./compute-defaults-card";
+import { HistoryWindowCard } from "./history-window-card";
+import { UpdatesCard } from "./updates-card";
+import { CollaboratorsCard } from "./collaborators-card";
+import { HipaaCard } from "./hipaa-card";
+import { NetworkingCard } from "./networking-card";
+import { LogicalReplicationCard } from "./logical-replication-card";
+import { TransferCard } from "./transfer-card";
 
 export const dynamic = "force-dynamic";
+
+const SECTIONS = [
+  { id: "general", label: "General" },
+  { id: "compute", label: "Compute" },
+  { id: "history", label: "History window" },
+  { id: "updates", label: "Updates" },
+  { id: "collaborators", label: "Collaborators" },
+  { id: "hipaa", label: "HIPAA support" },
+  { id: "networking", label: "Networking" },
+  { id: "logical-replication", label: "Logical Replication" },
+  { id: "transfer", label: "Transfer" },
+  { id: "delete", label: "Delete" },
+] as const;
 
 export default async function SettingsPage({
   params,
@@ -24,134 +34,167 @@ export default async function SettingsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const tenant = await requireTenant();
+
   const pRes = await neon.getProject(id);
   const project = pRes.data.project;
 
-  const allowedIps = project.settings?.allowed_ips?.ips ?? [];
-  const protectedOnly =
-    project.settings?.allowed_ips?.protected_branches_only ?? false;
+  // `listProjectPermissions` is a separate call; both share the same
+  // require-project-access guard (called above via the layout).
+  const permsRes = await neon.listProjectPermissions(id);
+  const collaborators = permsRes.data.project_permissions.map((p) => ({
+    id: p.id,
+    email: p.granted_to_email,
+    grantedAt: p.granted_at,
+  }));
+
+  const settings = project.settings ?? {};
+  const ipList = settings.allowed_ips?.ips ?? [];
+  const protectedOnly = settings.allowed_ips?.protected_branches_only ?? false;
+  const blockPublic = settings.block_public_connections ?? false;
+  const blockVpc = settings.block_vpc_connections ?? false;
+  const hipaaEnabled = settings.hipaa ?? false;
+  const logRepEnabled = settings.enable_logical_replication ?? false;
+  const maintenance = settings.maintenance_window ?? null;
+
+  const defaultSettings = project.default_endpoint_settings ?? {};
+  const minCu = defaultSettings.autoscaling_limit_min_cu ?? 0.25;
+  const maxCu = defaultSettings.autoscaling_limit_max_cu ?? minCu;
+  const suspendSeconds = defaultSettings.suspend_timeout_seconds ?? 0;
+  const historyHours = Math.round(
+    (project.history_retention_seconds ?? 86400) / 3600
+  );
 
   return (
-    <div className="px-8 py-6 max-w-3xl">
-      <h1 className="text-xl font-semibold mb-1">Settings</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        Configure your project. The project ID is permanent and cannot be
-        changed.
-      </p>
+    <div className="px-8 py-6">
+      <h1 className="text-xl font-semibold mb-6">Project settings</h1>
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="space-y-5 max-w-2xl">
+          <Section id="general" title="General">
+            <GeneralCard projectId={project.id} projectName={project.name} />
+          </Section>
 
-      <div className="space-y-5">
-        <Card>
-          <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>
-              Change the project name or copy its ID.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={renameProjectAction} className="space-y-3">
-              <input type="hidden" name="projectId" value={id} />
-              <div className="space-y-1.5">
-                <Label htmlFor="project-id">Project ID</Label>
-                <Input
-                  id="project-id"
-                  value={project.id}
-                  readOnly
-                  className="font-mono text-xs"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Project name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  defaultValue={project.name}
-                  required
-                  maxLength={64}
-                />
-              </div>
-              <div className="flex justify-end">
-                <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <Section
+            id="compute"
+            title="Compute defaults"
+          >
+            <ComputeDefaultsCard
+              projectId={project.id}
+              minCu={minCu}
+              maxCu={maxCu}
+              suspendSeconds={suspendSeconds}
+            />
+          </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Defaults</CardTitle>
-            <CardDescription>Region, version, and retention.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 text-sm">
-            <Field label="Region" value={project.region_id} />
-            <Field
-              label="Postgres version"
-              value={String(project.pg_version)}
+          <Section id="history" title="History window">
+            <HistoryWindowCard
+              projectId={project.id}
+              initialHours={historyHours}
             />
-            <Field
-              label="History retention"
-              value={`${Math.round(
-                (project.history_retention_seconds ?? 86400) / 3600
-              )} hours`}
-            />
-            <Field
-              label="Default compute size"
-              value={`${
-                project.default_endpoint_settings?.autoscaling_limit_min_cu ??
-                0.25
-              } CU`}
-            />
-          </CardContent>
-        </Card>
+          </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>IP allowlist</CardTitle>
-            <CardDescription>
-              Restrict who can reach the project&apos;s computes. Empty list
-              means &ldquo;allow all&rdquo;. CIDR ranges are accepted.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <IpAllowlistForm
-              projectId={id}
-              initialIps={allowedIps}
-              protectedOnly={protectedOnly}
+          <Section id="updates" title="Updates">
+            <UpdatesCard
+              projectId={project.id}
+              initial={
+                maintenance
+                  ? {
+                      weekdays: maintenance.weekdays ?? [],
+                      start_time: maintenance.start_time ?? "00:00",
+                      end_time: maintenance.end_time ?? "00:00",
+                    }
+                  : null
+              }
             />
-          </CardContent>
-        </Card>
+          </Section>
 
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="text-destructive">Delete project</CardTitle>
-            <CardDescription>
-              Permanently delete this project and all of its branches,
-              databases, and data. This action cannot be undone.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DeleteConfirmDialog
-              resourceName={project.name}
-              resourceLabel="project"
-              description="This will permanently delete the project, all branches, databases, and stored data. This action cannot be undone."
-              action={async () => {
-                "use server";
-                await deleteProjectAction(id);
-              }}
+          <Section id="collaborators" title="Collaborators">
+            <CollaboratorsCard
+              projectId={project.id}
+              collaborators={collaborators}
+              ownerOrgName={tenant.activeOrg.name}
             />
-          </CardContent>
-        </Card>
+          </Section>
+
+          <Section id="hipaa" title="HIPAA compliance">
+            <HipaaCard projectId={project.id} initialEnabled={hipaaEnabled} />
+          </Section>
+
+          <Section id="networking" title="Networking">
+            <NetworkingCard
+              projectId={project.id}
+              initialBlockPublic={blockPublic}
+              initialBlockVpc={blockVpc}
+              initialIps={ipList}
+              initialProtectedOnly={protectedOnly}
+            />
+          </Section>
+
+          <Section id="logical-replication" title="Logical Replication">
+            <LogicalReplicationCard
+              projectId={project.id}
+              initialEnabled={logRepEnabled}
+            />
+          </Section>
+
+          <Section id="transfer" title="Transfer project">
+            <TransferCard
+              projectId={project.id}
+              currentOrgId={project.org_id ?? ORG_ID}
+            />
+          </Section>
+
+          <Section id="delete" title="Delete project" danger>
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[13px] text-destructive">
+              <span className="inline-block mr-1">⚠</span>
+              Permanently delete project{" "}
+              <strong>{project.name}</strong>. This action is not reversible.
+              Proceed with caution.
+            </p>
+            <div className="mt-4">
+              <DeleteConfirmDialog
+                resourceName={project.name}
+                resourceLabel="project"
+                description="This will permanently delete the project, all branches, databases, and stored data. This action cannot be undone."
+                action={async () => {
+                  "use server";
+                  await deleteProjectAction(id);
+                }}
+              />
+            </div>
+          </Section>
+        </div>
+
+        <div className="hidden lg:block">
+          <SettingsNav items={SECTIONS.map((s) => ({ id: s.id, label: s.label }))} />
+        </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Section({
+  id,
+  title,
+  danger,
+  children,
+}: {
+  id: string;
+  title: string;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1">
-      <Label>{label}</Label>
-      <div className="h-9 rounded-md border bg-muted/30 px-3 grid items-center font-mono text-xs">
-        {value}
-      </div>
-    </div>
+    <section
+      id={id}
+      className={`scroll-mt-6 rounded-lg border bg-card ${
+        danger ? "border-destructive/30" : ""
+      }`}
+    >
+      <header className="border-b px-5 py-3.5">
+        <h2 className="text-base font-semibold">{title}</h2>
+      </header>
+      <div className="px-5 py-4">{children}</div>
+    </section>
   );
 }
