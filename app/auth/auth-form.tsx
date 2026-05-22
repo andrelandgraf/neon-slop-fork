@@ -5,7 +5,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn, signUp } from "@/lib/auth-client";
 
 const PROVIDERS_LOGIN = [
-  { id: "google", label: "Google", icon: GoogleIcon, badge: "Last" },
+  { id: "google", label: "Google", icon: GoogleIcon },
   { id: "github", label: "GitHub", icon: GithubIcon },
   { id: "microsoft", label: "Microsoft", icon: MicrosoftIcon },
   { id: "hasura", label: "Hasura", icon: HasuraIcon },
@@ -83,7 +83,7 @@ export function AuthForm({
             id={p.id}
             label={p.label}
             icon={<p.icon />}
-            badge={"badge" in p ? p.badge : undefined}
+            badge={undefined}
             disabled={p.id !== "github" || !githubEnabled}
             disabledReason={
               p.id === "github" && !githubEnabled
