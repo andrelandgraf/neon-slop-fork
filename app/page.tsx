@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, GitBranch, Database, Zap, Activity, Terminal, Shield } from "lucide-react";
+import { ArrowRight, GitBranch, Database, Zap, Activity, Terminal, Shield, Github } from "lucide-react";
 
 export const metadata = {
   title:
@@ -60,6 +60,16 @@ function LandingHeader() {
           </a>
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <a
+            href="https://github.com/andrelandgraf/neon-slop-fork"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub repository"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] text-white/70 transition-colors hover:text-white"
+          >
+            <Github className="h-4 w-4" />
+            <span className="hidden sm:inline">GitHub</span>
+          </a>
           <Link
             href="/login"
             className="rounded-md px-3 py-1.5 text-[13px] text-white/70 transition-colors hover:text-white"
