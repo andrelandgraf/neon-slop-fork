@@ -1,5 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, GitBranch, Database, Zap, Activity, Terminal, Shield, Github } from "lucide-react";
+import {
+  ArrowRight,
+  GitBranch,
+  Database,
+  Zap,
+  Activity,
+  Terminal,
+  Shield,
+  Github,
+  Sparkles,
+  Wrench,
+  Boxes,
+} from "lucide-react";
 
 export const metadata = {
   title:
@@ -13,8 +25,11 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-white antialiased">
       <LandingHeader />
       <Hero />
+      <WhatThisIs />
       <Features />
       <Branching />
+      <BuiltOnNeon />
+      <ForkIt />
       <CallToAction />
       <Footer />
     </div>
@@ -101,16 +116,17 @@ function Hero() {
       <div className="relative mx-auto max-w-[1100px] px-6 pt-20 pb-24 text-center">
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] text-white/80">
           <span className="h-1.5 w-1.5 rounded-full bg-[#00e599]" />
-          A community clone of console.neon.tech
+          A community clone of console.neon.tech, built on the public Neon API
         </div>
         <h1 className="mx-auto max-w-[920px] text-[56px] font-semibold leading-[1.05] tracking-[-0.04em] md:text-[68px]">
           The Neon console, <span className="text-[#00e599]">forked</span> &mdash;
           built in public, on the public API.
         </h1>
         <p className="mx-auto mt-6 max-w-[720px] text-[17px] leading-[1.6] text-white/70">
-          Projects. Branches. Monitoring. SQL editor. Tables. Settings. Everything you
-          use Neon for, rebuilt on top of the same public REST API any agent or app
-          can call. No backdoors, no special access &mdash; just a clean console.
+          A demo of how far the Neon Open API takes you. Projects, branches,
+          monitoring, SQL editor, tables and settings &mdash; all rebuilt on the
+          same REST API any agent, platform or app can call. No backdoors, no
+          special access. Proof you can build your own Neon console.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
@@ -128,6 +144,94 @@ function Hero() {
           >
             Read Neon API docs
           </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhatThisIs() {
+  const cards = [
+    {
+      icon: Sparkles,
+      eyebrow: "What this is",
+      title: "A clone of the Neon dashboard.",
+      body: "Projects, branches, monitoring, SQL editor, tables &mdash; rebuilt from scratch on the public Neon API. It looks and feels like console.neon.tech because it talks to the same backend, just through the docs.",
+      cta: { label: "Open the console", href: "/projects", internal: true },
+    },
+    {
+      icon: Boxes,
+      eyebrow: "What it's for",
+      title: "Proof of the Neon Open API.",
+      body: "Everything here runs on endpoints any platform can call &mdash; the same surface Replit, Netlify DB, Vercel and others build on top of. If the console can do it, your product can too.",
+      cta: {
+        label: "Neon for agents & platforms",
+        href: "https://neon.com/programs/agents",
+        internal: false,
+      },
+    },
+    {
+      icon: Wrench,
+      eyebrow: "What it's for",
+      title: "Inspiration to fork your own.",
+      body: "Want a custom console for your own fleet of Neon databases? Fork this repo, rip out what you don't need, add the dashboards, automations and views you actually want.",
+      cta: {
+        label: "Fork on GitHub",
+        href: "https://github.com/andrelandgraf/neon-slop-fork",
+        internal: false,
+      },
+    },
+  ];
+  return (
+    <section className="border-t border-white/10 bg-white/[0.02]">
+      <div className="mx-auto max-w-[1200px] px-6 py-20">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e599]">
+          Why this exists
+        </div>
+        <h2 className="mt-2 max-w-[820px] text-[34px] font-semibold leading-[1.15] tracking-[-0.025em]">
+          A clone, a demo, and a starter kit &mdash; all on the public Neon API.
+        </h2>
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {cards.map(({ icon: Icon, eyebrow, title, body, cta }) => (
+            <div
+              key={title}
+              className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6"
+            >
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-md bg-[#00e599]/10">
+                  <Icon className="h-4 w-4 text-[#00e599]" />
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">
+                  {eyebrow}
+                </span>
+              </div>
+              <div
+                className="mt-4 text-[18px] font-semibold leading-snug"
+                dangerouslySetInnerHTML={{ __html: title }}
+              />
+              <p
+                className="mt-2 flex-1 text-[13.5px] leading-relaxed text-white/65"
+                dangerouslySetInnerHTML={{ __html: body }}
+              />
+              {cta.internal ? (
+                <Link
+                  href={cta.href}
+                  className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#00e599] hover:text-[#00ffaa]"
+                >
+                  {cta.label} <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              ) : (
+                <a
+                  href={cta.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#00e599] hover:text-[#00ffaa]"
+                >
+                  {cta.label} <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -259,17 +363,196 @@ function Branching() {
   );
 }
 
+function BuiltOnNeon() {
+  const platforms = ["Replit", "Netlify DB", "Vercel", "Koyeb", "your platform"];
+  return (
+    <section className="border-t border-white/10">
+      <div className="mx-auto max-w-[1100px] px-6 py-20">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-7">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">
+              Public API surface
+            </div>
+            <div className="mt-4 space-y-2 font-mono text-[12.5px]">
+              <ApiLine method="POST" path="/projects" note="provision a Postgres" />
+              <ApiLine method="POST" path="/projects/{id}/branches" note="copy-on-write fork" />
+              <ApiLine method="GET" path="/projects/{id}/operations" note="watch async work" />
+              <ApiLine method="POST" path="/projects/{id}/branches/{b}/restore" note="point-in-time restore" />
+              <ApiLine method="GET" path="/projects/{id}/consumption" note="storage & compute usage" />
+            </div>
+            <div className="mt-6 rounded-lg border border-[#00e599]/20 bg-[#00e599]/[0.04] p-3 text-[12.5px] text-white/75">
+              The same endpoints power this whole console. The same endpoints
+              power the platforms below.
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {platforms.map((p) => (
+                <span
+                  key={p}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11.5px] text-white/70"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e599]">
+              Built on the Neon Open API
+            </div>
+            <h2 className="mt-2 text-[34px] font-semibold tracking-[-0.025em]">
+              If Replit and Netlify can build on it, so can you.
+            </h2>
+            <p className="mt-3 text-white/65">
+              This console is a working proof of how far the Neon Open API will
+              take you. Every action &mdash; provisioning a project, forking a
+              branch, restoring to a point in time, streaming metrics &mdash; is
+              a REST call any agent or platform can make.
+            </p>
+            <p className="mt-3 text-white/65">
+              That&apos;s why platforms like Replit and Netlify DB ship Postgres
+              powered by Neon: the entire control plane is API-first. Curious
+              what that unlocks for an AI agent or product?
+            </p>
+            <a
+              href="https://neon.com/programs/agents"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-7 inline-flex items-center gap-1.5 rounded-md bg-[#00e599] px-4 py-2 text-[13px] font-semibold text-black hover:bg-[#00ffaa]"
+            >
+              Explore Neon for agents <ArrowRight className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ApiLine({
+  method,
+  path,
+  note,
+}: {
+  method: "GET" | "POST" | "DELETE" | "PATCH";
+  path: string;
+  note: string;
+}) {
+  const color =
+    method === "GET"
+      ? "text-[#86efac]"
+      : method === "POST"
+      ? "text-[#fbbf24]"
+      : method === "DELETE"
+      ? "text-[#f87171]"
+      : "text-[#93c5fd]";
+  return (
+    <div className="flex items-baseline gap-3 rounded-md border border-white/10 bg-black/40 px-3 py-2">
+      <span className={`w-12 shrink-0 font-semibold ${color}`}>{method}</span>
+      <span className="truncate text-white/85">{path}</span>
+      <span className="ml-auto hidden text-[11.5px] text-white/45 sm:inline">
+        {note}
+      </span>
+    </div>
+  );
+}
+
+function ForkIt() {
+  return (
+    <section className="border-t border-white/10 bg-white/[0.02]">
+      <div className="mx-auto max-w-[1100px] px-6 py-20">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.05fr_1fr] lg:items-center">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e599]">
+              Fork it, make it yours
+            </div>
+            <h2 className="mt-2 text-[34px] font-semibold tracking-[-0.025em]">
+              Build the console <span className="text-[#00e599]">your</span> team
+              actually needs.
+            </h2>
+            <p className="mt-3 text-white/65">
+              Managing a fleet of Neon databases across customers, environments
+              or tenants? Use this repo as a starting point. Strip out what you
+              don&apos;t need, add the dashboards, automations, and per-tenant
+              views you do.
+            </p>
+            <ul className="mt-5 space-y-2 text-[14px] text-white/75">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00e599]" />
+                Per-tenant project lists with your own metadata
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00e599]" />
+                Custom branch policies, retention, and naming
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00e599]" />
+                Hook into your billing, alerting, or internal RBAC
+              </li>
+            </ul>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <a
+                href="https://github.com/andrelandgraf/neon-slop-fork"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-[#00e599] px-4 py-2 text-[13px] font-semibold text-black hover:bg-[#00ffaa]"
+              >
+                <Github className="h-3.5 w-3.5" /> Fork on GitHub
+              </a>
+              <a
+                href="https://neon.com/docs/reference/api-reference"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-4 py-2 text-[13px] font-semibold text-white hover:bg-white/10"
+              >
+                Read the Neon API docs
+              </a>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 font-mono text-[12.5px] leading-relaxed text-white/80">
+            <div className="text-white/40"># clone & make it yours</div>
+            <div className="mt-2">
+              <span className="text-[#00e599]">$</span> git clone
+              git@github.com:andrelandgraf/neon-slop-fork.git
+            </div>
+            <div>
+              <span className="text-[#00e599]">$</span> cd neon-slop-fork
+            </div>
+            <div>
+              <span className="text-[#00e599]">$</span> bun install
+            </div>
+            <div>
+              <span className="text-[#00e599]">$</span> bun run dev
+            </div>
+            <div className="mt-4 text-white/40"># point at your Neon org</div>
+            <div>
+              <span className="text-[#fbbf24]">NEON_API_KEY</span>=
+              <span className="text-white/55">napi_*****</span>
+            </div>
+            <div>
+              <span className="text-[#fbbf24]">NEON_ORG_ID</span>=
+              <span className="text-white/55">org_*****</span>
+            </div>
+            <div className="mt-4 text-white/40">
+              # ship the console your team needs
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CallToAction() {
   return (
     <section className="border-t border-white/10">
       <div className="mx-auto max-w-[1100px] px-6 py-20 text-center">
         <h2 className="mx-auto max-w-[760px] text-[40px] font-semibold leading-[1.1] tracking-[-0.03em]">
-          Same console you know. Open all the way down.
+          A clone. A demo. A starter kit.
         </h2>
         <p className="mx-auto mt-4 max-w-[640px] text-[15.5px] text-white/65">
-          A faithful, open clone of console.neon.tech, built on the public
-          Neon REST API. No accounts, no billing — just the console as it
-          would look if every byte of it shipped under MIT.
+          Run the console. See what the Neon Open API makes possible. Then
+          fork it and build the dashboard your fleet of Postgres databases
+          deserves.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
