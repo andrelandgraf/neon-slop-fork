@@ -12,6 +12,7 @@ import {
   Wrench,
   Boxes,
 } from "lucide-react";
+import { NeonLogomark } from "@/components/neon-logo";
 
 export const metadata = {
   title:
@@ -45,13 +46,7 @@ function LandingHeader() {
           className="flex items-center gap-2 font-semibold tracking-tight"
         >
           <span className="grid h-7 w-7 place-items-center rounded bg-white/10">
-            <svg
-              viewBox="0 0 24 24"
-              className="h-3.5 w-3.5 text-[#00e599]"
-              fill="currentColor"
-            >
-              <path d="M3 3h7l11 18h-7L3 3z" />
-            </svg>
+            <NeonLogomark className="h-3.5 w-3.5 text-[#37C38F]" />
           </span>
           <span>Neon Clone</span>
           <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/70">

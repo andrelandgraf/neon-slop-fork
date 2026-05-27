@@ -3,6 +3,7 @@ import { CheckCircle2, Bot, ChevronsUpDown } from "lucide-react";
 import type { TenantContext } from "@/lib/tenancy";
 import { OrgSwitcher } from "./org-switcher";
 import { AccountMenu } from "./account-menu";
+import { NeonLogomark } from "./neon-logo";
 
 export function TopBar({
   tenant,
@@ -16,9 +17,7 @@ export function TopBar({
       <div className="flex h-full items-center gap-3 px-4">
         <Link href="/" className="flex items-center gap-2" title="Home">
           <div className="h-8 w-8 rounded bg-neon-dark grid place-items-center">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-neon-green" fill="currentColor">
-              <path d="M3 3h7l11 18h-7L3 3z" />
-            </svg>
+            <NeonLogomark className="h-3.5 w-3.5 text-[#37C38F]" />
           </div>
         </Link>
         <OrgSwitcher

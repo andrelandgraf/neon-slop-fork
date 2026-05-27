@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { maybeSession } from "@/lib/tenancy";
+import { NeonLogomark } from "@/components/neon-logo";
 import { AuthForm } from "../auth/auth-form";
 
 export const dynamic = "force-dynamic";
@@ -73,9 +74,7 @@ function AuthScreen({
           }}
         />
         <Link href="/" className="relative mb-5 inline-flex h-12 w-12 items-center justify-center rounded-md border border-white/10 bg-white/[0.04]" title="Home">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#00e599]" fill="currentColor">
-            <path d="M3 3h7l11 18h-7L3 3z" />
-          </svg>
+          <NeonLogomark className="h-6 w-6 text-[#37C38F]" />
         </Link>
         <p className="relative max-w-[260px] text-center text-[18px] leading-tight text-white/85">
           Build on Postgres without slowing down.
