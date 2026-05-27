@@ -25,6 +25,15 @@ the way down.
   `restoreProjectBranch` (with a preserve branch so it's reversible).
 - **API Keys** — project-scoped Neon API keys via `/projects/{id}/api_keys`,
   with a copy-once-on-create dialog and one-click revoke.
+- **Data API** — enable/disable the per-branch PostgREST-compatible REST
+  endpoint, edit exposed schemas / anon role / row caps / CORS / OpenAPI
+  mode / server timing, and trigger schema-cache refreshes.
+- **Auth** — enable/disable Neon Auth on a branch, list users from
+  `neon_auth.users_sync`, create/delete users, manage trusted redirect
+  domains + allow-localhost, configure email-and-password sign-up/sign-in,
+  add/remove OAuth providers (Google, GitHub, Microsoft, Apple, Facebook,
+  X, LinkedIn, GitLab, Bitbucket, Spotify, Discord, Twitch), and set the
+  webhook URL.
 - **Settings** — rename, view defaults, delete project.
 
 ### Disabled / mocked
@@ -33,11 +42,14 @@ We refuse to fake what we can't actually do through the public API. The
 following are intentionally inert with `Mock` tags:
 
 - Org-level **People**, **Billing**, **Integrations** (UI sidebar items).
-- Project-level **Overview**, **Data Masking**, **Data API**, **Auth**,
-  **Integrations**.
+- Project-level **Overview**, **Data Masking**, **Integrations**.
 - Topbar **Open admin menu**, **Ask AI**, **Account menu**, **Feedback**,
   **Collapse menu**.
 - Snapshot creation (Beta API not yet in the SDK).
+- Auth **email provider** SMTP credentials (the public `PATCH
+  /auth/email_provider` accepts host/port/username/password, but editing
+  raw SMTP creds through a multi-tenant clone needs more guardrails than
+  we ship today — provider details are read-only here).
 
 ## Configuration
 

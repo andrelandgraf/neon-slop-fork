@@ -1,7 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { EndpointType } from "@neondatabase/api-client";
+import {
+  EndpointType,
+  NeonAuthSupportedAuthProvider,
+  type DataAPISettings,
+  type NeonAuthEmailAndPasswordConfigUpdate,
+  type NeonAuthWebhookConfig,
+} from "@neondatabase/api-client";
 import { neon, ORG_ID } from "@/lib/neon";
 import {
   requireTenant,
@@ -919,4 +925,475 @@ export async function createOrgAction(formData: FormData): Promise<void> {
   await setActiveOrgCookie(org.id);
   revalidatePath("/", "layout");
   redirect("/projects");
+}
+
+// ---------------------------------------------------------------------------
+// Data API (per-branch, PostgREST-compatible)
+//
+// Endpoints mirror the Neon Console: a Data API is a per-branch, per-database
+// SubZero deployment that exposes REST endpoints over PostgreSQL via JWT auth.
+// We use `neondb` as the database name (the project default) — matching what
+// the real console picks for "Enable Data API" on the default branch.
+// ---------------------------------------------------------------------------
+
+export type DataApiResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Enable Neon Data API on a branch.
+ *
+ * `useNeonAuth` mirrors the console's "Use Neon Auth" checkbox: when on we
+ * pass `auth_provider: "neon_auth"` so the Data API picks up the branch's
+ * Neon Auth JWKS automatically. When off, the user is expected to configure
+ * an external JWKS URL later (we surface that path from the settings tab).
+ *
+ * `grantPublicSchemaAccess` toggles `add_default_grants` which grants
+ * `authenticated` SELECT/INSERT/UPDATE/DELETE on the `public` schema — the
+ * caller is then expected to add RLS policies before going live.
+ */
+export async function enableDataApiAction(
+  formData: FormData
+): Promise<DataApiResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const databaseName = String(formData.get("databaseName") ?? "neondb");
+  const useNeonAuth = formData.get("useNeonAuth") === "on";
+  const grantPublicSchemaAccess =
+    formData.get("grantPublicSchemaAccess") === "on";
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createProjectBranchDataApi(projectId, branchId, databaseName, {
+      ...(useNeonAuth ? { auth_provider: "neon_auth" as const } : {}),
+      add_default_grants: grantPublicSchemaAccess,
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to enable Data API." };
+  }
+  revalidatePath(`/projects/${projectId}/data-api`);
+  return { ok: true };
+}
+
+/**
+ * Update Data API settings (advanced settings tab).
+ *
+ * All fields are optional; we only patch keys the user actually changed so
+ * we don't accidentally overwrite server-side defaults with empty strings.
+ */
+export async function updateDataApiSettingsAction(
+  formData: FormData
+): Promise<DataApiResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const databaseName = String(formData.get("databaseName") ?? "neondb");
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+
+  const settings: DataAPISettings = {};
+  const schemasRaw = String(formData.get("schemas") ?? "").trim();
+  if (schemasRaw) {
+    settings.db_schemas = schemasRaw
+      .split(/[,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  const anonRole = String(formData.get("anonRole") ?? "").trim();
+  if (anonRole) settings.db_anon_role = anonRole;
+  const maxRowsRaw = String(formData.get("maxRows") ?? "").trim();
+  if (maxRowsRaw) {
+    const maxRows = Number(maxRowsRaw);
+    if (!Number.isFinite(maxRows) || maxRows < 0) {
+      return { ok: false, error: "Maximum rows must be a positive number." };
+    }
+    settings.db_max_rows = maxRows;
+  }
+  const cors = String(formData.get("corsOrigins") ?? "").trim();
+  if (cors) settings.server_cors_allowed_origins = cors;
+  const openapi = String(formData.get("openapiMode") ?? "").trim();
+  if (openapi) settings.openapi_mode = openapi;
+  settings.server_timing_enabled =
+    formData.get("serverTimingEnabled") === "on";
+
+  try {
+    await neon.updateProjectBranchDataApi(
+      projectId,
+      branchId,
+      databaseName,
+      { settings }
+    );
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to update Data API." };
+  }
+  revalidatePath(`/projects/${projectId}/data-api`);
+  return { ok: true };
+}
+
+/**
+ * Refresh the PostgREST schema cache for a branch's Data API. Used after
+ * DDL changes (CREATE TABLE / ALTER TYPE / etc.) so PostgREST picks up
+ * the new shape without restarting the endpoint. Under the hood this is
+ * a PATCH with no settings — the upstream description notes that a
+ * schema refresh always runs as part of the update call.
+ */
+export async function refreshDataApiSchemaCacheAction(
+  projectId: string,
+  branchId: string,
+  databaseName: string
+): Promise<DataApiResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateProjectBranchDataApi(
+      projectId,
+      branchId,
+      databaseName,
+      {}
+    );
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to refresh schema cache." };
+  }
+  revalidatePath(`/projects/${projectId}/data-api`);
+  return { ok: true };
+}
+
+export async function disableDataApiAction(
+  projectId: string,
+  branchId: string,
+  databaseName: string
+): Promise<DataApiResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteProjectBranchDataApi(projectId, branchId, databaseName);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to disable Data API." };
+  }
+  revalidatePath(`/projects/${projectId}/data-api`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Neon Auth (per-branch, Stack/BetterAuth-backed)
+//
+// Neon Auth provisions an auth provider project (`stack` by default) tied
+// to a Neon branch and adds a `neon_auth.users_sync` table that mirrors
+// users into the user's database. The console exposes:
+//
+//   - enable / disable
+//   - trusted redirect domains + allow localhost
+//   - email & password sign-in toggles
+//   - OAuth providers (add/remove)
+//   - webhook config
+//   - user creation / deletion
+//
+// We replicate all of those against the public REST API.
+// ---------------------------------------------------------------------------
+
+export type AuthResult = { ok: true } | { ok: false; error: string };
+
+export async function enableAuthAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createNeonAuth(projectId, branchId, {
+      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to enable Neon Auth." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function disableAuthAction(
+  projectId: string,
+  branchId: string,
+  deleteData: boolean
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.disableNeonAuth(projectId, branchId, {
+      delete_data: deleteData,
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to disable Neon Auth." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function addAuthTrustedDomainAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const domain = String(formData.get("domain") ?? "").trim();
+  if (!projectId || !branchId || !domain) {
+    return { ok: false, error: "domain is required." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.addBranchNeonAuthTrustedDomain(projectId, branchId, {
+      domain,
+      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to add domain." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function removeAuthTrustedDomainAction(
+  projectId: string,
+  branchId: string,
+  domain: string
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteBranchNeonAuthTrustedDomain(projectId, branchId, {
+      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+      domains: [{ domain }],
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to remove domain." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function setAuthAllowLocalhostAction(
+  projectId: string,
+  branchId: string,
+  allow: boolean
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.updateNeonAuthAllowLocalhost(projectId, branchId, {
+      allow_localhost: allow,
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to update allow localhost." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function updateAuthEmailPasswordConfigAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  const update: NeonAuthEmailAndPasswordConfigUpdate = {
+    enabled: formData.get("enabled") === "on",
+    require_email_verification: formData.get("requireVerification") === "on",
+    disable_sign_up: formData.get("disableSignUp") === "on",
+  };
+  try {
+    await neon.updateNeonAuthEmailAndPasswordConfig(
+      projectId,
+      branchId,
+      update
+    );
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to update email/password config." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+/**
+ * Add a (shared-keys) OAuth provider. Real client_id / client_secret aren't
+ * configured here because the public-API/console-managed path uses Neon's
+ * shared keys by default — the user can swap in their own keys later through
+ * the provider-specific dialog, which we surface as a follow-up.
+ */
+export async function addAuthOauthProviderAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const providerId = String(formData.get("providerId") ?? "").trim();
+  if (!projectId || !branchId || !providerId) {
+    return { ok: false, error: "providerId is required." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  // The SDK enum is a moving target (lags behind the live API, which
+  // currently accepts: google, github, microsoft, spotify, facebook,
+  // discord, gitlab, bitbucket, linkedin, apple, x, twitch). To stay
+  // honest with TypeScript instead of casting into a stale enum, we
+  // call the REST endpoint directly via `neonAuthFetch` for these
+  // mutations. The same applies to the delete action.
+  if (!/^[a-z]{2,32}$/.test(providerId)) {
+    return { ok: false, error: `Invalid OAuth provider id: ${providerId}` };
+  }
+  const clientId = String(formData.get("clientId") ?? "").trim();
+  const clientSecret = String(formData.get("clientSecret") ?? "").trim();
+  const body: Record<string, string> = { id: providerId };
+  if (clientId) body.client_id = clientId;
+  if (clientSecret) body.client_secret = clientSecret;
+  const res = await neonAuthFetch(
+    `/projects/${encodeURIComponent(projectId)}/branches/${encodeURIComponent(branchId)}/auth/oauth_providers`,
+    { method: "POST", body: JSON.stringify(body) }
+  );
+  if (!res.ok) {
+    return { ok: false, error: await readApiError(res) };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function removeAuthOauthProviderAction(
+  projectId: string,
+  branchId: string,
+  providerId: string
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  if (!/^[a-z]{2,32}$/.test(providerId)) {
+    return { ok: false, error: `Invalid OAuth provider id: ${providerId}` };
+  }
+  const res = await neonAuthFetch(
+    `/projects/${encodeURIComponent(projectId)}/branches/${encodeURIComponent(branchId)}/auth/oauth_providers/${encodeURIComponent(providerId)}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    return { ok: false, error: await readApiError(res) };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+/**
+ * Raw REST helper for endpoints the SDK types too narrowly. Pulls the
+ * same `NEON_API_KEY` the SDK does so credentials never leave the
+ * server context. The `Authorization` header matches the SDK exactly.
+ */
+async function neonAuthFetch(path: string, init: RequestInit): Promise<Response> {
+  const apiKey = process.env.NEON_API_KEY;
+  if (!apiKey) throw new Error("NEON_API_KEY is not set.");
+  return fetch(`https://console.neon.tech/api/v2${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+async function readApiError(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    if (text) {
+      try {
+        const parsed: unknown = JSON.parse(text);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          "message" in parsed &&
+          typeof (parsed as { message: unknown }).message === "string"
+        ) {
+          return (parsed as { message: string }).message;
+        }
+      } catch {
+        // Fall through and return the raw text below.
+      }
+      return text;
+    }
+  } catch {
+    // Ignore body-read errors; the status code is informative enough.
+  }
+  return `Request failed with status ${res.status}`;
+}
+
+export async function updateAuthWebhookConfigAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  const enabled = formData.get("enabled") === "on";
+  const webhookUrl = String(formData.get("webhookUrl") ?? "").trim();
+  const timeoutRaw = String(formData.get("timeoutSeconds") ?? "").trim();
+  const config: NeonAuthWebhookConfig = {
+    enabled,
+    ...(webhookUrl ? { webhook_url: webhookUrl } : {}),
+    ...(timeoutRaw
+      ? { timeout_seconds: Number.parseInt(timeoutRaw, 10) }
+      : {}),
+  };
+  try {
+    await neon.updateNeonAuthWebhookConfig(projectId, branchId, config);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to update webhook config." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function createAuthUserAction(
+  formData: FormData
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!projectId || !branchId || !email) {
+    return { ok: false, error: "email is required." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createBranchNeonAuthNewUser(projectId, branchId, {
+      email,
+      ...(name ? { name } : {}),
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create user." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+export async function deleteAuthUserAction(
+  projectId: string,
+  branchId: string,
+  userId: string
+): Promise<AuthResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteBranchNeonAuthUser(projectId, branchId, userId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to delete user." };
+  }
+  revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
 }

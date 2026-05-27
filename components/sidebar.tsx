@@ -72,17 +72,12 @@ export function Sidebar({
       href: `${base}/data-api`,
       label: "Data API",
       icon: Database,
-      disabled: true,
-      disabledReason:
-        "The Data API (PostgREST-compatible HTTP endpoint) is configured via the dedicated Neon Cloud workflow and is not exposed in the public API.",
     },
     {
       href: `${base}/auth`,
       label: "Auth",
       icon: Lock,
-      disabled: true,
-      disabledReason:
-        "Neon Auth (better-auth + Stack Auth) is provisioned through the Neon integrations system and is not yet in the public REST API.",
+      beta: true,
     },
   ];
 
