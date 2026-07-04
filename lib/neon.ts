@@ -11,9 +11,17 @@ import {
   type EndpointCreateRequest,
   type EndpointUpdateRequest,
   type GrantPermissionToProjectData,
+  type NeonAuthAllowLocalhostResponse,
+  type NeonAuthEmailAndPasswordConfig,
   type NeonAuthEmailAndPasswordConfigUpdate,
+  type NeonAuthEmailServerConfig,
+  type NeonAuthIntegration,
+  type NeonAuthRedirectUriWhitelistResponse,
   type NeonAuthSupportedAuthProvider as NeonAuthProvider,
   type NeonAuthWebhookConfig,
+  type ListNeonAuthOauthProvidersResponse,
+  type ListProjectPermissionsResponse,
+  type EndpointsResponse,
   type ProjectCreateRequest,
   type ProjectUpdateRequest,
   type RestoreSnapshotInput,
@@ -116,8 +124,10 @@ export const neon = {
     });
   },
 
-  async listProjectPermissions(projectId: string) {
-    const data = unwrapRaw(
+  async listProjectPermissions(
+    projectId: string
+  ): Promise<{ data: ListProjectPermissionsResponse }> {
+    const data = unwrapRaw<ListProjectPermissionsResponse>(
       await raw.listProjectPermissions({
         client: sdk.client,
         path: { project_id: projectId },
@@ -287,8 +297,11 @@ export const neon = {
     return { data: { endpoints } };
   },
 
-  async listProjectBranchEndpoints(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async listProjectBranchEndpoints(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: EndpointsResponse }> {
+    const data = unwrapRaw<EndpointsResponse>(
       await raw.listProjectBranchEndpoints({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -410,8 +423,11 @@ export const neon = {
     await sdk.postgres.dataApi.delete(projectId, branchId, databaseName);
   },
 
-  async getNeonAuth(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async getNeonAuth(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthIntegration }> {
+    const data = unwrapRaw<NeonAuthIntegration>(
       await raw.getNeonAuth({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -545,8 +561,11 @@ export const neon = {
     });
   },
 
-  async listBranchNeonAuthOauthProviders(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async listBranchNeonAuthOauthProviders(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: ListNeonAuthOauthProvidersResponse }> {
+    const data = unwrapRaw<ListNeonAuthOauthProvidersResponse>(
       await raw.listBranchNeonAuthOauthProviders({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -556,8 +575,11 @@ export const neon = {
     return { data };
   },
 
-  async listBranchNeonAuthTrustedDomains(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async listBranchNeonAuthTrustedDomains(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthRedirectUriWhitelistResponse }> {
+    const data = unwrapRaw<NeonAuthRedirectUriWhitelistResponse>(
       await raw.listBranchNeonAuthTrustedDomains({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -567,8 +589,11 @@ export const neon = {
     return { data };
   },
 
-  async getNeonAuthAllowLocalhost(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async getNeonAuthAllowLocalhost(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthAllowLocalhostResponse }> {
+    const data = unwrapRaw<NeonAuthAllowLocalhostResponse>(
       await raw.getNeonAuthAllowLocalhost({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -578,8 +603,11 @@ export const neon = {
     return { data };
   },
 
-  async getNeonAuthEmailAndPasswordConfig(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async getNeonAuthEmailAndPasswordConfig(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthEmailAndPasswordConfig }> {
+    const data = unwrapRaw<NeonAuthEmailAndPasswordConfig>(
       await raw.getNeonAuthEmailAndPasswordConfig({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -589,8 +617,11 @@ export const neon = {
     return { data };
   },
 
-  async getNeonAuthWebhookConfig(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async getNeonAuthWebhookConfig(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthWebhookConfig }> {
+    const data = unwrapRaw<NeonAuthWebhookConfig>(
       await raw.getNeonAuthWebhookConfig({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
@@ -600,8 +631,11 @@ export const neon = {
     return { data };
   },
 
-  async getNeonAuthEmailProvider(projectId: string, branchId: string) {
-    const data = unwrapRaw(
+  async getNeonAuthEmailProvider(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: NeonAuthEmailServerConfig }> {
+    const data = unwrapRaw<NeonAuthEmailServerConfig>(
       await raw.getNeonAuthEmailProvider({
         client: sdk.client,
         path: { project_id: projectId, branch_id: branchId },
