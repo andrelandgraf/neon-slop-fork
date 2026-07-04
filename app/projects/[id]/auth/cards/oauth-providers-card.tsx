@@ -18,7 +18,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import type { NeonAuthOauthProvider } from "@neondatabase/api-client";
+import type { NeonAuthOauthProvider } from "@neon/sdk";
 import {
   addAuthOauthProviderAction,
   removeAuthOauthProviderAction,

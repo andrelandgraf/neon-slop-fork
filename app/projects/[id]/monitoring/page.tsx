@@ -1,4 +1,4 @@
-import { ConsumptionHistoryGranularity } from "@neondatabase/api-client";
+import { ConsumptionHistoryGranularity } from "@/lib/neon";
 import { neon, ORG_ID } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Activity, RefreshCw, Info } from "lucide-react";

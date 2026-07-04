@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { NeonAuthWebhookConfig } from "@neondatabase/api-client";
+import type { NeonAuthWebhookConfig } from "@neon/sdk";
 import { updateAuthWebhookConfigAction } from "@/app/actions";
 
 /**

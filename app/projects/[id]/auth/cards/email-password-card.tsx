@@ -4,7 +4,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { NeonAuthEmailAndPasswordConfig } from "@neondatabase/api-client";
+import type { NeonAuthEmailAndPasswordConfig } from "@neon/sdk";
 import { updateAuthEmailPasswordConfigAction } from "@/app/actions";
 
 /**

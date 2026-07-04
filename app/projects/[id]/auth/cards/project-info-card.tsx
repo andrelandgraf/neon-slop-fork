@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { NeonAuthIntegration } from "@neondatabase/api-client";
+import type { NeonAuthIntegration } from "@neon/sdk";
 
 /**
  * Read-only "Project Info" card.

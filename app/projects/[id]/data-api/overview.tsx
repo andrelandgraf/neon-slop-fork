@@ -13,7 +13,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { DataAPIReponse, NeonAuthIntegration } from "@neondatabase/api-client";
+import type { DataApiReponse, NeonAuthIntegration } from "@neon/sdk";
 import { refreshDataApiSchemaCacheAction } from "@/app/actions";
 
 /**
@@ -33,7 +33,7 @@ export function DataApiOverview({
   projectId: string;
   branchId: string;
   databaseName: string;
-  dataApi: DataAPIReponse;
+  dataApi: DataApiReponse;
   authIntegration: NeonAuthIntegration | null;
 }) {
   const [copied, setCopied] = useState(false);

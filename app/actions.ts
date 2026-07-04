@@ -1,14 +1,18 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type {
+  DataApiSettings,
+  NeonAuthEmailAndPasswordConfigUpdate,
+  NeonAuthWebhookConfig,
+} from "@neon/sdk";
+import { NeonApiError } from "@neon/sdk";
 import {
   EndpointType,
   NeonAuthSupportedAuthProvider,
-  type DataAPISettings,
-  type NeonAuthEmailAndPasswordConfigUpdate,
-  type NeonAuthWebhookConfig,
-} from "@neondatabase/api-client";
-import { neon, ORG_ID } from "@/lib/neon";
+  neon,
+  ORG_ID,
+} from "@/lib/neon";
 import {
   requireTenant,
   requireProjectAccess,
@@ -894,10 +898,17 @@ export async function updateIpAllowlistAction(
 }
 
 function extractApiError(err: unknown): string | null {
-  if (typeof err === "object" && err !== null) {
-    const maybeResponse = (err as { response?: { data?: { message?: string } } })
-      .response;
-    if (maybeResponse?.data?.message) return maybeResponse.data.message;
+  if (err instanceof NeonApiError) {
+    const body = err.body;
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "message" in body &&
+      typeof body.message === "string"
+    ) {
+      return body.message;
+    }
+    return err.message;
   }
   if (err instanceof Error && err.message) return err.message;
   return null;
@@ -994,7 +1005,7 @@ export async function updateDataApiSettingsAction(
   }
   await requireProjectAccess(tenant, projectId);
 
-  const settings: DataAPISettings = {};
+  const settings: NonNullable<DataApiSettings> = {};
   const schemasRaw = String(formData.get("schemas") ?? "").trim();
   if (schemasRaw) {
     settings.db_schemas = schemasRaw
@@ -1240,26 +1251,21 @@ export async function addAuthOauthProviderAction(
     return { ok: false, error: "providerId is required." };
   }
   await requireProjectAccess(tenant, projectId);
-  // The SDK enum is a moving target (lags behind the live API, which
-  // currently accepts: google, github, microsoft, spotify, facebook,
-  // discord, gitlab, bitbucket, linkedin, apple, x, twitch). To stay
-  // honest with TypeScript instead of casting into a stale enum, we
-  // call the REST endpoint directly via `neonAuthFetch` for these
-  // mutations. The same applies to the delete action.
-  if (!/^[a-z]{2,32}$/.test(providerId)) {
+  const oauthProviderId = assertOAuthProviderId(providerId);
+  if (!oauthProviderId) {
     return { ok: false, error: `Invalid OAuth provider id: ${providerId}` };
   }
   const clientId = String(formData.get("clientId") ?? "").trim();
   const clientSecret = String(formData.get("clientSecret") ?? "").trim();
-  const body: Record<string, string> = { id: providerId };
+  const body: { id: string; client_id?: string; client_secret?: string } = {
+    id: oauthProviderId,
+  };
   if (clientId) body.client_id = clientId;
   if (clientSecret) body.client_secret = clientSecret;
-  const res = await neonAuthFetch(
-    `/projects/${encodeURIComponent(projectId)}/branches/${encodeURIComponent(branchId)}/auth/oauth_providers`,
-    { method: "POST", body: JSON.stringify(body) }
-  );
-  if (!res.ok) {
-    return { ok: false, error: await readApiError(res) };
+  try {
+    await neon.addBranchNeonAuthOauthProvider(projectId, branchId, body);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to add provider." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1272,61 +1278,50 @@ export async function removeAuthOauthProviderAction(
 ): Promise<AuthResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
-  if (!/^[a-z]{2,32}$/.test(providerId)) {
+  const oauthProviderId = assertOAuthProviderId(providerId);
+  if (!oauthProviderId) {
     return { ok: false, error: `Invalid OAuth provider id: ${providerId}` };
   }
-  const res = await neonAuthFetch(
-    `/projects/${encodeURIComponent(projectId)}/branches/${encodeURIComponent(branchId)}/auth/oauth_providers/${encodeURIComponent(providerId)}`,
-    { method: "DELETE" }
-  );
-  if (!res.ok) {
-    return { ok: false, error: await readApiError(res) };
+  try {
+    await neon.deleteBranchNeonAuthOauthProvider(
+      projectId,
+      branchId,
+      oauthProviderId
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to remove provider.",
+    };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
 }
 
-/**
- * Raw REST helper for endpoints the SDK types too narrowly. Pulls the
- * same `NEON_API_KEY` the SDK does so credentials never leave the
- * server context. The `Authorization` header matches the SDK exactly.
- */
-async function neonAuthFetch(path: string, init: RequestInit): Promise<Response> {
-  const apiKey = process.env.NEON_API_KEY;
-  if (!apiKey) throw new Error("NEON_API_KEY is not set.");
-  return fetch(`https://console.neon.tech/api/v2${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
-}
+const OAUTH_PROVIDER_IDS = [
+  "google",
+  "github",
+  "microsoft",
+  "apple",
+  "facebook",
+  "x",
+  "linkedin",
+  "gitlab",
+  "bitbucket",
+  "spotify",
+  "discord",
+  "twitch",
+] as const;
 
-async function readApiError(res: Response): Promise<string> {
-  try {
-    const text = await res.text();
-    if (text) {
-      try {
-        const parsed: unknown = JSON.parse(text);
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          "message" in parsed &&
-          typeof (parsed as { message: unknown }).message === "string"
-        ) {
-          return (parsed as { message: string }).message;
-        }
-      } catch {
-        // Fall through and return the raw text below.
-      }
-      return text;
-    }
-  } catch {
-    // Ignore body-read errors; the status code is informative enough.
-  }
-  return `Request failed with status ${res.status}`;
+type SupportedOAuthProviderId = (typeof OAUTH_PROVIDER_IDS)[number];
+
+function assertOAuthProviderId(
+  providerId: string
+): SupportedOAuthProviderId | null {
+  if (!/^[a-z]{2,32}$/.test(providerId)) return null;
+  return (OAUTH_PROVIDER_IDS as readonly string[]).includes(providerId)
+    ? (providerId as SupportedOAuthProviderId)
+    : null;
 }
 
 export async function updateAuthWebhookConfigAction(

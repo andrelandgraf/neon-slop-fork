@@ -71,7 +71,7 @@ export default async function ApiKeysPage({
               SDK references: <code>listApiKeys</code> /{" "}
               <code>createApiKey</code> (personal) and{" "}
               <code>listOrgApiKeys</code> / <code>createOrgApiKey</code>{" "}
-              (organization) in <code>@neondatabase/api-client</code>.
+              (organization) in <code>@neon/sdk</code>.
             </p>
           </div>
         </div>

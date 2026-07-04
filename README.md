@@ -80,8 +80,7 @@ vercel deploy --prod
 ## Stack
 
 - [Next.js 15](https://nextjs.org/) App Router on Node.js
-- [@neondatabase/api-client](https://www.npmjs.com/package/@neondatabase/api-client)
-  for the control-plane
+- [@neon/sdk](https://www.npmjs.com/package/@neon/sdk) for the control-plane
 - [@neondatabase/serverless](https://www.npmjs.com/package/@neondatabase/serverless)
   for SQL queries
 - Tailwind CSS + Radix UI primitives

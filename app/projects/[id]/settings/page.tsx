@@ -1,3 +1,4 @@
+import type { ProjectPermission } from "@neon/sdk";
 import { neon, ORG_ID } from "@/lib/neon";
 import { requireTenant } from "@/lib/tenancy";
 import { deleteProjectAction } from "@/app/actions";
@@ -42,7 +43,8 @@ export default async function SettingsPage({
   // `listProjectPermissions` is a separate call; both share the same
   // require-project-access guard (called above via the layout).
   const permsRes = await neon.listProjectPermissions(id);
-  const collaborators = permsRes.data.project_permissions.map((p) => ({
+  const collaborators = permsRes.data.project_permissions.map(
+    (p: ProjectPermission) => ({
     id: p.id,
     email: p.granted_to_email,
     grantedAt: p.granted_at,

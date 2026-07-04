@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { NeonAuthEmailServerConfig } from "@neondatabase/api-client";
+import type { NeonAuthEmailServerConfig } from "@neon/sdk";
 
 /**
  * Email provider card (read-only). The Neon Console lets you swap

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { DataAPISettings } from "@neondatabase/api-client";
+import type { DataApiSettings } from "@neon/sdk";
 import { updateDataApiSettingsAction } from "@/app/actions";
 
 /**
@@ -26,7 +26,7 @@ export function DataApiSettings({
   projectId: string;
   branchId: string;
   databaseName: string;
-  settings: DataAPISettings | null;
+  settings: DataApiSettings | null;
   availableSchemas: string[] | null;
 }) {
   const [feedback, setFeedback] = useState<

@@ -1,15 +1,16 @@
+import type { NeonAuthRedirectUriWhitelistDomain } from "@neon/sdk";
 import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type {
   NeonAuthIntegration,
   ListNeonAuthOauthProvidersResponse,
-  NeonAuthRedirectURIWhitelistResponse,
+  NeonAuthRedirectUriWhitelistResponse,
   NeonAuthAllowLocalhostResponse,
   NeonAuthEmailAndPasswordConfig,
   NeonAuthWebhookConfig,
   NeonAuthEmailServerConfig,
-} from "@neondatabase/api-client";
+} from "@neon/sdk";
 import { ProjectInfoCard } from "./cards/project-info-card";
 import { DomainsCard } from "./cards/domains-card";
 import { EmailPasswordCard } from "./cards/email-password-card";
@@ -54,7 +55,7 @@ export async function AuthConfigurationTab({
     neon
       .listBranchNeonAuthTrustedDomains(projectId, branchId)
       .then((r) => r.data)
-      .catch<NeonAuthRedirectURIWhitelistResponse>(() => ({ domains: [] })),
+      .catch<NeonAuthRedirectUriWhitelistResponse>(() => ({ domains: [] })),
     neon
       .getNeonAuthAllowLocalhost(projectId, branchId)
       .then((r) => r.data)
@@ -108,7 +109,7 @@ export async function AuthConfigurationTab({
       <DomainsCard
         projectId={projectId}
         branchId={branchId}
-        domains={domains.domains.map((d) => d.domain)}
+        domains={domains.domains.map((d: NeonAuthRedirectUriWhitelistDomain) => d.domain)}
         allowLocalhost={allowLocalhost.allow_localhost}
       />
 
