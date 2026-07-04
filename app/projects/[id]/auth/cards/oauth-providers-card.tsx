@@ -24,26 +24,15 @@ import {
   removeAuthOauthProviderAction,
 } from "@/app/actions";
 
-// Providers the upstream auth backend accepts. The SDK enum includes
-// `vercel` as well, but the live Neon Auth backend currently rejects
-// it with a SCHEMA_ERROR (we verified live: "body.id must be one of
-// the following values: google, github, microsoft, spotify, facebook,
-// discord, gitlab, bitbucket, linkedin, apple, x, twitch"). We list
-// the actually-supported set instead of the SDK enum so users don't
-// hit a confusing post-submit error.
+// OAuth providers supported by Neon Auth v2 (Better Auth). Verified live: the
+// v2 service accepts only google, github, and vercel (it rejects `microsoft`,
+// which the Neon API enum still lists, with `[body.id] Invalid option: expected
+// one of "google"|"github"|"vercel"`). The deprecated v1 Stack engine supported
+// a larger set, but the app now provisions Better Auth.
 const SUPPORTED = [
   { id: "google", label: "Google" },
   { id: "github", label: "GitHub" },
-  { id: "microsoft", label: "Microsoft" },
-  { id: "apple", label: "Apple" },
-  { id: "facebook", label: "Facebook" },
-  { id: "x", label: "X" },
-  { id: "linkedin", label: "LinkedIn" },
-  { id: "gitlab", label: "GitLab" },
-  { id: "bitbucket", label: "Bitbucket" },
-  { id: "spotify", label: "Spotify" },
-  { id: "discord", label: "Discord" },
-  { id: "twitch", label: "Twitch" },
+  { id: "vercel", label: "Vercel" },
 ] as const;
 
 /**

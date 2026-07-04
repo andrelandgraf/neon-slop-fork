@@ -10,13 +10,12 @@ import type { NeonAuthIntegration } from "@neon/sdk";
  *
  * Neon's REST API doesn't expose an "auth URL" field directly — the
  * upstream console derives it from the JWKS URL by stripping the well-
- * known path. Stack-managed providers always serve their JWKS at
+ * known path. Neon Auth serves its JWKS at
  * `${base}/.well-known/jwks.json`, so we mirror that derivation here.
  *
- * Editing the application name is provider-side (Stack dashboard)
- * and isn't surfaced through the public REST API, so we render it
- * disabled with a clear tooltip — same shape as the upstream console
- * during pre-GA periods.
+ * The application name is managed by the auth provider and isn't surfaced
+ * through the public REST API, so we render it read-only — same shape as
+ * the upstream console.
  */
 export function ProjectInfoCard({
   integration,

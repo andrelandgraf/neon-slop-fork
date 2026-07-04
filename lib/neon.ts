@@ -14,8 +14,10 @@ import {
   type NeonAuthAllowLocalhostResponse,
   type NeonAuthEmailAndPasswordConfig,
   type NeonAuthEmailAndPasswordConfigUpdate,
+  type NeonAuthAddOAuthProviderRequest,
   type NeonAuthEmailServerConfig,
   type NeonAuthIntegration,
+  type NeonAuthOauthProviderId,
   type NeonAuthRedirectUriWhitelistResponse,
   type NeonAuthSupportedAuthProvider as NeonAuthProvider,
   type NeonAuthWebhookConfig,
@@ -569,33 +571,17 @@ export const neon = {
   async addBranchNeonAuthOauthProvider(
     projectId: string,
     branchId: string,
-    body: { id: string; client_id?: string; client_secret?: string }
+    body: NeonAuthAddOAuthProviderRequest
   ) {
-    // OpenAPI enum lags the live auth backend; use the configured SDK client.
-    await sdk.client.post({
-      url: "/projects/{project_id}/branches/{branch_id}/auth/oauth_providers",
-      path: { project_id: projectId, branch_id: branchId },
-      body,
-      throwOnError: true,
-      security: [{ scheme: "bearer", type: "http" }],
-    });
+    await sdk.auth.oauthProviders.add(projectId, branchId, body);
   },
 
   async deleteBranchNeonAuthOauthProvider(
     projectId: string,
     branchId: string,
-    providerId: string
+    providerId: NeonAuthOauthProviderId
   ) {
-    await sdk.client.delete({
-      url: "/projects/{project_id}/branches/{branch_id}/auth/oauth_providers/{provider_id}",
-      path: {
-        project_id: projectId,
-        branch_id: branchId,
-        provider_id: providerId,
-      },
-      throwOnError: true,
-      security: [{ scheme: "bearer", type: "http" }],
-    });
+    await sdk.auth.oauthProviders.delete(projectId, branchId, providerId);
   },
 };
 

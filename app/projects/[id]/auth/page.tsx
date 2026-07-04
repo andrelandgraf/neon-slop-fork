@@ -18,7 +18,7 @@ const TABS: { id: Tab; label: string }[] = [
  * `/projects/[id]/auth`
  *
  * Mirrors console.neon.tech's per-branch Neon Auth screen. Neon Auth
- * spins up a Stack Auth project tied to the branch and adds a
+ * provisions a managed Better Auth (v2) project tied to the branch and adds a
  * `neon_auth.users_sync` table that the app's own SQL can join against.
  *
  * Tabs:

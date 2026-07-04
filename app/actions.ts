@@ -1089,9 +1089,10 @@ export async function disableDataApiAction(
 }
 
 // ---------------------------------------------------------------------------
-// Neon Auth (per-branch, Stack/BetterAuth-backed)
+// Neon Auth (per-branch, Better Auth v2)
 //
-// Neon Auth provisions an auth provider project (`stack` by default) tied
+// Neon Auth provisions a managed auth provider project (`better_auth`, the
+// current managed service; `stack` is the deprecated v1 engine) tied
 // to a Neon branch and adds a `neon_auth.users_sync` table that mirrors
 // users into the user's database. The console exposes:
 //
@@ -1119,7 +1120,7 @@ export async function enableAuthAction(
   await requireProjectAccess(tenant, projectId);
   try {
     await neon.createNeonAuth(projectId, branchId, {
-      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+      auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
     });
   } catch (err) {
     return { ok: false, error: extractApiError(err) ?? "Failed to enable Neon Auth." };
@@ -1160,7 +1161,7 @@ export async function addAuthTrustedDomainAction(
   try {
     await neon.addBranchNeonAuthTrustedDomain(projectId, branchId, {
       domain,
-      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+      auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
     });
   } catch (err) {
     return { ok: false, error: extractApiError(err) ?? "Failed to add domain." };
@@ -1178,7 +1179,7 @@ export async function removeAuthTrustedDomainAction(
   await requireProjectAccess(tenant, projectId);
   try {
     await neon.deleteBranchNeonAuthTrustedDomain(projectId, branchId, {
-      auth_provider: NeonAuthSupportedAuthProvider.Stack,
+      auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
       domains: [{ domain }],
     });
   } catch (err) {
@@ -1257,7 +1258,11 @@ export async function addAuthOauthProviderAction(
   }
   const clientId = String(formData.get("clientId") ?? "").trim();
   const clientSecret = String(formData.get("clientSecret") ?? "").trim();
-  const body: { id: string; client_id?: string; client_secret?: string } = {
+  const body: {
+    id: SupportedOAuthProviderId;
+    client_id?: string;
+    client_secret?: string;
+  } = {
     id: oauthProviderId,
   };
   if (clientId) body.client_id = clientId;
@@ -1298,20 +1303,12 @@ export async function removeAuthOauthProviderAction(
   return { ok: true };
 }
 
-const OAUTH_PROVIDER_IDS = [
-  "google",
-  "github",
-  "microsoft",
-  "apple",
-  "facebook",
-  "x",
-  "linkedin",
-  "gitlab",
-  "bitbucket",
-  "spotify",
-  "discord",
-  "twitch",
-] as const;
+// Neon Auth v2 (Better Auth) OAuth providers. The Neon API enum also lists
+// `microsoft`, but the v2 Better Auth service rejects it (verified live:
+// `[body.id] Invalid option: expected one of "google"|"github"|"vercel"`), so
+// we offer only the set v2 actually supports. (v1 Stack supported more, but the
+// app now provisions Better Auth.)
+const OAUTH_PROVIDER_IDS = ["google", "github", "vercel"] as const;
 
 type SupportedOAuthProviderId = (typeof OAUTH_PROVIDER_IDS)[number];
 

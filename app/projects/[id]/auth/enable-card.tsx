@@ -6,11 +6,10 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { enableAuthAction } from "@/app/actions";
 
 /**
- * "Enable Neon Auth" empty state. We pre-pick the `stack` provider (the
- * Neon default) and don't expose a provider switcher in the enable form —
- * Better Auth and Mock are special-purpose, and the upstream console
- * defaults to Stack too. Users can transfer to their own Stack/BetterAuth
- * project later via the (legacy) transfer-ownership endpoint.
+ * "Enable Neon Auth" empty state. We provision the `better_auth` engine
+ * (Neon Auth v2, the managed service) and don't expose a provider switcher
+ * in the enable form — `stack` is the deprecated v1 engine and `mock` is
+ * test-only.
  */
 export function EnableAuthCard({
   projectId,
