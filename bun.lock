@@ -5,7 +5,7 @@
       "name": "neon-slop-fork",
       "dependencies": {
         "@better-auth/drizzle-adapter": "^1.6.10",
-        "@neon/sdk": "^0.2.0",
+        "@neon/sdk": "^1.0.0",
         "@neondatabase/serverless": "^1.0.0",
         "@radix-ui/react-dialog": "^1.1.2",
         "@radix-ui/react-dropdown-menu": "^2.1.2",
@@ -221,7 +221,7 @@
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@0.2.12", "https://npm-proxy.dev.databricks.com/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz", { "dependencies": { "@emnapi/core": "^1.4.3", "@emnapi/runtime": "^1.4.3", "@tybys/wasm-util": "^0.10.0" } }, "sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ=="],
 
-    "@neon/sdk": ["@neon/sdk@0.2.0", "https://npm-proxy.cloud.databricks.com/@neon/sdk/-/sdk-0.2.0.tgz", {}, "sha512-ZvYvZgMccjbWnDrBQYApf1wotB8V580YVqJKbW9oA9sKFN6ucgbT0b0G4IP5iGoxZtpHklGnutR0be9KNxpstg=="],
+    "@neon/sdk": ["@neon/sdk@1.0.0", "https://npm-proxy.cloud.databricks.com/@neon/sdk/-/sdk-1.0.0.tgz", {}, "sha512-fAEd7RmZPdtliCBiiZOseYUO+QnFP7Py5kC4oAD/RBKMCS3137KNFg7ZXFy1WrOt83Fvy0oJDQJ41mCWYZkgVw=="],
 
     "@neondatabase/serverless": ["@neondatabase/serverless@1.1.0", "https://npm-proxy.dev.databricks.com/@neondatabase/serverless/-/serverless-1.1.0.tgz", {}, "sha512-r3ZZhRjEcfEdKIZnoB1RusNgvHuaBRqfCzV4Gi+5A9yUX0S4HTws/ASWqt13wL4y4I+0rqsWGdA2w7EQXHi3+Q=="],
 

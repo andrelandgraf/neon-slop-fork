@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.10",
-    "@neon/sdk": "^0.2.0",
+    "@neon/sdk": "^1.0.0",
     "@neondatabase/serverless": "^1.0.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",
