@@ -63,16 +63,38 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="border rounded-lg p-10 text-center bg-muted/30 text-sm text-muted-foreground">
-          {projects.length === 0 ? (
-            <>
-              <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              No projects yet. Click <strong>New Project</strong> above to create one.
-            </>
-          ) : (
-            <>No projects match &ldquo;{query}&rdquo;.</>
-          )}
-        </div>
+        projects.length === 0 ? (
+          <div className="relative overflow-hidden rounded-xl border bg-card p-12 text-center">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.6]"
+              style={{
+                background:
+                  "radial-gradient(420px circle at 50% 0%, hsl(var(--primary) / 0.12), transparent 70%)",
+              }}
+            />
+            <div className="relative">
+              <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+                <Database className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-semibold tracking-tight">Create your first project</h3>
+              <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+                A project is a serverless Postgres database with instant branching.
+                Spin one up in seconds — it scales to zero when idle.
+              </p>
+              <Link
+                href="/projects/new"
+                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_0_24px_-6px_hsl(var(--primary))] transition-shadow hover:shadow-[0_0_34px_-6px_hsl(var(--primary))]"
+              >
+                <Database className="h-4 w-4" />
+                New project
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
+            No projects match &ldquo;{query}&rdquo;.
+          </div>
+        )
       ) : (
         <div className="border rounded-lg bg-card overflow-hidden">
           <div className="max-h-[calc(100vh-22rem)] overflow-auto">

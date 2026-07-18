@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { maybeSession } from "@/lib/tenancy";
-import { NeonLogomark } from "@/components/neon-logo";
-import { AuthForm } from "../auth/auth-form";
+import { AuthScreen } from "../auth/auth-screen";
 
 export const dynamic = "force-dynamic";
 
@@ -20,72 +18,6 @@ export default async function SignupPage({
     process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
   );
   return (
-    <div className="grid min-h-screen bg-black text-white antialiased lg:grid-cols-[480px_1fr]">
-      <aside
-        className="relative hidden flex-col items-center justify-center overflow-hidden border-r border-white/10 lg:flex"
-        style={{
-          background:
-            "radial-gradient(circle at 20% 30%, rgba(0,229,153,0.12), transparent 55%), radial-gradient(circle at 80% 80%, rgba(255,128,0,0.10), transparent 60%), #0a0c0e",
-        }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-25"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle, rgba(255,255,255,0.18) 1px, transparent 1px)",
-            backgroundSize: "8px 8px",
-          }}
-        />
-        <Link href="/" className="relative mb-5 inline-flex h-12 w-12 items-center justify-center rounded-md border border-white/10 bg-white/[0.04]" title="Home">
-          <NeonLogomark className="h-6 w-6 text-[#37C38F]" />
-        </Link>
-        <p className="relative max-w-[260px] text-center text-[18px] leading-tight text-white/85">
-          Build on Postgres without slowing down.
-        </p>
-      </aside>
-      <main className="flex flex-col">
-        <header className="flex items-center px-6 py-5">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white"
-          >
-            <span aria-hidden>←</span> Home
-          </Link>
-        </header>
-        <div className="flex flex-1 items-center justify-center px-6">
-          <div className="w-full max-w-[360px]">
-            <h1 className="text-center text-[26px] font-semibold tracking-tight">
-              Create your free account
-            </h1>
-            <p className="mt-1 text-center text-[13px] text-white/55">
-              Sign up to Neon with:
-            </p>
-            <AuthForm
-              mode="signup"
-              next={next}
-              initialError={error}
-              githubEnabled={githubEnabled}
-            />
-            <p className="mt-5 text-[11px] leading-relaxed text-white/45">
-              By creating an account you agree to the Terms of Service and our
-              Privacy Policy. We&apos;ll occasionally send you emails about news,
-              products, and services; you can opt-out anytime.
-            </p>
-            <div className="mt-5 text-center text-[13px] text-white/65">
-              Already have an account?{" "}
-              <Link
-                href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}
-                className="text-[#00e599] hover:underline"
-              >
-                Log in
-              </Link>
-            </div>
-          </div>
-        </div>
-        <footer className="px-6 py-6 text-center text-[11px] text-white/30">
-          Neon Clone &middot; an unofficial open clone of console.neon.tech
-        </footer>
-      </main>
-    </div>
+    <AuthScreen mode="signup" next={next} error={error} githubEnabled={githubEnabled} />
   );
 }

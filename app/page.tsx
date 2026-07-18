@@ -7,6 +7,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { NeonLogomark } from "@/components/neon-logo";
+import { NeonAurora } from "@/components/neon-aurora";
 
 export const metadata = {
   title:
@@ -85,17 +86,29 @@ function LandingHeader() {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-60"
-        style={{
-          background:
-            "radial-gradient(900px circle at 50% -20%, rgba(0,229,153,0.18), transparent 60%), radial-gradient(600px circle at 90% 30%, rgba(0,229,153,0.08), transparent 60%)",
-        }}
-      />
-      <div className="relative mx-auto max-w-[1100px] px-6 pt-20 pb-24 text-center">
+      {/* Live aurora field, faded into the page on every edge. */}
+      <div className="pointer-events-none absolute inset-0 [mask-image:radial-gradient(120%_80%_at_50%_0%,black,transparent_72%)]">
+        <NeonAurora
+          className="absolute inset-0 opacity-70"
+          density={0.28}
+          intensity={1.6}
+          flare={0.55}
+          glare={0.22}
+          speed={0.5}
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
+      <div className="relative mx-auto max-w-[1100px] px-6 pt-24 pb-24 text-center">
+        <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] text-white/70 backdrop-blur">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#00e599] neon-status-breathe" />
+          Open clone · built on the public Neon API
+        </div>
         <h1 className="mx-auto max-w-[920px] text-[56px] font-semibold leading-[1.05] tracking-[-0.04em] md:text-[68px]">
-          The Neon console, <span className="text-[#00e599]">forked</span> &mdash;
-          built in public, on the public API.
+          The Neon console,{" "}
+          <span className="bg-gradient-to-r from-[#00e599] to-[#38bdf8] bg-clip-text text-transparent">
+            forked
+          </span>{" "}
+          &mdash; built in public, on the public API.
         </h1>
         <p className="mx-auto mt-6 max-w-[720px] text-[17px] leading-[1.6] text-white/70">
           A demo of how far the Neon Open API takes you. Projects, branches,

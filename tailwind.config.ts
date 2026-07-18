@@ -43,9 +43,17 @@ const config: Config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        // Brand accents — raw colors (not theme-swapped) so they read the same
+        // on light and dark surfaces and work as gradient/text utilities.
         neon: {
+          DEFAULT: "#00e599",
           green: "#00e599",
           dark: "#0c0e10",
+        },
+        status: {
+          active: "#00b37a",
+          sleeping: "#6b7280",
+          scaling: "#d97706",
         },
       },
       borderRadius: {
@@ -70,6 +78,28 @@ const config: Config = {
           "Consolas",
           "monospace",
         ],
+      },
+      keyframes: {
+        rise: {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.97)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        rise: "rise 500ms cubic-bezier(0.22,1,0.36,1) both",
+        "fade-in": "fade-in 300ms ease both",
+        "scale-in": "scale-in 400ms cubic-bezier(0.22,1,0.36,1) both",
+      },
+      transitionTimingFunction: {
+        "out-soft": "cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },
   },

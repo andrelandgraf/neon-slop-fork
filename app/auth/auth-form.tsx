@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { signIn, signUp } from "@/lib/auth-client";
 
 const PROVIDERS_LOGIN = [
@@ -17,6 +18,22 @@ const PROVIDERS_SIGNUP = [
   { id: "microsoft", label: "Microsoft", icon: MicrosoftIcon },
 ] as const;
 
+const EMAIL_SHAPE = /^\S+@\S+\.\S+$/u;
+
+type Strength = { label: string; ratio: number; tone: "weak" | "fair" | "strong" };
+
+function scorePassword(value: string): Strength | null {
+  if (!value) return null;
+  let score = 0;
+  if (value.length >= 8) score += 1;
+  if (value.length >= 12) score += 1;
+  if (/[a-z]/u.test(value) && /[A-Z]/u.test(value)) score += 1;
+  if (/\d/u.test(value)) score += 1;
+  if (/[^a-zA-Z0-9]/u.test(value)) score += 1;
+  const tone = score >= 4 ? "strong" : score >= 2 ? "fair" : "weak";
+  return { label: tone, ratio: tone === "strong" ? 1 : Math.max(score / 5, 0.16), tone };
+}
+
 export function AuthForm({
   mode,
   next,
@@ -29,19 +46,24 @@ export function AuthForm({
   /**
    * Server-resolved: whether `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`
    * are configured. GitHub OAuth Apps can't be provisioned through the
-   * CLI (no API endpoint, no `gh app create`), so the button stays off
-   * until the env vars are set by hand at github.com/settings/applications/new.
+   * CLI, so the button stays off until the env vars are set by hand.
    */
   githubEnabled: boolean;
 }) {
   const router = useRouter();
+  const signup = mode === "signup";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(initialError ?? null);
-  const providers = mode === "login" ? PROVIDERS_LOGIN : PROVIDERS_SIGNUP;
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const providers = signup ? PROVIDERS_SIGNUP : PROVIDERS_LOGIN;
+
+  const emailValid = EMAIL_SHAPE.test(email);
+  const meter = useMemo(() => (signup ? scorePassword(password) : null), [signup, password]);
+  const charged = emailValid && password.length >= (signup ? 8 : 1);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,21 +71,13 @@ export function AuthForm({
     setError(null);
     setPending(true);
     try {
-      if (mode === "signup") {
+      if (signup) {
         const displayName = name.trim() || email.split("@")[0] || "Member";
-        const res = await signUp.email({
-          email: email.trim(),
-          password,
-          name: displayName,
-        });
-        if (res.error) {
-          throw new Error(res.error.message ?? "Could not sign up.");
-        }
+        const res = await signUp.email({ email: email.trim(), password, name: displayName });
+        if (res.error) throw new Error(res.error.message ?? "Could not sign up.");
       } else {
         const res = await signIn.email({ email: email.trim(), password });
-        if (res.error) {
-          throw new Error(res.error.message ?? "Could not sign in.");
-        }
+        if (res.error) throw new Error(res.error.message ?? "Could not sign in.");
       }
       router.replace(next ?? "/projects");
       router.refresh();
@@ -75,133 +89,172 @@ export function AuthForm({
   }
 
   return (
-    <div className="mt-7 space-y-4">
+    <div className="mt-8 flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-2">
-        {providers.map((p) => (
-          <ProviderButton
-            key={p.id}
-            id={p.id}
-            label={p.label}
-            icon={<p.icon />}
-            badge={undefined}
-            disabled={p.id !== "github" || !githubEnabled}
-            disabledReason={
-              p.id === "github" && !githubEnabled
-                ? "GitHub sign-in needs GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET. Create an OAuth App at github.com/settings/applications/new (no API exists for this) and add the values to your env."
-                : `${p.label} sign-in isn’t configured in this clone.`
-            }
-            onClick={() => {
-              if (p.id !== "github" || !githubEnabled) return;
-              setError(null);
-              signIn.social({
-                provider: "github",
-                callbackURL: next ?? "/projects",
-              });
-            }}
-          />
-        ))}
+        {providers.map((p, i) => {
+          const disabled = p.id !== "github" || !githubEnabled;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              disabled={disabled}
+              style={{ animationDelay: `${i * 40}ms` }}
+              title={
+                p.id === "github" && !githubEnabled
+                  ? "GitHub sign-in needs GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET. Create an OAuth App at github.com/settings/applications/new and add the values to your env."
+                  : disabled
+                    ? `${p.label} sign-in isn’t configured in this clone.`
+                    : `Continue with ${p.label}`
+              }
+              onClick={() => {
+                if (disabled) return;
+                setError(null);
+                signIn.social({ provider: "github", callbackURL: next ?? "/projects" });
+              }}
+              className="group inline-flex animate-rise items-center justify-center gap-2 rounded-md border border-border bg-card/40 py-2.5 text-[13px] font-medium text-foreground/85 transition-all hover:enabled:-translate-y-px hover:enabled:border-primary/40 hover:enabled:bg-card hover:enabled:text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <span className="h-4 w-4">
+                <p.icon />
+              </span>
+              {p.label}
+            </button>
+          );
+        })}
       </div>
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-white/35">
-        <span className="h-px flex-1 bg-white/10" />
-        Or {mode === "signup" ? "continue with Email" : "continue with"}
-        <span className="h-px flex-1 bg-white/10" />
+
+      <div
+        className="flex animate-rise items-center gap-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60"
+        style={{ animationDelay: "120ms" }}
+      >
+        <span className="h-px flex-1 bg-border" />
+        or continue with email
+        <span className="h-px flex-1 bg-border" />
       </div>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {mode === "signup" && (
-          <Field label="Name">
-            <input
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {signup && (
+          <Field label="Name" delay={160}>
+            <BeamInput
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(v) => setName(v)}
               placeholder="Ada Lovelace"
               autoComplete="name"
-              className={INPUT_CLASS}
             />
           </Field>
         )}
-        <Field label="Email">
-          <input
+        <Field label="Email" delay={signup ? 200 : 160} valid={touched.email && emailValid}>
+          <BeamInput
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={mode === "login" ? "Enter your email address" : "youremail@email.com"}
+            onChange={(v) => setEmail(v)}
+            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+            placeholder="you@example.com"
             autoComplete="email"
-            className={INPUT_CLASS}
+            valid={touched.email && emailValid}
           />
         </Field>
         <Field
           label="Password"
+          delay={signup ? 240 : 200}
           trailing={
-            mode === "login" ? (
+            signup ? (
+              meter ? (
+                <span
+                  className={cn(
+                    "font-mono text-[11px] lowercase",
+                    meter.tone === "strong"
+                      ? "text-primary"
+                      : meter.tone === "fair"
+                        ? "text-muted-foreground"
+                        : "text-destructive"
+                  )}
+                >
+                  {meter.label}
+                </span>
+              ) : null
+            ) : (
               <span
-                className="cursor-not-allowed text-[12px] text-white/35"
+                className="cursor-not-allowed text-[12px] text-muted-foreground/50"
                 title="Password reset requires an email transport, which this clone does not configure."
               >
-                Forgot Password?
+                Forgot password?
               </span>
-            ) : null
+            )
           }
         >
           <div className="relative">
-            <input
+            <BeamInput
               type={showPassword ? "text" : "password"}
               required
-              minLength={mode === "signup" ? 8 : undefined}
+              minLength={signup ? 8 : undefined}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === "login" ? "Enter a unique password" : "Enter a unique password"}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              className={INPUT_CLASS + " pr-10"}
+              onChange={(v) => setPassword(v)}
+              placeholder={signup ? "At least 8 characters" : "Enter your password"}
+              autoComplete={signup ? "new-password" : "current-password"}
+              className="pr-10"
+              meterRatio={meter?.ratio}
+              meterTone={meter?.tone}
             />
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/45 hover:text-white"
+              className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 p-1 text-muted-foreground/60 transition-colors hover:text-foreground"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </Field>
+
         {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-[12px] text-red-300">
+          <div className="animate-fade-in rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
             {error}
           </div>
         )}
+
         <button
           type="submit"
-          disabled={pending || !email || !password}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-white/[0.06] py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-white/[0.10] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={pending}
+          style={{ animationDelay: "280ms" }}
+          className={cn(
+            "inline-flex w-full animate-rise items-center justify-center gap-2 rounded-md py-2.5 text-[14px] font-semibold transition-all duration-300 active:scale-[0.98] disabled:cursor-not-allowed",
+            charged || pending
+              ? "bg-primary text-primary-foreground shadow-[0_0_24px_-6px_hsl(var(--primary))] hover:shadow-[0_0_34px_-6px_hsl(var(--primary))]"
+              : "border border-border bg-transparent text-muted-foreground hover:text-foreground"
+          )}
         >
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {pending
-            ? mode === "signup"
-              ? "Creating account…"
-              : "Logging in…"
-            : mode === "signup"
-              ? "Continue"
-              : "Log in"}
+          <span className={cn(pending && "neon-shimmer")}>
+            {pending
+              ? signup
+                ? "Creating account…"
+                : "Signing in…"
+              : signup
+                ? "Create account"
+                : "Sign in"}
+          </span>
         </button>
       </form>
     </div>
   );
 }
 
-const INPUT_CLASS =
-  "w-full rounded-md border border-white/15 bg-white/[0.04] px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:border-[#00e599] focus:outline-none focus:ring-1 focus:ring-[#00e599]/40";
-
 function Field({
   label,
   children,
   trailing,
+  delay = 0,
 }: {
   label: string;
   children: React.ReactNode;
   trailing?: React.ReactNode;
+  valid?: boolean;
+  delay?: number;
 }) {
   return (
-    <label className="block">
-      <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wider text-white/55">
+    <label className="block animate-rise" style={{ animationDelay: `${delay}ms` }}>
+      <div className="mb-1.5 flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         <span>{label}</span>
         {trailing}
       </div>
@@ -210,40 +263,59 @@ function Field({
   );
 }
 
-function ProviderButton({
-  label,
-  icon,
-  badge,
-  disabled,
-  disabledReason,
-  onClick,
+function BeamInput({
+  value,
+  onChange,
+  onBlur,
+  className,
+  valid,
+  meterRatio,
+  meterTone,
+  ...props
 }: {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  badge?: string;
-  disabled?: boolean;
-  disabledReason?: string;
-  onClick?: () => void;
-}) {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  className?: string;
+  valid?: boolean;
+  meterRatio?: number;
+  meterTone?: "weak" | "fair" | "strong";
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "onBlur">) {
+  const beamColor =
+    meterTone === "weak"
+      ? "hsl(var(--destructive))"
+      : meterTone === "fair"
+        ? "hsl(var(--muted-foreground))"
+        : "hsl(var(--primary))";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={
-        disabled ? disabledReason ?? `${label} sign-in isn’t configured.` : `Continue with ${label}`
-      }
-      className="relative inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-white/[0.04] py-2 text-[13px] text-white/85 transition-colors hover:enabled:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-55"
-    >
-      <span className="h-4 w-4">{icon}</span>
-      {label}
-      {badge && (
-        <span className="absolute right-2 top-1.5 rounded-full bg-[#00e599] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-black">
-          {badge}
-        </span>
+    <span className="group relative block">
+      <input
+        {...props}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className={cn(
+          "w-full rounded-md border border-border bg-card/40 px-3 py-2.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
+          valid && "pr-9",
+          className
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "neon-beam pointer-events-none absolute inset-x-[1px] bottom-0 h-[2px] origin-left rounded-full",
+          meterRatio === undefined && "scale-x-0 bg-primary group-focus-within:scale-x-100"
+        )}
+        style={
+          meterRatio !== undefined
+            ? { transform: `scaleX(${meterRatio})`, backgroundColor: beamColor }
+            : undefined
+        }
+      />
+      {valid && (
+        <Check className="neon-check-draw pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
       )}
-    </button>
+    </span>
   );
 }
 

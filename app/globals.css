@@ -2,28 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Neon-branded design tokens (shadcn HSL-channel convention).
+ *
+ * Palette mirrors the official Neon UI registry (github.com/.../neon-ui):
+ * brand green on near-black for dark surfaces (auth, marketing, hero), a clean
+ * light surface for the console. Values are `H S% L%` channels so Tailwind's
+ * `/opacity` modifiers work everywhere (bg-primary/10, border-border/60, …);
+ * use `hsl(var(--token))` when a raw color is needed (glows, gradients).
+ */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 224 9% 13%;
+    --foreground: 180 4% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 224 9% 13%;
+    --card-foreground: 180 4% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 9% 13%;
-    --primary: 224 9% 13%;
-    --primary-foreground: 0 0% 98%;
+    --popover-foreground: 180 4% 5%;
+    --primary: 161 100% 32%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 220 14% 96%;
-    --secondary-foreground: 224 9% 13%;
+    --secondary-foreground: 180 4% 5%;
     --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted-foreground: 217 11% 40%;
     --accent: 220 14% 96%;
-    --accent-foreground: 224 9% 13%;
-    --destructive: 0 70% 45%;
-    --destructive-foreground: 0 0% 98%;
+    --accent-foreground: 180 4% 5%;
+    --destructive: 358 75% 59%;
+    --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 224 9% 13%;
+    --ring: 161 100% 32%;
     --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 180 5% 4%;
+    --foreground: 220 14% 96%;
+    --card: 180 3% 7%;
+    --card-foreground: 220 14% 96%;
+    --popover: 180 2% 10%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 160 100% 45%;
+    --primary-foreground: 155 50% 6%;
+    --secondary: 180 2% 10%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 180 4% 9%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 180 2% 10%;
+    --accent-foreground: 220 14% 96%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 180 3% 15%;
+    --input: 180 3% 15%;
+    --ring: 160 100% 45%;
   }
 }
 
@@ -39,4 +70,114 @@
 
 .font-mono {
   font-feature-settings: "ss01", "ss02";
+}
+
+/*
+ * Dotted grid — a faint halftone field behind hero/brand panels. Colored via
+ * currentColor so callers tint it with text-* utilities.
+ */
+.neon-dot-grid {
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/*
+ * Glass surface — a frosted card that floats over the aurora.
+ */
+.neon-glass {
+  background: hsl(var(--card) / 0.62);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+/*
+ * Auth field beam — a primary underline that sweeps in on focus and relights in
+ * destructive on error. Its reach doubles as the password-strength meter.
+ */
+.neon-beam {
+  transition: scale 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+}
+
+/* The valid check draws itself in, stroke first to last. */
+@keyframes neon-check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.neon-check-draw {
+  stroke-dasharray: 1;
+  animation: neon-check-draw 340ms cubic-bezier(0.23, 1, 0.32, 1) 1 both;
+}
+
+/* Status breathe — a slow inhale/exhale for in-flight status dots. */
+@keyframes neon-status-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 0.5;
+  }
+  50% {
+    box-shadow: 0 0 8px 1px color-mix(in oklab, currentColor 55%, transparent);
+    opacity: 1;
+  }
+}
+
+.neon-status-breathe {
+  animation: neon-status-breathe 2.6s ease-in-out infinite;
+}
+
+/* Submit pulse — a primary ring blooms once at the moment of commitment. */
+@keyframes neon-submit-pulse {
+  from {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.5);
+  }
+  to {
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+
+.neon-submit-pulse {
+  animation: neon-submit-pulse 700ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+/* Shimmer — a light sweep across a label while an action is working. */
+@keyframes neon-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.neon-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, currentColor 55%, transparent) 0%,
+    currentColor 45%,
+    currentColor 55%,
+    color-mix(in oklab, currentColor 55%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: neon-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-check-draw,
+  .neon-status-breathe,
+  .neon-submit-pulse,
+  .neon-shimmer {
+    animation: none;
+  }
+  .neon-shimmer {
+    color: currentColor;
+  }
 }

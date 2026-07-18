@@ -204,9 +204,10 @@ function NavItem({
   );
 
   const className = cn(
-    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm w-full",
-    active && "bg-muted font-medium",
-    !active && !disabled && "hover:bg-muted",
+    "relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm w-full transition-colors",
+    active &&
+      "bg-primary/10 font-medium text-primary before:absolute before:left-0 before:top-1/2 before:h-4 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary",
+    !active && !disabled && "text-foreground/80 hover:bg-muted hover:text-foreground",
     disabled && "text-muted-foreground/45 cursor-not-allowed"
   );
 
