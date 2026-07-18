@@ -25,6 +25,7 @@ import {
   type ListProjectPermissionsResponse,
   type EndpointsResponse,
   type ProjectCreateRequest,
+  type ProjectQuota,
   type ProjectUpdateRequest,
   type RestoreSnapshotInput,
 } from "@neon/sdk";
@@ -37,6 +38,19 @@ if (!apiKey) {
 export const ORG_ID =
   process.env.NEON_ORG_ID ?? "org-nameless-thunder-12993511";
 export const ORG_NAME = process.env.NEON_ORG_NAME ?? "Neon Clone";
+
+/**
+ * Guard-rail consumption quota applied to every project this app provisions.
+ * neon-slop-fork is a public, open-source Neon console clone — anyone can fork
+ * it and point it at their own Neon org. Capping per-branch storage and egress
+ * keeps a public instance from being abused to spin up unbounded databases,
+ * mirroring the ceilings neon.new applies to its claimable projects. A zero or
+ * absent quota means "unlimited", so we set explicit values.
+ */
+export const DEMO_PROJECT_QUOTA: ProjectQuota = {
+  logical_size_bytes: 100 * 1024 * 1024, // 100 MB max logical size per branch
+  data_transfer_bytes: 1000 * 1024 * 1024, // ~1 GB egress per billing period
+};
 
 /** Mirrors the old `@neondatabase/api-client` enums for call sites. */
 export const EndpointType = {
@@ -89,7 +103,14 @@ export const neon = {
   },
 
   async createProject(body: ProjectCreateRequest) {
-    const project = await sdk.projects.create(body.project);
+    const project = await sdk.projects.create({
+      ...body.project,
+      settings: {
+        ...body.project.settings,
+        // Enforce the guard-rail quota, but let an explicit caller quota win.
+        quota: { ...DEMO_PROJECT_QUOTA, ...body.project.settings?.quota },
+      },
+    });
     return { data: { project } };
   },
 
