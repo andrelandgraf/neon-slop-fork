@@ -35,20 +35,7 @@ function LandingHeader() {
             <NeonLogomark className="h-3.5 w-3.5 text-[#37C38F]" />
           </span>
           <span>Neon Clone</span>
-          <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/70">
-            Slop Fork
-          </span>
         </Link>
-        <nav className="hidden items-center gap-5 text-[13px] text-white/70 md:flex">
-          <a
-            href="https://neon.com/docs"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-white"
-          >
-            Neon docs
-          </a>
-        </nav>
         <div className="ml-auto flex items-center gap-2">
           <a
             href="https://github.com/andrelandgraf/neon-slop-fork"
@@ -94,10 +81,6 @@ function Hero() {
       </div>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
       <div className="relative mx-auto max-w-[1100px] px-6 pt-24 pb-24 text-center">
-        <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] text-white/70 backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#00e599] neon-status-breathe" />
-          Open clone · built on the public Neon API
-        </div>
         <h1 className="mx-auto max-w-[920px] text-[56px] font-semibold leading-[1.05] tracking-[-0.04em] md:text-[68px]">
           The Neon console,{" "}
           <span className="bg-gradient-to-r from-[#00e599] to-[#38bdf8] bg-clip-text text-transparent">
