@@ -17,7 +17,6 @@ export default function LandingPage() {
       <Hero />
       <SlopForkIntro />
       <WhyStory />
-      <CallToAction />
       <Footer />
     </div>
   );
@@ -86,7 +85,7 @@ function Hero() {
           <span className="bg-gradient-to-r from-[#00e599] to-[#38bdf8] bg-clip-text text-transparent">
             forked
           </span>{" "}
-          &mdash; built in public, on the public API.
+          &mdash; on the public API.
         </h1>
         <p className="mx-auto mt-6 max-w-[720px] text-[17px] leading-[1.6] text-white/70">
           A demo of how far the Neon Open API takes you. Projects, branches,
@@ -243,39 +242,6 @@ function WhyStory() {
             className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
           >
             <Github className="h-4 w-4" /> Fork it on GitHub
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CallToAction() {
-  return (
-    <section className="border-t border-white/10">
-      <div className="mx-auto max-w-[1100px] px-6 py-20 text-center">
-        <h2 className="mx-auto max-w-[760px] text-[40px] font-semibold leading-[1.1] tracking-[-0.03em]">
-          A clone. A demo. A starter kit.
-        </h2>
-        <p className="mx-auto mt-4 max-w-[640px] text-[15.5px] text-white/65">
-          Run the console. See what the Neon Open API makes possible. Then
-          fork it and build the dashboard your fleet of Postgres databases
-          deserves.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#00e599] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#00ffaa]"
-          >
-            Open console <ArrowRight className="h-4 w-4" />
-          </Link>
-          <a
-            href="https://github.com/andrelandgraf/neon-slop-fork"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
-          >
-            View on GitHub
           </a>
         </div>
       </div>
