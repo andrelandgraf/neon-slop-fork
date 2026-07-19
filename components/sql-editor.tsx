@@ -293,7 +293,7 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
             <div className="flex items-center gap-2 text-sm">
               {result.ok ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="font-medium">{result.rowCount} rows</span>
                   <span className="text-muted-foreground">
                     in {result.durationMs} ms

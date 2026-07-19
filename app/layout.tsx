@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemedToaster } from "@/components/themed-toaster";
+import { NO_FLASH_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "Neon Console (Slop Fork)",
@@ -10,10 +12,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
+      </head>
       <body>
-        {children}
-        <Toaster position="top-right" richColors />
+        <ThemeProvider>
+          {children}
+          <ThemedToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

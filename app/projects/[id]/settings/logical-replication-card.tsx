@@ -38,7 +38,7 @@ export function LogicalReplicationCard({
       </p>
 
       {enabled ? (
-        <div className="rounded-md border border-emerald-300/40 bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-900 flex gap-2">
+        <div className="rounded-md border border-emerald-300/40 bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-900 flex gap-2 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
           <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
             Logical replication is enabled for this project. Postgres
@@ -48,7 +48,7 @@ export function LogicalReplicationCard({
           </div>
         </div>
       ) : (
-        <div className="rounded-md border border-yellow-300/50 bg-yellow-50 px-3 py-2.5 text-[13px] text-yellow-900">
+        <div className="rounded-md border border-yellow-300/50 bg-yellow-50 px-3 py-2.5 text-[13px] text-yellow-900 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-200">
           <div className="flex gap-2">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <div>

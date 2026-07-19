@@ -205,7 +205,7 @@ export function CreateCredentialDialog({
               <DialogTitle>Credential created</DialogTitle>
             </DialogHeader>
 
-            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/50 p-3 text-xs text-amber-800">
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <div>
                 Copy these now. For your security, the S3 secret access key is

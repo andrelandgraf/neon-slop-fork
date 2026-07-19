@@ -89,7 +89,7 @@ export function DataApiOverview({
               aria-label="Copy API URL"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
@@ -167,15 +167,15 @@ export function DataApiOverview({
         <div
           className={`rounded-md border p-3 ${
             authIntegration
-              ? "border-emerald-200 bg-emerald-50/40"
-              : "border-amber-200 bg-amber-50/40"
+              ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+              : "border-amber-200 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-500/10"
           }`}
         >
           <div className="flex items-start gap-2.5">
             {authIntegration ? (
-              <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+              <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5 dark:text-emerald-300" />
             ) : (
-              <ShieldAlert className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+              <ShieldAlert className="h-4 w-4 text-amber-700 shrink-0 mt-0.5 dark:text-amber-300" />
             )}
             <div className="text-xs flex-1">
               {authIntegration ? (

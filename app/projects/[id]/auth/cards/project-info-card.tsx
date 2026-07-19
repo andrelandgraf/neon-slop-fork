@@ -91,7 +91,7 @@ function ReadonlyField({
           aria-label={`Copy ${label}`}
         >
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-emerald-600" />
+            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           ) : (
             <Copy className="h-3.5 w-3.5" />
           )}

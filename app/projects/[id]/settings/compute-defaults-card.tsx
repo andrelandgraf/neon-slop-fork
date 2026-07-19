@@ -207,7 +207,7 @@ function ComputeDefaultsDialog({
             </p>
           </div>
 
-          <div className="rounded-md border border-yellow-400/40 bg-yellow-50 px-3 py-2 text-[12px] text-yellow-900 flex gap-2">
+          <div className="rounded-md border border-yellow-400/40 bg-yellow-50 px-3 py-2 text-[12px] text-yellow-900 flex gap-2 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-200">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             These defaults will be used as the initial settings for any
             primary or read replica computes you create. Modifying these

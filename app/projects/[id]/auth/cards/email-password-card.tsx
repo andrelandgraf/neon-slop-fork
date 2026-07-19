@@ -96,7 +96,7 @@ export function EmailPasswordCard({
           </div>
         )}
         {feedback && feedback.ok && (
-          <div className="flex items-center gap-2 text-xs text-emerald-700">
+          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" /> Saved.
           </div>
         )}

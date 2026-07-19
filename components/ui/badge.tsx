@@ -12,8 +12,9 @@ export function Badge({
     default: "bg-primary text-primary-foreground",
     outline: "border border-border text-foreground",
     muted: "bg-muted text-foreground border border-border",
-    success: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    warn: "bg-amber-50 text-amber-700 border border-amber-200",
+    success:
+      "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
+    warn: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
   };
   return (
     <span

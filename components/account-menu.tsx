@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/lib/auth-client";
+import { ThemeMenuItems } from "@/components/theme-menu-items";
 
 export function AccountMenu({
   name,
@@ -67,6 +68,8 @@ export function AccountMenu({
             </div>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <ThemeMenuItems />
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={handleSignOut}

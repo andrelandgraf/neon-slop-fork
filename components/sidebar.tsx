@@ -218,7 +218,7 @@ function NavItem({
       <Icon className="h-4 w-4" />
       <span className="flex-1">{label}</span>
       {beta && (
-        <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30">
           BETA
         </span>
       )}

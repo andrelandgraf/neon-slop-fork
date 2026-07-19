@@ -84,8 +84,8 @@ export default async function AuthPage({
         <EnableAuthCard projectId={projectId} branchId={activeBranch.id} />
       ) : (
         <>
-          <div className="rounded-md border border-amber-200 bg-amber-50/40 p-3 mb-5 flex items-start gap-2 text-xs">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-700 shrink-0" />
+          <div className="rounded-md border border-amber-200 bg-amber-50/40 p-3 mb-5 flex items-start gap-2 text-xs dark:border-amber-500/30 dark:bg-amber-500/10">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-700 shrink-0 dark:text-amber-300" />
             <div>
               Anyone on the web can sign up for your app. Support for restricted
               signups is coming soon.
