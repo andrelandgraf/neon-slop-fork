@@ -2,6 +2,17 @@ import "server-only";
 import {
   createNeonClient,
   raw,
+  type BranchStorage,
+  type Bucket,
+  type BucketAccessLevel,
+  type BucketCreateRequest,
+  type BucketObjectsListResponse,
+  type CreateCredentialRequest,
+  type CreateCredentialResponse,
+  type CredentialMeta,
+  type CredentialScope,
+  type PresignRequest,
+  type PresignResponse,
   type BranchCreateRequest,
   type ConsumptionHistoryGranularity as ConsumptionGranularity,
   type CreateSnapshotInput,
@@ -604,6 +615,114 @@ export const neon = {
   ) {
     await sdk.auth.oauthProviders.delete(projectId, branchId, providerId);
   },
+
+  // -------------------------------------------------------------------------
+  // Object storage (per-branch, S3-compatible). `sdk.storage.*`
+  // -------------------------------------------------------------------------
+
+  async getBranchStorage(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: BranchStorage }> {
+    const data = await sdk.storage.get(projectId, branchId);
+    return { data };
+  },
+
+  async listBuckets(projectId: string, branchId: string) {
+    const buckets = await sdk.storage.buckets.list(projectId, branchId);
+    return { data: { buckets } };
+  },
+
+  async createBucket(
+    projectId: string,
+    branchId: string,
+    input: BucketCreateRequest
+  ) {
+    const bucket = await sdk.storage.buckets.create(projectId, branchId, input);
+    return { data: { bucket } };
+  },
+
+  async deleteBucket(projectId: string, branchId: string, bucketName: string) {
+    await sdk.storage.buckets.delete(projectId, branchId, bucketName);
+  },
+
+  async listBucketObjects(
+    projectId: string,
+    branchId: string,
+    bucketName: string,
+    query?: { prefix?: string; delimiter?: string; cursor?: string; limit?: number }
+  ): Promise<{ data: BucketObjectsListResponse }> {
+    const data = await sdk.storage.objects.list(
+      projectId,
+      branchId,
+      bucketName,
+      query
+    );
+    return { data };
+  },
+
+  async presignBucketObject(
+    projectId: string,
+    branchId: string,
+    bucketName: string,
+    objectKey: string,
+    input: PresignRequest
+  ): Promise<{ data: PresignResponse }> {
+    const data = await sdk.storage.objects.presign(
+      projectId,
+      branchId,
+      bucketName,
+      objectKey,
+      input
+    );
+    return { data };
+  },
+
+  async deleteBucketObject(
+    projectId: string,
+    branchId: string,
+    bucketName: string,
+    objectKey: string
+  ) {
+    await sdk.storage.objects.delete(projectId, branchId, bucketName, objectKey);
+  },
+
+  // -------------------------------------------------------------------------
+  // Branch-scoped credentials (S3 access keys / AI Gateway tokens).
+  // `sdk.credentials.*`
+  // -------------------------------------------------------------------------
+
+  async listCredentials(projectId: string, branchId: string) {
+    const credentials = await sdk.credentials.list(projectId, branchId);
+    return { data: { credentials } };
+  },
+
+  async createCredential(
+    projectId: string,
+    branchId: string,
+    input: CreateCredentialRequest
+  ): Promise<{ data: CreateCredentialResponse }> {
+    const data = await sdk.credentials.create(projectId, branchId, input);
+    return { data };
+  },
+
+  async revokeCredential(
+    projectId: string,
+    branchId: string,
+    tokenId: string
+  ) {
+    await sdk.credentials.revoke(projectId, branchId, tokenId);
+  },
+};
+
+export type {
+  BranchStorage,
+  Bucket,
+  BucketAccessLevel,
+  BucketObjectsListResponse,
+  CreateCredentialResponse,
+  CredentialMeta,
+  CredentialScope,
 };
 
 export type ProjectListItem = Awaited<

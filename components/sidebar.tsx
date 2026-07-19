@@ -16,6 +16,10 @@ import {
   Lock,
   PanelLeftClose,
   Plug,
+  HardDrive,
+  KeyRound,
+  Sparkles,
+  SquareFunction,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BranchSwitcher } from "@/components/branch-switcher";
@@ -77,6 +81,30 @@ export function Sidebar({
       href: `${base}/auth`,
       label: "Auth",
       icon: Lock,
+      beta: true,
+    },
+    {
+      href: `${base}/storage`,
+      label: "Storage",
+      icon: HardDrive,
+      beta: true,
+    },
+    {
+      href: `${base}/credentials`,
+      label: "Credentials",
+      icon: KeyRound,
+      beta: true,
+    },
+    {
+      href: `${base}/ai-gateway`,
+      label: "AI Gateway",
+      icon: Sparkles,
+      beta: true,
+    },
+    {
+      href: `${base}/functions`,
+      label: "Functions",
+      icon: SquareFunction,
       beta: true,
     },
   ];

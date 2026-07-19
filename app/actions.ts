@@ -2,6 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
+  CreateCredentialResponse,
+  CredentialScope,
   DataApiSettings,
   NeonAuthEmailAndPasswordConfigUpdate,
   NeonAuthWebhookConfig,
@@ -1387,5 +1389,249 @@ export async function deleteAuthUserAction(
     return { ok: false, error: extractApiError(err) ?? "Failed to delete user." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Object storage (per-branch, S3-compatible) — `sdk.storage.*`
+//
+// Buckets are branch-scoped containers; objects live under prefix-delimited
+// keys (there are no real directories in S3, so a "folder" is a zero-byte
+// marker object whose key ends in `/`). Uploads and downloads go through
+// presigned URLs so bytes never round-trip through this server.
+// ---------------------------------------------------------------------------
+
+export type StorageResult = { ok: true } | { ok: false; error: string };
+
+export async function createBucketAction(
+  formData: FormData
+): Promise<StorageResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const isPublic = formData.get("access_level") === "public_read";
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  if (!name) return { ok: false, error: "Bucket name is required." };
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.createBucket(projectId, branchId, {
+      name,
+      access_level: isPublic ? "public_read" : "private",
+    });
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create bucket." };
+  }
+  revalidatePath(`/projects/${projectId}/storage`);
+  return { ok: true };
+}
+
+export async function deleteBucketAction(
+  projectId: string,
+  branchId: string,
+  bucketName: string
+): Promise<StorageResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteBucket(projectId, branchId, bucketName);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to delete bucket." };
+  }
+  revalidatePath(`/projects/${projectId}/storage`);
+  return { ok: true };
+}
+
+/**
+ * Create a folder by writing a zero-byte marker object whose key ends in
+ * `/`. S3 has no real directories; the console's "New folder" does the same
+ * so an empty folder can show up in the listing under its `delimiter`.
+ */
+export async function createFolderAction(
+  formData: FormData
+): Promise<StorageResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const bucketName = String(formData.get("bucketName") ?? "");
+  const prefix = String(formData.get("prefix") ?? "");
+  const rawName = String(formData.get("name") ?? "").trim().replace(/\/+$/, "");
+  if (!projectId || !branchId || !bucketName) {
+    return { ok: false, error: "Missing bucket context." };
+  }
+  if (!rawName) return { ok: false, error: "Folder name is required." };
+  if (rawName.includes("/")) {
+    return { ok: false, error: "Folder name can’t contain a slash." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  const key = `${prefix}${rawName}/`;
+  try {
+    const { data } = await neon.presignBucketObject(
+      projectId,
+      branchId,
+      bucketName,
+      key,
+      { operation: "upload", content_type: "application/x-directory" }
+    );
+    const res = await fetch(data.url, {
+      method: data.method,
+      headers: data.headers,
+      body: "",
+    });
+    if (!res.ok) {
+      return { ok: false, error: `Storage rejected the folder marker (${res.status}).` };
+    }
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create folder." };
+  }
+  revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+  return { ok: true };
+}
+
+export async function deleteObjectAction(
+  projectId: string,
+  branchId: string,
+  bucketName: string,
+  objectKey: string
+): Promise<StorageResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.deleteBucketObject(projectId, branchId, bucketName, objectKey);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to delete object." };
+  }
+  revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+  return { ok: true };
+}
+
+export type PresignResult =
+  | { ok: true; url: string; method: string; headers: Record<string, string> }
+  | { ok: false; error: string };
+
+/** Mint a presigned PUT so the browser can upload bytes directly to storage. */
+export async function presignUploadAction(
+  projectId: string,
+  branchId: string,
+  bucketName: string,
+  objectKey: string,
+  contentType: string
+): Promise<PresignResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    const { data } = await neon.presignBucketObject(
+      projectId,
+      branchId,
+      bucketName,
+      objectKey,
+      {
+        operation: "upload",
+        ...(contentType ? { content_type: contentType } : {}),
+      }
+    );
+    return { ok: true, url: data.url, method: data.method, headers: data.headers };
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to presign upload." };
+  }
+}
+
+/** Mint a presigned GET so the browser can download/view an object. */
+export async function presignDownloadAction(
+  projectId: string,
+  branchId: string,
+  bucketName: string,
+  objectKey: string
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    const { data } = await neon.presignBucketObject(
+      projectId,
+      branchId,
+      bucketName,
+      objectKey,
+      { operation: "download" }
+    );
+    return { ok: true, url: data.url };
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to presign download." };
+  }
+}
+
+export async function revalidateBucketAction(
+  projectId: string,
+  bucketName: string
+): Promise<void> {
+  await revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+}
+
+// ---------------------------------------------------------------------------
+// Branch-scoped credentials — `sdk.credentials.*`
+//
+// A credential carries a set of scopes (`storage:read`, `storage:write`,
+// `ai_gateway:invoke`). Creating one returns the S3 secret and bearer token
+// exactly once, so the create action hands the full response back to the
+// client to render the one-time reveal.
+// ---------------------------------------------------------------------------
+
+const CREDENTIAL_SCOPES: readonly CredentialScope[] = [
+  "storage:read",
+  "storage:write",
+  "ai_gateway:invoke",
+];
+
+export type CreateCredentialResult =
+  | { ok: true; credential: CreateCredentialResponse }
+  | { ok: false; error: string };
+
+export async function createCredentialAction(
+  formData: FormData
+): Promise<CreateCredentialResult> {
+  const tenant = await requireTenant();
+  const projectId = String(formData.get("projectId") ?? "");
+  const branchId = String(formData.get("branchId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const scopes = formData
+    .getAll("scopes")
+    .map((s) => String(s))
+    .filter((s): s is CredentialScope =>
+      (CREDENTIAL_SCOPES as readonly string[]).includes(s)
+    );
+  if (!projectId || !branchId) {
+    return { ok: false, error: "Missing projectId or branchId." };
+  }
+  if (scopes.length === 0) {
+    return { ok: false, error: "Select at least one scope." };
+  }
+  await requireProjectAccess(tenant, projectId);
+  try {
+    const { data } = await neon.createCredential(projectId, branchId, {
+      ...(name ? { name } : {}),
+      scopes,
+      principal_type: "user",
+    });
+    revalidatePath(`/projects/${projectId}/credentials`);
+    return { ok: true, credential: data };
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to create credential." };
+  }
+}
+
+export async function revokeCredentialAction(
+  projectId: string,
+  branchId: string,
+  tokenId: string
+): Promise<StorageResult> {
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  try {
+    await neon.revokeCredential(projectId, branchId, tokenId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to revoke credential." };
+  }
+  revalidatePath(`/projects/${projectId}/credentials`);
   return { ok: true };
 }
