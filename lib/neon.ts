@@ -63,6 +63,10 @@ export const DEMO_PROJECT_QUOTA: ProjectQuota = {
   data_transfer_bytes: 1000 * 1024 * 1024, // ~1 GB egress per billing period
 };
 
+// Object-storage guard-rails for the public instance. Defined in a
+// server-only-free module so the client upload UI can share the numbers.
+export { DEMO_STORAGE_LIMITS } from "./limits";
+
 /** Mirrors the old `@neondatabase/api-client` enums for call sites. */
 export const EndpointType = {
   ReadWrite: "read_write",

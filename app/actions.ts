@@ -10,6 +10,7 @@ import type {
 } from "@neon/sdk";
 import { NeonApiError } from "@neon/sdk";
 import {
+  DEMO_STORAGE_LIMITS,
   EndpointType,
   NeonAuthSupportedAuthProvider,
   neon,
@@ -1416,6 +1417,23 @@ export async function createBucketAction(
   }
   if (!name) return { ok: false, error: "Bucket name is required." };
   await requireProjectAccess(tenant, projectId);
+
+  // Guard-rail: cap bucket count on the public instance.
+  try {
+    const existing = await neon
+      .listBuckets(projectId, branchId)
+      .then((r) => r.data.buckets)
+      .catch(() => []);
+    if (existing.length >= DEMO_STORAGE_LIMITS.maxBucketsPerBranch) {
+      return {
+        ok: false,
+        error: `This demo instance limits you to ${DEMO_STORAGE_LIMITS.maxBucketsPerBranch} buckets per branch. Delete one to create another (fork the repo to raise the limit).`,
+      };
+    }
+  } catch {
+    // If the count check fails, fall through and let the create call decide.
+  }
+
   try {
     await neon.createBucket(projectId, branchId, {
       name,
@@ -1517,10 +1535,24 @@ export async function presignUploadAction(
   branchId: string,
   bucketName: string,
   objectKey: string,
-  contentType: string
+  contentType: string,
+  sizeBytes: number
 ): Promise<PresignResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
+
+  // Guard-rail: cap per-object upload size on the public instance. The
+  // presigned URL is only minted for objects under the limit, so an oversized
+  // file never gets an upload target in the first place.
+  const max = DEMO_STORAGE_LIMITS.maxUploadBytes;
+  if (Number.isFinite(sizeBytes) && sizeBytes > max) {
+    const mb = (max / (1024 * 1024)).toFixed(0);
+    return {
+      ok: false,
+      error: `This demo instance limits uploads to ${mb} MB per file (fork the repo to raise the limit).`,
+    };
+  }
+
   try {
     const { data } = await neon.presignBucketObject(
       projectId,

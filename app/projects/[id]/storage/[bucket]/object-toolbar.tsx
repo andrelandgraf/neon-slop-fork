@@ -19,6 +19,9 @@ import {
   createFolderAction,
   presignUploadAction,
 } from "@/app/actions";
+import { DEMO_STORAGE_LIMITS } from "@/lib/limits";
+
+const MAX_UPLOAD_MB = Math.round(DEMO_STORAGE_LIMITS.maxUploadBytes / (1024 * 1024));
 
 export function ObjectToolbar({
   projectId,
@@ -44,6 +47,17 @@ export function ObjectToolbar({
     setUploading(true);
     setUploadError(null);
     try {
+      // Client-side pre-check so oversized files fail instantly with a clear
+      // message; the server action enforces the same cap authoritatively.
+      const tooBig = Array.from(files).find(
+        (f) => f.size > DEMO_STORAGE_LIMITS.maxUploadBytes
+      );
+      if (tooBig) {
+        setUploadError(
+          `"${tooBig.name}" is larger than the ${MAX_UPLOAD_MB} MB per-file limit on this demo instance.`
+        );
+        return;
+      }
       for (const file of Array.from(files)) {
         const key = `${prefix}${file.name}`;
         const presigned = await presignUploadAction(
@@ -51,7 +65,8 @@ export function ObjectToolbar({
           branchId,
           bucketName,
           key,
-          file.type || "application/octet-stream"
+          file.type || "application/octet-stream",
+          file.size
         );
         if (!presigned.ok) {
           setUploadError(presigned.error);
@@ -168,6 +183,7 @@ export function ObjectToolbar({
         className="bg-foreground text-background hover:bg-foreground/90"
         disabled={uploading}
         onClick={() => fileRef.current?.click()}
+        title={`Up to ${MAX_UPLOAD_MB} MB per file on this demo instance`}
       >
         {uploading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />

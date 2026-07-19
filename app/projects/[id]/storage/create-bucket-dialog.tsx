@@ -16,6 +16,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { createBucketAction } from "@/app/actions";
+import { DEMO_STORAGE_LIMITS } from "@/lib/limits";
 
 export function CreateBucketDialog({
   projectId,
@@ -71,7 +72,8 @@ export function CreateBucketDialog({
         <p className="text-xs text-muted-foreground">
           Buckets hold your objects. Names are globally unique within a project,
           scoped to <code className="font-mono">{branchName}</code>. Bucket
-          settings can’t be edited after creation.
+          settings can’t be edited after creation. This demo instance allows up
+          to {DEMO_STORAGE_LIMITS.maxBucketsPerBranch} buckets per branch.
         </p>
 
         <form
