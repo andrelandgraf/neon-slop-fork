@@ -63,7 +63,7 @@ export function CreateBranchDialog({
     branches.find((b) => b.default)?.id ?? branches[0]?.id ?? "";
   const [parentId, setParentId] = useState(defaultParentId);
   const [name, setName] = useState("");
-  const [ttlEnabled, setTtlEnabled] = useState(false);
+  const [ttlEnabled, setTtlEnabled] = useState(true);
   const [ttlSeconds, setTtlSeconds] = useState(TTL_OPTIONS[1].seconds);
   const [dataMode, setDataMode] = useState<DataMode>("current");
   const [pastTimestamp, setPastTimestamp] = useState(() =>
@@ -74,7 +74,7 @@ export function CreateBranchDialog({
   function reset() {
     setParentId(defaultParentId);
     setName("");
-    setTtlEnabled(false);
+    setTtlEnabled(true);
     setTtlSeconds(TTL_OPTIONS[1].seconds);
     setDataMode("current");
     setPastTimestamp(defaultPastIso());

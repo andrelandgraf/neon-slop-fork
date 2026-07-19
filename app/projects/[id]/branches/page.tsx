@@ -2,7 +2,7 @@ import { neon } from "@/lib/neon";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { deleteBranchAction } from "@/app/actions";
+import { deleteBranchAction, setDefaultBranchAction } from "@/app/actions";
 import { relativeTime, relativeFuture } from "@/lib/utils";
 import { GitBranch, Trash2, Clock } from "lucide-react";
 import { CreateBranchDialog } from "./create-branch-dialog";
@@ -86,22 +86,38 @@ export default async function BranchesPage({
                   </td>
                   <td className="px-4 py-3 text-right">
                     {!b.default && (
-                      <form
-                        action={async () => {
-                          "use server";
-                          await deleteBranchAction(id, b.id);
-                        }}
-                      >
-                        <SubmitButton
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10"
-                          pendingLabel="Deleting…"
+                      <div className="flex justify-end gap-1">
+                        <form
+                          action={async () => {
+                            "use server";
+                            await setDefaultBranchAction(id, b.id);
+                          }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
-                        </SubmitButton>
-                      </form>
+                          <SubmitButton
+                            variant="ghost"
+                            size="sm"
+                            pendingLabel="Updating…"
+                          >
+                            Set default
+                          </SubmitButton>
+                        </form>
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteBranchAction(id, b.id);
+                          }}
+                        >
+                          <SubmitButton
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10"
+                            pendingLabel="Deleting…"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </SubmitButton>
+                        </form>
+                      </div>
                     )}
                   </td>
                 </tr>

@@ -47,9 +47,6 @@ export function Sidebar({
       href: `${base}/integrations`,
       label: "Integrations",
       icon: Plug,
-      disabled: true,
-      disabledReason:
-        "Project integrations (GitHub, Vercel, Toolbox add-ons) are configured through Neon's OAuth flows, which aren't exposed in the public REST API.",
     },
     { href: `${base}/settings`, label: "Settings", icon: Settings },
   ];
@@ -65,9 +62,6 @@ export function Sidebar({
       label: "Data Masking",
       icon: ShieldCheck,
       beta: true,
-      disabled: true,
-      disabledReason:
-        "Data masking is a Neon Scale plan feature that isn't surfaced through the public API.",
     },
   ];
 

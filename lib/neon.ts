@@ -365,6 +365,7 @@ export const neon = {
   async getConnectionUri(params: {
     projectId: string;
     branch_id: string;
+    endpoint_id?: string;
     database_name: string;
     role_name: string;
     pooled?: boolean;
@@ -372,6 +373,7 @@ export const neon = {
     const uri = await sdk.postgres.connectionString({
       projectId: params.projectId,
       branchId: params.branch_id,
+      endpointId: params.endpoint_id,
       databaseName: params.database_name,
       roleName: params.role_name,
       pooled: params.pooled,

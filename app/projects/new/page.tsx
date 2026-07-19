@@ -14,12 +14,14 @@ const REGIONS = [
   { id: "aws-us-east-1", label: "AWS US East 1 (N. Virginia)" },
   { id: "aws-us-east-2", label: "AWS US East 2 (Ohio)" },
   { id: "aws-us-west-2", label: "AWS US West 2 (Oregon)" },
-  { id: "aws-eu-central-1", label: "AWS EU Central 1 (Frankfurt)" },
-  { id: "aws-eu-west-2", label: "AWS EU West 2 (London)" },
-  { id: "aws-ap-southeast-1", label: "AWS AP Southeast 1 (Singapore)" },
+  { id: "aws-ap-southeast-1", label: "AWS Asia Pacific 1 (Singapore)" },
+  { id: "aws-ap-southeast-2", label: "AWS Asia Pacific 2 (Sydney)" },
+  { id: "aws-eu-central-1", label: "AWS Europe Central 1 (Frankfurt)" },
+  { id: "aws-eu-west-2", label: "AWS Europe West 2 (London)" },
+  { id: "aws-sa-east-1", label: "AWS South America East 1 (São Paulo)" },
 ];
 
-const PG_VERSIONS = ["17", "16", "15", "14"];
+const PG_VERSIONS = ["18", "17", "16", "15", "14"];
 
 export default async function NewProjectPage() {
   const tenant = await requireTenant("/projects/new");
@@ -78,7 +80,7 @@ export default async function NewProjectPage() {
               id="pg_version"
               name="pg_version"
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-              defaultValue="17"
+              defaultValue="18"
             >
               {PG_VERSIONS.map((v) => (
                 <option key={v} value={v}>

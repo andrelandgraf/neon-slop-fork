@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ConsumptionHistoryGranularity } from "@/lib/neon";
 import { neon, ORG_ID } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
@@ -15,10 +16,16 @@ interface UsagePoint {
 }
 
 async function loadConsumption(
-  projectId: string
+  projectId: string,
+  range: "hour" | "day" | "week"
 ): Promise<{ points: UsagePoint[]; error: string | null }> {
   const now = new Date();
-  const from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const rangeMs = {
+    hour: 60 * 60 * 1000,
+    day: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+  } as const;
+  const from = new Date(now.getTime() - rangeMs[range]);
   try {
     const res = await neon.getConsumptionHistoryPerProject({
       project_ids: [projectId],
@@ -41,22 +48,30 @@ async function loadConsumption(
 
 export default async function MonitoringPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ branch?: string; range?: string }>;
 }) {
   const { id } = await params;
+  const { branch: branchParam, range: rangeParam } = await searchParams;
+  const range =
+    rangeParam === "hour" || rangeParam === "week" ? rangeParam : "day";
   const [pRes, bRes, consumption] = await Promise.all([
     neon.getProject(id),
     neon.listProjectBranches({ projectId: id }),
-    loadConsumption(id),
+    loadConsumption(id, range),
   ]);
   const project = pRes.data.project;
   const defaultBranch =
     bRes.data.branches.find((b) => b.default) ?? bRes.data.branches[0];
+  const activeBranch =
+    bRes.data.branches.find((branch) => branch.id === branchParam) ??
+    defaultBranch;
 
-  const endpoints = defaultBranch
+  const endpoints = activeBranch
     ? await neon
-        .listProjectBranchEndpoints(id, defaultBranch.id)
+        .listProjectBranchEndpoints(id, activeBranch.id)
         .then((r) => r.data.endpoints)
         .catch(() => [])
     : [];
@@ -78,6 +93,14 @@ export default async function MonitoringPage({
       </div>
 
       <div className="flex items-center gap-4 mb-5">
+        <Field label="Branch">
+          <div className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
+            <span className="font-mono">{activeBranch?.name ?? "—"}</span>
+            {activeBranch?.default && (
+              <span className="text-muted-foreground">Default</span>
+            )}
+          </div>
+        </Field>
         <Field label="Compute">
           <div
             className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
@@ -99,18 +122,32 @@ export default async function MonitoringPage({
           </div>
         </Field>
         <div className="ml-auto flex items-center gap-2">
-          <RangeButton selected>Last hour</RangeButton>
-          <RangeButton>Last day</RangeButton>
-          <RangeButton>Last 7 days</RangeButton>
-          <RangeButton>Other</RangeButton>
-          <button
-            disabled
-            title="The consumption history API only updates hourly — refreshing the page is enough."
-            className="rounded-md border px-2 py-1 text-xs inline-flex items-center gap-1 text-muted-foreground/70 cursor-not-allowed"
+          <RangeButton
+            href={monitoringHref(id, branchParam, "hour")}
+            selected={range === "hour"}
+          >
+            Last hour
+          </RangeButton>
+          <RangeButton
+            href={monitoringHref(id, branchParam, "day")}
+            selected={range === "day"}
+          >
+            Last day
+          </RangeButton>
+          <RangeButton
+            href={monitoringHref(id, branchParam, "week")}
+            selected={range === "week"}
+          >
+            Last 7 days
+          </RangeButton>
+          <Link
+            href={monitoringHref(id, branchParam, range)}
+            title="Consumption history updates hourly; reload to retrieve the latest samples."
+            className="rounded-md border px-2 py-1 text-xs inline-flex items-center gap-1 text-muted-foreground hover:bg-muted"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -129,7 +166,9 @@ export default async function MonitoringPage({
             />
           </div>
           <a
-            href={`/projects/${id}/overview?tab=computes`}
+            href={`/projects/${id}/overview?tab=computes${
+              branchParam ? `&branch=${branchParam}` : ""
+            }`}
             className="mt-3 inline-block text-[11px] underline text-primary"
           >
             EDIT ENDPOINT
@@ -235,26 +274,36 @@ function Tabs() {
   );
 }
 
+function monitoringHref(
+  projectId: string,
+  branch: string | undefined,
+  range: "hour" | "day" | "week"
+) {
+  const params = new URLSearchParams({ range });
+  if (branch) params.set("branch", branch);
+  return `/projects/${projectId}/monitoring?${params.toString()}`;
+}
+
 function RangeButton({
   children,
+  href,
   selected,
 }: {
   children: React.ReactNode;
+  href: string;
   selected?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      disabled
-      title="The consumption history API returns hourly granularity at most; range pickers are informational in this clone."
+    <Link
+      href={href}
       className={
         selected
-          ? "rounded-md border px-2 py-1 text-xs bg-foreground text-background cursor-not-allowed"
-          : "rounded-md border px-2 py-1 text-xs text-muted-foreground/70 cursor-not-allowed"
+          ? "rounded-md border px-2 py-1 text-xs bg-foreground text-background"
+          : "rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
       }
     >
       {children}
-    </button>
+    </Link>
   );
 }
 

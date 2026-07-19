@@ -3,7 +3,9 @@ import { runProjectSql } from "@/lib/sql";
 import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TableProperties, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TableProperties, ChevronLeft, ChevronRight } from "lucide-react";
+import { TablePreviewActions } from "./table-preview-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +15,32 @@ interface TableRow {
   row_estimate: number;
 }
 
+const PAGE_SIZES = [10, 25, 50, 100] as const;
+
 export default async function TablesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ table?: string; schema?: string; branch?: string }>;
+  searchParams: Promise<{
+    table?: string;
+    schema?: string;
+    branch?: string;
+    page?: string;
+    pageSize?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { table, schema = "public", branch: branchParam } = await searchParams;
+  const {
+    table,
+    schema = "public",
+    branch: branchParam,
+    page: pageParam,
+    pageSize: pageSizeParam,
+  } = await searchParams;
+  const page = positiveInt(pageParam, 1);
+  const pageSize = allowedPageSize(pageSizeParam);
+  const offset = (page - 1) * pageSize;
 
   // Resolve the active branch from the URL.
   const bRes = await neon.listProjectBranches({ projectId: id });
@@ -45,7 +64,31 @@ export default async function TablesPage({
        ORDER BY n.nspname, c.relname;`,
       { branchId: activeBranch?.id }
     );
-    tables = result.rows as unknown as TableRow[];
+    tables = result.rows.flatMap((row) => {
+      const schemaValue = row.table_schema;
+      const tableValue = row.table_name;
+      const estimateValue = row.row_estimate;
+      const rowEstimate =
+        typeof estimateValue === "number"
+          ? estimateValue
+          : typeof estimateValue === "string"
+            ? Number(estimateValue)
+            : Number.NaN;
+      if (
+        typeof schemaValue !== "string" ||
+        typeof tableValue !== "string" ||
+        !Number.isFinite(rowEstimate)
+      ) {
+        return [];
+      }
+      return [
+        {
+          table_schema: schemaValue,
+          table_name: tableValue,
+          row_estimate: rowEstimate,
+        },
+      ];
+    });
   } catch (e) {
     listError = e instanceof Error ? e.message : String(e);
   }
@@ -62,7 +105,7 @@ export default async function TablesPage({
       const qTable = quoteIdent(table);
       preview = await runProjectSql(
         id,
-        `SELECT * FROM ${qSchema}.${qTable} LIMIT 100;`,
+        `SELECT * FROM ${qSchema}.${qTable} LIMIT ${pageSize} OFFSET ${offset};`,
         { branchId: activeBranch?.id }
       );
     } catch (e) {
@@ -76,6 +119,16 @@ export default async function TablesPage({
     params.set("table", t);
     params.set("schema", s);
     if (branchParam) params.set("branch", branchParam);
+    params.set("pageSize", String(pageSize));
+    return `?${params.toString()}`;
+  };
+  const pageHref = (targetPage: number, targetPageSize = pageSize) => {
+    const params = new URLSearchParams();
+    if (table) params.set("table", table);
+    params.set("schema", schema);
+    if (branchParam) params.set("branch", branchParam);
+    params.set("page", String(targetPage));
+    params.set("pageSize", String(targetPageSize));
     return `?${params.toString()}`;
   };
 
@@ -137,7 +190,7 @@ export default async function TablesPage({
             <div className="h-[400px] grid place-items-center text-center text-sm text-muted-foreground">
               <div>
                 <ChevronRight className="h-6 w-6 mx-auto mb-2 opacity-30" />
-                Select a table to preview the first 100 rows.
+                Select a table to preview its rows.
               </div>
             </div>
           )}
@@ -151,12 +204,19 @@ export default async function TablesPage({
           )}
           {table && preview && (
             <>
-              <div className="px-4 py-2.5 border-b flex items-center justify-between">
+              <div className="px-4 py-2.5 border-b flex items-center justify-between gap-3">
                 <div className="font-mono text-sm">
                   {schema}.{table}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {preview.rowCount} {preview.rowCount === 1 ? "row" : "rows"}
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    {preview.rowCount} {preview.rowCount === 1 ? "row" : "rows"} on
+                    this page
+                  </div>
+                  <TablePreviewActions
+                    columns={preview.columns}
+                    rows={preview.rows}
+                  />
                 </div>
               </div>
               {preview.rows.length === 0 ? (
@@ -196,6 +256,53 @@ export default async function TablesPage({
                   </table>
                 </div>
               )}
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Rows per page</span>
+                  {PAGE_SIZES.map((size) => (
+                    <Link
+                      key={size}
+                      href={pageHref(1, size)}
+                      className={
+                        size === pageSize
+                          ? "rounded bg-muted px-1.5 py-0.5 text-foreground"
+                          : "rounded px-1.5 py-0.5 hover:bg-muted"
+                      }
+                    >
+                      {size}
+                    </Link>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Page {page}</span>
+                  {page > 1 ? (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={pageHref(page - 1)}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Previous
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled>
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Previous
+                    </Button>
+                  )}
+                  {preview.rows.length === pageSize ? (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={pageHref(page + 1)}>
+                        Next
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled>
+                      Next
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </Card>
@@ -219,4 +326,17 @@ function cellString(v: unknown): string {
 
 function quoteIdent(ident: string): string {
   return `"${ident.replace(/"/g, '""')}"`;
+}
+
+function positiveInt(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function allowedPageSize(value: string | undefined): 10 | 25 | 50 | 100 {
+  if (value === "10") return 10;
+  if (value === "25") return 25;
+  if (value === "50") return 50;
+  return 100;
 }

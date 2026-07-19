@@ -1,8 +1,28 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Play, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Play,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  FilePlus2,
+  History,
+  Loader2,
+  Save,
+  SearchCheck,
+} from "lucide-react";
 
 type RunResult =
   | {
@@ -15,6 +35,7 @@ type RunResult =
   | { ok: false; error: string };
 
 interface Props {
+  branchId: string;
   projectId: string;
   runAction: (sql: string) => Promise<RunResult>;
 }
@@ -34,17 +55,112 @@ FROM generate_series(1, 10) AS s(i);
 
 SELECT * FROM playing_with_neon ORDER BY id;`;
 
-export function SqlEditor({ runAction }: Props) {
+type SavedQuery = {
+  id: string;
+  name: string;
+  savedAt: number;
+  sql: string;
+};
+
+type QueryHistory = {
+  id: string;
+  ranAt: number;
+  sql: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSavedQuery(value: unknown): value is SavedQuery {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.savedAt === "number" &&
+    typeof value.sql === "string"
+  );
+}
+
+function isHistoryEntry(value: unknown): value is QueryHistory {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    typeof value.ranAt === "number" &&
+    typeof value.sql === "string"
+  );
+}
+
+function readList<T>(
+  key: string,
+  guard: (value: unknown) => value is T
+): T[] {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter(guard) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeList<T>(key: string, value: T[]) {
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function SqlEditor({ branchId, projectId, runAction }: Props) {
   const [sql, setSql] = useState(DEFAULT_SQL);
   const [result, setResult] = useState<RunResult | null>(null);
   const [pending, startTransition] = useTransition();
+  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
+  const [history, setHistory] = useState<QueryHistory[]>([]);
+  const [saveName, setSaveName] = useState("");
 
-  function onRun() {
+  const savedKey = useMemo(
+    () => `neon-slop-fork:saved-queries:${projectId}:${branchId}`,
+    [branchId, projectId]
+  );
+  const historyKey = useMemo(
+    () => `neon-slop-fork:query-history:${projectId}:${branchId}`,
+    [branchId, projectId]
+  );
+
+  useEffect(() => {
+    setSavedQueries(readList(savedKey, isSavedQuery));
+    setHistory(readList(historyKey, isHistoryEntry));
+  }, [historyKey, savedKey]);
+
+  function onRun(query = sql) {
     setResult(null);
     startTransition(async () => {
-      const res = await runAction(sql);
+      const res = await runAction(query);
       setResult(res);
+      const next = [
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          ranAt: Date.now(),
+          sql: query,
+        },
+        ...history.filter((entry) => entry.sql !== query),
+      ].slice(0, 30);
+      setHistory(next);
+      writeList(historyKey, next);
     });
+  }
+
+  function saveQuery() {
+    const name = saveName.trim() || "Untitled query";
+    const next = [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name,
+        savedAt: Date.now(),
+        sql,
+      },
+      ...savedQueries,
+    ].slice(0, 50);
+    setSavedQueries(next);
+    writeList(savedKey, next);
+    setSaveName("");
   }
 
   return (
@@ -54,19 +170,104 @@ export function SqlEditor({ runAction }: Props) {
           <div className="text-xs text-muted-foreground font-mono">
             query.sql
           </div>
-          <Button
-            size="sm"
-            onClick={onRun}
-            disabled={pending}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            {pending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-            Run
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSql("");
+                setResult(null);
+              }}
+              disabled={pending}
+            >
+              <FilePlus2 className="h-3.5 w-3.5" />
+              New Query
+            </Button>
+            <QueryPicker
+              icon={History}
+              items={history.map((entry) => ({
+                id: entry.id,
+                label: new Date(entry.ranAt).toLocaleString(),
+                sql: entry.sql,
+              }))}
+              label="History"
+              onSelect={setSql}
+            />
+            <QueryPicker
+              icon={Save}
+              items={savedQueries.map((entry) => ({
+                id: entry.id,
+                label: entry.name,
+                sql: entry.sql,
+              }))}
+              label="Saved"
+              onSelect={setSql}
+            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" disabled={pending}>
+                  <Save className="h-3.5 w-3.5" />
+                  Save
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save query locally</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Saved queries are stored in this browser for the selected
+                  project and branch. The public Neon API does not expose the
+                  Console’s server-side saved-query store.
+                </p>
+                <Input
+                  value={saveName}
+                  onChange={(event) => setSaveName(event.target.value)}
+                  placeholder="e.g. Find active users"
+                  autoFocus
+                />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <DialogClose asChild>
+                    <Button onClick={saveQuery}>Save query</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRun(`EXPLAIN ${sql}`)}
+              disabled={pending || !sql.trim()}
+              title="Run EXPLAIN for the current query"
+            >
+              <SearchCheck className="h-3.5 w-3.5" />
+              Explain
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRun(`EXPLAIN ANALYZE ${sql}`)}
+              disabled={pending || !sql.trim()}
+              title="EXPLAIN ANALYZE executes the current query"
+            >
+              Analyze
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => onRun()}
+              disabled={pending || !sql.trim()}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              Run
+            </Button>
+          </div>
         </div>
         <textarea
           value={sql}
@@ -153,6 +354,56 @@ export function SqlEditor({ runAction }: Props) {
         </Card>
       )}
     </div>
+  );
+}
+
+function QueryPicker({
+  icon: Icon,
+  items,
+  label,
+  onSelect,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  items: { id: string; label: string; sql: string }[];
+  label: string;
+  onSelect: (sql: string) => void;
+}) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost">
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+        </DialogHeader>
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No {label.toLowerCase()} queries for this branch yet.
+          </p>
+        ) : (
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {items.map((item) => (
+              <DialogClose asChild key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.sql)}
+                  className="w-full rounded-md border p-3 text-left hover:bg-muted"
+                >
+                  <div className="text-xs font-medium">{item.label}</div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                    {item.sql}
+                  </div>
+                </button>
+              </DialogClose>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

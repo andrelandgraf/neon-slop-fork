@@ -30,7 +30,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   const tenant = await requireTenant();
   const name = String(formData.get("name") ?? "").trim();
   const region = String(formData.get("region") ?? "aws-us-east-1");
-  const pg_version_raw = String(formData.get("pg_version") ?? "17");
+  const pg_version_raw = String(formData.get("pg_version") ?? "18");
   if (!name) throw new Error("Project name is required.");
 
   const res = await neon.createProject({
@@ -39,6 +39,10 @@ export async function createProjectAction(formData: FormData): Promise<void> {
       region_id: region,
       pg_version: Number.parseInt(pg_version_raw, 10),
       org_id: ORG_ID,
+      // Match the current Console's new-project default: a six-hour history
+      // window. Without an explicit value, the public API may inherit `0`
+      // from an org-level default, which makes Backup & Restore unusable.
+      history_retention_seconds: 6 * 60 * 60,
     },
   });
   await attachProjectToOrg(
@@ -1645,7 +1649,10 @@ export async function createCredentialAction(
       scopes,
       principal_type: "user",
     });
-    revalidatePath(`/projects/${projectId}/credentials`);
+    // Do not revalidate before returning: a credential secret is returned only
+    // once, and refreshing this route here can remount the dialog before the
+    // client renders its one-time reveal. The dialog refreshes after the user
+    // acknowledges that they copied the secret.
     return { ok: true, credential: data };
   } catch (err) {
     return { ok: false, error: extractApiError(err) ?? "Failed to create credential." };

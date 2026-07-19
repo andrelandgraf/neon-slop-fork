@@ -33,6 +33,7 @@ export default async function SqlEditorPage({
         · run queries against your database.
       </p>
       <SqlEditor
+        branchId={activeBranch.id}
         projectId={id}
         runAction={async (sql: string) => {
           "use server";

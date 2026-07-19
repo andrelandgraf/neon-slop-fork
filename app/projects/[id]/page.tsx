@@ -5,10 +5,10 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from "./connect-button";
+import { DashboardGetConnected } from "./dashboard-get-connected";
 import {
   HardDrive,
   History,
-  Camera,
   ArrowLeftRight,
   Share2,
   Info,
@@ -20,10 +20,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectDashboard({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ branch?: string }>;
 }) {
   const { id } = await params;
+  const { branch: branchParam } = await searchParams;
   const [pRes, bRes] = await Promise.all([
     neon.getProject(id),
     neon.listProjectBranches({ projectId: id }),
@@ -31,31 +34,52 @@ export default async function ProjectDashboard({
   const project = pRes.data.project;
   const branches = bRes.data.branches;
   const defaultBranch = branches.find((b) => b.default) ?? branches[0];
+  const activeBranch =
+    branches.find((branch) => branch.id === branchParam) ?? defaultBranch;
 
   const endpoints = await neon
-    .listProjectBranchEndpoints(id, defaultBranch.id)
+    .listProjectBranchEndpoints(id, activeBranch.id)
     .then((r) => r.data.endpoints);
 
   const { databaseName, roleName } = await getDatabaseAndRole(
     id,
-    defaultBranch.id
+    activeBranch.id
   );
-  const [pooledRes, unpooledRes] = await Promise.all([
-    neon.getConnectionUri({
-      projectId: id,
-      branch_id: defaultBranch.id,
-      database_name: databaseName,
-      role_name: roleName,
-      pooled: true,
-    }),
-    neon.getConnectionUri({
-      projectId: id,
-      branch_id: defaultBranch.id,
-      database_name: databaseName,
-      role_name: roleName,
-      pooled: false,
-    }),
-  ]);
+  const connectionOptions = await Promise.all(
+    endpoints.map(async (endpoint) => {
+      const [pooledRes, unpooledRes] = await Promise.all([
+        neon.getConnectionUri({
+          projectId: id,
+          branch_id: activeBranch.id,
+          endpoint_id: endpoint.id,
+          database_name: databaseName,
+          role_name: roleName,
+          pooled: true,
+        }),
+        neon.getConnectionUri({
+          projectId: id,
+          branch_id: activeBranch.id,
+          endpoint_id: endpoint.id,
+          database_name: databaseName,
+          role_name: roleName,
+          pooled: false,
+        }),
+      ]);
+      return {
+        id: endpoint.id,
+        label: endpoint.name ?? (endpoint.type === "read_write" ? "Primary" : "Read replica"),
+        pooledUri: pooledRes.data.uri,
+        type: endpoint.type,
+        unpooledUri: unpooledRes.data.uri,
+      };
+    })
+  );
+  const selectedConnection =
+    connectionOptions.find((option) => option.type === "read_write") ??
+    connectionOptions[0];
+  if (!selectedConnection) {
+    throw new Error("No compute endpoint is available for this branch.");
+  }
 
   const computeHrs = (project.compute_time_seconds ?? 0) / 3600;
   const storageGb = (project.synthetic_storage_size ?? 0) / 1024 ** 3;
@@ -66,11 +90,12 @@ export default async function ProjectDashboard({
         <h1 className="text-xl font-semibold">Project dashboard</h1>
         <div className="flex items-center gap-2">
           <ConnectButton
-            branchName={defaultBranch.name}
+            branchId={activeBranch.id}
+            branchName={activeBranch.name}
+            connectionOptions={connectionOptions}
             databaseName={databaseName}
+            projectId={id}
             roleName={roleName}
-            pooledUri={pooledRes.data.uri}
-            unpooledUri={unpooledRes.data.uri}
           />
           <Button
             variant="outline"
@@ -81,14 +106,11 @@ export default async function ProjectDashboard({
             <ArrowLeftRight className="h-3.5 w-3.5" />
             Import data
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-            title="“Share” opens Neon’s collaborator invite flow, which requires the People API and email transport — neither is in this clone."
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            Share
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/projects/${id}/settings#collaborators`}>
+              <Share2 className="h-3.5 w-3.5" />
+              Share
+            </Link>
           </Button>
         </div>
       </div>
@@ -106,7 +128,7 @@ export default async function ProjectDashboard({
             icon={HardDrive}
           />
           <Metric label="History" value="0 GB" icon={History} />
-          <Metric label="Snapshots" value="0 GB" icon={Camera} />
+          <Metric label="Storage delta" value="0 kB" icon={HardDrive} />
           <Metric label="Network transfer" value="0 GB" icon={ArrowLeftRight} />
         </div>
         <div className="px-5 py-3 border-t text-xs text-muted-foreground">
@@ -120,6 +142,15 @@ export default async function ProjectDashboard({
           projects.
         </div>
       </Card>
+
+      <DashboardGetConnected
+        branchId={activeBranch.id}
+        branchName={activeBranch.name}
+        connectionOptions={connectionOptions}
+        databaseName={databaseName}
+        projectId={id}
+        roleName={roleName}
+      />
 
       <div className="grid grid-cols-2 gap-5">
         <Card>
@@ -136,8 +167,8 @@ export default async function ProjectDashboard({
             <div className="flex items-center gap-3 mt-2">
               <SmallSelect
                 label="Branch"
-                value={defaultBranch.name}
-                active
+                value={activeBranch.name}
+                active={activeBranch.default}
               />
               <SmallSelect
                 label="Compute"
