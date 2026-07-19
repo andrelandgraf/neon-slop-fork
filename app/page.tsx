@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Github,
-  Sparkles,
-  Wrench,
-  Boxes,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
 import { NeonLogomark } from "@/components/neon-logo";
 import { NeonAurora } from "@/components/neon-aurora";
 
@@ -21,7 +15,8 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-white antialiased">
       <LandingHeader />
       <Hero />
-      <WhatThisIs />
+      <SlopForkIntro />
+      <WhyStory />
       <CallToAction />
       <Footer />
     </div>
@@ -137,88 +132,135 @@ function Hero() {
   );
 }
 
-function WhatThisIs() {
-  const cards = [
-    {
-      icon: Sparkles,
-      eyebrow: "What this is",
-      title: "A clone of the Neon dashboard.",
-      body: "Projects, branches, monitoring, SQL editor, tables &mdash; rebuilt from scratch on the public Neon API. It looks and feels like console.neon.tech because it talks to the same backend, just through the docs.",
-      cta: { label: "Open the console", href: "/projects", internal: true },
-    },
-    {
-      icon: Boxes,
-      eyebrow: "What it's for",
-      title: "Proof of the Neon Open API.",
-      body: "Everything here runs on endpoints any platform can call &mdash; the same surface Replit, Netlify DB, Vercel and others build on top of. If the console can do it, your product can too.",
-      cta: {
-        label: "Neon for agents & platforms",
-        href: "https://neon.com/programs/agents",
-        internal: false,
-      },
-    },
-    {
-      icon: Wrench,
-      eyebrow: "What it's for",
-      title: "Inspiration to fork your own.",
-      body: "Want a custom console for your own fleet of Neon databases? Fork this repo, rip out what you don't need, add the dashboards, automations and views you actually want.",
-      cta: {
-        label: "Fork on GitHub",
-        href: "https://github.com/andrelandgraf/neon-slop-fork",
-        internal: false,
-      },
-    },
-  ];
+function SlopForkIntro() {
+  return (
+    <section className="relative border-t border-white/10">
+      <div className="mx-auto max-w-[760px] px-6 pt-20 pb-16">
+        <h2 className="text-[40px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[48px]">
+          Neon Slop Fork
+        </h2>
+
+        <figure className="mt-8 border-l-2 border-[#00e599]/60 pl-5">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[19px] font-semibold">slopfork</span>
+            <span className="text-[14px] italic text-white/50">
+              /ˈslɑpˌfɔrk/
+            </span>
+          </div>
+          <p className="mt-2 text-[16px] leading-[1.65] text-white/70">
+            &mdash; A hastily produced software clone that imitates the surface
+            features, design language, or &ldquo;vibe&rdquo; of an existing
+            product while lacking architectural rigor, security hardening, or
+            production readiness.
+          </p>
+          <figcaption className="mt-3 text-[13px] text-white/40">
+            &mdash; slopfork.dev
+          </figcaption>
+        </figure>
+
+        <p className="mt-10 text-[17px] leading-[1.7] text-white/75">
+          This is exactly that: a faithful clone of the Neon console, rebuilt
+          from scratch on top of the{" "}
+          <a
+            href="https://neon.com/docs/reference/api-reference"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
+          >
+            Neon Open REST API
+          </a>
+          . No private backend, no special access &mdash; every project,
+          branch, compute control and SQL query you see here runs through the
+          same public endpoints any developer, agent, or platform can call.
+        </p>
+
+        <a
+          href="https://neon.com/blog/slop-fork-neon"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#00e599] hover:text-[#00ffaa]"
+        >
+          Read the story: &ldquo;I Slop Forked Neon. You Should Too.&rdquo;
+          <ArrowUpRight className="h-4 w-4" />
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function WhyStory() {
   return (
     <section className="border-t border-white/10 bg-white/[0.02]">
-      <div className="mx-auto max-w-[1200px] px-6 py-20">
+      <div className="mx-auto max-w-[760px] px-6 py-20">
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#00e599]">
-          Why this exists
+          In the agentic era, APIs are the product
         </div>
-        <h2 className="mt-2 max-w-[820px] text-[34px] font-semibold leading-[1.15] tracking-[-0.025em]">
-          A clone, a demo, and a starter kit &mdash; all on the public Neon API.
-        </h2>
-        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {cards.map(({ icon: Icon, eyebrow, title, body, cta }) => (
-            <div
-              key={title}
-              className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6"
+
+        <div className="mt-6 space-y-6 text-[17px] leading-[1.75] text-white/75">
+          <p>
+            Agents are changing how we build software. They&rsquo;re far better
+            at using APIs, CLIs, and MCP servers than they are at clicking
+            through a dashboard &mdash; give an agent an API key and it can
+            provision resources, inspect state, and manage infrastructure on its
+            own, no UI to drive.
+          </p>
+          <p>
+            So the best developer platforms are becoming agent-native, exposing
+            everything through open surfaces. That&rsquo;s the bet Neon makes:
+            if you can do it in the console, there&rsquo;s an endpoint for it
+            too. This fork is the proof &mdash; the whole console, rebuilt on
+            nothing but the public API.
+          </p>
+          <p>
+            It&rsquo;s also why Neon works as infrastructure{" "}
+            <span className="text-white">behind</span> other products.{" "}
+            <a
+              href="https://vercel.com/docs/storage/vercel-postgres"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
             >
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-md bg-[#00e599]/10">
-                  <Icon className="h-4 w-4 text-[#00e599]" />
-                </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">
-                  {eyebrow}
-                </span>
-              </div>
-              <div
-                className="mt-4 text-[18px] font-semibold leading-snug"
-                dangerouslySetInnerHTML={{ __html: title }}
-              />
-              <p
-                className="mt-2 flex-1 text-[13.5px] leading-relaxed text-white/65"
-                dangerouslySetInnerHTML={{ __html: body }}
-              />
-              {cta.internal ? (
-                <Link
-                  href={cta.href}
-                  className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#00e599] hover:text-[#00ffaa]"
-                >
-                  {cta.label} <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              ) : (
-                <a
-                  href={cta.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#00e599] hover:text-[#00ffaa]"
-                >
-                  {cta.label} <ArrowRight className="h-3.5 w-3.5" />
-                </a>
-              )}
-            </div>
-          ))}
+              Vercel
+            </a>
+            ,{" "}
+            <a
+              href="https://www.netlify.com/products/database/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
+            >
+              Netlify DB
+            </a>
+            , Replit, and Laravel Cloud all manage fleets of Neon databases
+            through the same APIs you have access to. If they can build a
+            platform on top of Neon, so can you.
+          </p>
+          <p>
+            That&rsquo;s the real reason to slop fork. It&rsquo;s a fast way to
+            prototype product ideas &mdash; new layouts, workflows, resource
+            experiences &mdash; and an even better starting point for your own
+            console: tighter integrations with your tooling, custom
+            observability, AI-native workflows, or a completely different UX for
+            your team. Fork it and build the dashboard your Postgres fleet
+            actually deserves.
+          </p>
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center gap-3">
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#00e599] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#00ffaa]"
+          >
+            Open the console <ArrowRight className="h-4 w-4" />
+          </Link>
+          <a
+            href="https://github.com/andrelandgraf/neon-slop-fork"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            <Github className="h-4 w-4" /> Fork it on GitHub
+          </a>
         </div>
       </div>
     </section>
