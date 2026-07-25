@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { resetRolePasswordAction } from "@/app/actions";
 
@@ -113,16 +114,8 @@ export function ConnectButton({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          variant={triggerVariant}
-          size="sm"
-          className={
-            triggerVariant === "default"
-              ? "bg-foreground text-background hover:bg-foreground/90"
-              : undefined
-          }
-        >
-          <Plug className="h-3.5 w-3.5" />
+        <Button variant={triggerVariant} size="sm">
+          <Plug className="size-3.5" />
           {triggerLabel}
         </Button>
       </DialogTrigger>
@@ -141,13 +134,13 @@ export function ConnectButton({
             </ReadonlyPill>
           </Field>
           <Field label="Compute">
-            <select
+            <NativeSelect
               value={endpoint?.id ?? ""}
               onChange={(event) => {
                 setEndpointId(event.target.value);
                 setPasswordOverride(null);
               }}
-              className="h-8 w-full rounded-md border bg-background px-2.5 text-xs"
+              className="text-xs"
               disabled={connectionOptions.length < 2}
             >
               {connectionOptions.map((option) => (
@@ -156,7 +149,7 @@ export function ConnectButton({
                   {option.type === "read_write" ? " (read/write)" : " (read-only)"}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
           <Field label="Database">
             <ReadonlyPill>{databaseName}</ReadonlyPill>
@@ -180,19 +173,19 @@ export function ConnectButton({
             </div>
           </Field>
           <Field label="Connection type">
-            <select
+            <NativeSelect
               value={connectionType}
               onChange={(event) => {
                 const next = event.target.value;
                 if (isConnectionType(next)) setConnectionType(next);
               }}
-              className="h-8 w-full rounded-md border bg-background px-2.5 text-xs"
+              className="text-xs"
             >
               <option value="connection-string">Connection string</option>
               <option value="psql">psql</option>
               <option value="node">Node.js</option>
               <option value="prisma">Prisma</option>
-            </select>
+            </NativeSelect>
           </Field>
           <Field label="Connection pooling">
             <button
@@ -204,7 +197,7 @@ export function ConnectButton({
               <span
                 className={cn(
                   "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                  pooled ? "bg-emerald-500" : "bg-muted border border-border"
+                  pooled ? "bg-primary" : "border border-border bg-muted"
                 )}
               >
                 <span

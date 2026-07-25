@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
@@ -178,12 +179,7 @@ function AddProviderDialog({
           <input type="hidden" name="branchId" value={branchId} />
           <div className="space-y-1">
             <Label htmlFor="providerId">Provider</Label>
-            <select
-              id="providerId"
-              name="providerId"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-              required
-            >
+            <NativeSelect id="providerId" name="providerId" required>
               <option value="" disabled>
                 Pick a provider
               </option>
@@ -192,7 +188,7 @@ function AddProviderDialog({
                   {p.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="flex gap-1 rounded-md border p-1 text-xs">

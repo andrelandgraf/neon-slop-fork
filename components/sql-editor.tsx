@@ -258,12 +258,11 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
               size="sm"
               onClick={() => onRun()}
               disabled={pending || !sql.trim()}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Play className="h-3.5 w-3.5" />
+                <Play className="size-3.5" />
               )}
               Run
             </Button>
@@ -280,7 +279,7 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
           }}
           spellCheck={false}
           rows={10}
-          className="w-full p-4 font-mono text-[13px] leading-relaxed bg-background outline-hidden resize-y min-h-[180px]"
+          className="min-h-[180px] w-full resize-y bg-background p-4 font-mono text-[13px] leading-relaxed outline-hidden"
         />
         <div className="px-3 py-1.5 border-t bg-muted/20 text-[11px] text-muted-foreground">
           ⌘+Enter to run
@@ -293,7 +292,7 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
             <div className="flex items-center gap-2 text-sm">
               {result.ok ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <CheckCircle2 className="size-4 text-primary" />
                   <span className="font-medium">{result.rowCount} rows</span>
                   <span className="text-muted-foreground">
                     in {result.durationMs} ms

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { createProjectAction } from "@/app/actions";
 import { requireTenant } from "@/lib/tenancy";
 import { ArrowLeft } from "lucide-react";
@@ -31,22 +32,22 @@ export default async function NewProjectPage() {
       <main className="max-w-xl mx-auto px-6 py-8">
         <Link
           href="/projects"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+          className="mb-4 inline-flex items-center gap-1 text-muted-foreground text-sm transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="size-3.5" />
           Projects
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">
+        <h1 className="mb-1 font-semibold text-2xl tracking-tight">
           New project
         </h1>
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="mb-6 text-pretty text-muted-foreground text-sm">
           Create a new Neon project in the{" "}
           <strong>{tenant.activeOrg.name}</strong> workspace. Default compute
           is a single read/write endpoint on the latest Postgres version.
         </p>
         <form
           action={createProjectAction}
-          className="space-y-5 border rounded-lg bg-card p-6"
+          className="space-y-5 rounded-xl border border-border/60 bg-card p-6 shadow-sm"
         >
           <div className="space-y-1.5">
             <Label htmlFor="name">Project name</Label>
@@ -61,10 +62,9 @@ export default async function NewProjectPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="region">Region</Label>
-            <select
+            <NativeSelect
               id="region"
               name="region"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               defaultValue="aws-us-east-1"
             >
               {REGIONS.map((r) => (
@@ -72,26 +72,24 @@ export default async function NewProjectPage() {
                   {r.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pg_version">Postgres version</Label>
-            <select
-              id="pg_version"
-              name="pg_version"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-              defaultValue="18"
-            >
+            <NativeSelect id="pg_version" name="pg_version" defaultValue="18">
               {PG_VERSIONS.map((v) => (
                 <option key={v} value={v}>
                   {v}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button nativeButton={false}
-            render={<Link href="/projects" />} variant="outline">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/projects" />}
+            >
               Cancel
             </Button>
             <SubmitButton pendingLabel="Provisioning…">

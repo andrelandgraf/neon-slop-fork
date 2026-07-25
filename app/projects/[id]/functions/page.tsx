@@ -54,7 +54,6 @@ export default async function FunctionsPage({
           <Button
             variant="default"
             size="sm"
-            className="bg-foreground text-background hover:bg-foreground/90"
             nativeButton={false}
             render={
               <a
@@ -64,7 +63,7 @@ export default async function FunctionsPage({
               />
             }
           >
-            Read the docs <ExternalLink className="h-3.5 w-3.5" />
+            Read the docs <ExternalLink className="size-3.5" />
           </Button>
         </div>
       </div>

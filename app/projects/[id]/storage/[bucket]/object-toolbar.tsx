@@ -180,15 +180,14 @@ export function ObjectToolbar({
       />
       <Button
         size="sm"
-        className="bg-foreground text-background hover:bg-foreground/90"
         disabled={uploading}
         onClick={() => fileRef.current?.click()}
         title={`Up to ${MAX_UPLOAD_MB} MB per file on this demo instance`}
       >
         {uploading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <Upload className="h-3.5 w-3.5" />
+          <Upload className="size-3.5" />
         )}
         Upload
       </Button>

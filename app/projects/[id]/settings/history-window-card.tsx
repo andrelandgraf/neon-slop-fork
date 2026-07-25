@@ -82,9 +82,9 @@ export function HistoryWindowCard({
       </p>
 
       <div className="relative pt-4 pb-7">
-        <div className="relative h-1 rounded bg-muted">
+        <div className="relative h-1 rounded-full bg-muted">
           <div
-            className="absolute h-1 rounded bg-foreground"
+            className="absolute h-1 rounded-full bg-primary"
             style={{ width: `${(stepIdx / (STEPS.length - 1)) * 100}%` }}
           />
         </div>
@@ -96,7 +96,7 @@ export function HistoryWindowCard({
           value={stepIdx}
           onChange={(e) => setStepIdx(Number(e.target.value))}
           aria-label="History retention in hours"
-          className="absolute inset-x-0 top-3 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
+          className="neon-range absolute inset-x-0 top-3 w-full"
         />
         <div className="absolute inset-x-0 top-7 flex justify-between text-[10px] text-muted-foreground">
           {STEPS.map((h) => (

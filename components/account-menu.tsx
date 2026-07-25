@@ -46,11 +46,11 @@ export function AccountMenu({
         <button
           type="button"
           aria-label="Account menu"
-          className="h-7 w-7 rounded-full overflow-hidden border bg-gradient-to-br from-indigo-500 to-pink-500 grid place-items-center text-[11px] font-semibold text-white"
+          className="grid size-7 place-items-center overflow-hidden rounded-full border border-border/60 bg-neon-dark font-semibold text-[11px] text-neon-green ring-1 ring-primary/20 transition-shadow hover:ring-primary/40"
         >
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt={name} className="h-full w-full object-cover" />
+            <img src={image} alt={name} className="size-full object-cover" />
           ) : (
             <span>{initial}</span>
           )}
@@ -59,10 +59,10 @@ export function AccountMenu({
       <DropdownMenuContent align="end" className="w-[240px]">
         <DropdownMenuLabel>
           <div className="flex items-center gap-2">
-            <User className="h-3.5 w-3.5" />
+            <User className="size-3.5" />
             <div className="min-w-0">
-              <div className="text-sm font-medium truncate">{name}</div>
-              <div className="text-[11px] text-muted-foreground truncate">
+              <div className="truncate font-medium text-sm">{name}</div>
+              <div className="truncate text-[11px] text-muted-foreground">
                 {email}
               </div>
             </div>
@@ -76,7 +76,7 @@ export function AccountMenu({
           disabled={pending}
           className="text-destructive focus:text-destructive"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOut className="size-3.5" />
           Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>

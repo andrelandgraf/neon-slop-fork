@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, GitBranch, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { relativeTime } from "@/lib/utils";
 
 interface ProjectRow {
@@ -49,16 +50,16 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-base font-semibold">{filtered.length} Projects</div>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-semibold text-base">{filtered.length} Projects</div>
       </div>
       <div className="relative mb-3">
-        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search projects by name, ID, or region…"
-          className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-9 pl-9"
         />
       </div>
 

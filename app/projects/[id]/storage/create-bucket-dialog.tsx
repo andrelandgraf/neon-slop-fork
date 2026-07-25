@@ -37,8 +37,6 @@ export function CreateBucketDialog({
   const [visibility, setVisibility] = useState<"private" | "public_read">("private");
   const [error, setError] = useState<string | null>(null);
 
-  const isFirst = triggerLabel !== "Create bucket";
-
   return (
     <Dialog
       open={open}
@@ -52,15 +50,8 @@ export function CreateBucketDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button
-          size="sm"
-          className={
-            isFirst
-              ? "bg-foreground text-background hover:bg-foreground/90"
-              : "bg-foreground text-background hover:bg-foreground/90"
-          }
-        >
-          <Plus className="h-3.5 w-3.5" />
+        <Button size="sm">
+          <Plus className="size-3.5" />
           {triggerLabel}
         </Button>
       </DialogTrigger>

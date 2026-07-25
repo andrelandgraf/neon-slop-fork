@@ -51,9 +51,8 @@ export default async function AiGatewayPage() {
           </p>
           <div className="mt-5 flex items-center gap-3">
             <Button
-              className="bg-foreground text-background hover:bg-foreground/90"
               nativeButton={false}
-            render={
+              render={
                 <a
                   href="https://neon.com/pricing"
                   target="_blank"

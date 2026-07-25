@@ -4,6 +4,7 @@ import { ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { updateMaintenanceWindowAction } from "@/app/actions";
 
@@ -131,8 +132,8 @@ export function UpdatesCard({
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-[12px] transition-colors",
                     on
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background hover:bg-muted"
+                      ? "border-primary/40 bg-primary/10 font-medium text-primary"
+                      : "border-border/60 bg-background hover:bg-muted"
                   )}
                 >
                   {d.label}
@@ -146,22 +147,22 @@ export function UpdatesCard({
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Start (UTC)
             </div>
-            <input
+            <Input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm font-mono"
+              className="mt-1 font-mono"
             />
           </div>
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               End (UTC)
             </div>
-            <input
+            <Input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="mt-1 w-full h-9 rounded-md border bg-background px-3 text-sm font-mono"
+              className="mt-1 font-mono"
             />
           </div>
         </div>

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { restoreToTimestampAction } from "@/app/actions";
 
 interface BranchOpt {
@@ -80,10 +81,10 @@ export function RestoreForm({
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Source branch
           </Label>
-          <select
+          <NativeSelect
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
-            className="h-9 rounded-md border bg-background px-2 text-sm min-w-[200px]"
+            wrapperClassName="min-w-[200px]"
           >
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
@@ -91,7 +92,7 @@ export function RestoreForm({
                 {b.default ? " (default)" : ""}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <div className="flex flex-col gap-1">
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">

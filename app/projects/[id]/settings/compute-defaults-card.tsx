@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Callout } from "@/components/ui/callout";
 import {
   Dialog,
   DialogContent,
@@ -193,13 +195,13 @@ function ComputeDefaultsDialog({
                 after {formatSuspend(suspend)} of inactivity
               </div>
             </div>
-            <input
+            <Input
               type="number"
               min={60}
               step={60}
               value={suspend}
               onChange={(e) => setSuspend(Number(e.target.value))}
-              className="mt-2 w-[180px] h-9 rounded-md border bg-background px-3 text-sm font-mono"
+              className="mt-2 w-[180px] font-mono"
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
               In seconds. Set to <code className="font-mono">-1</code> to never
@@ -207,12 +209,11 @@ function ComputeDefaultsDialog({
             </p>
           </div>
 
-          <div className="rounded-md border border-yellow-400/40 bg-yellow-50 px-3 py-2 text-[12px] text-yellow-900 flex gap-2 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-200">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            These defaults will be used as the initial settings for any
-            primary or read replica computes you create. Modifying these
-            defaults does not alter the settings of any existing computes.
-          </div>
+          <Callout tone="warning" icon={<AlertTriangle />}>
+            These defaults will be used as the initial settings for any primary
+            or read replica computes you create. Modifying these defaults does
+            not alter the settings of any existing computes.
+          </Callout>
         </div>
 
         <DialogFooter>
@@ -254,9 +255,9 @@ function DualSlider({
   const maxPct = (maxIdx / last) * 100;
   return (
     <div className="relative pt-3 pb-7">
-      <div className="relative h-1 rounded bg-muted">
+      <div className="relative h-1 rounded-full bg-muted">
         <div
-          className="absolute h-1 rounded bg-foreground"
+          className="absolute h-1 rounded-full bg-primary"
           style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
         />
       </div>
@@ -268,7 +269,7 @@ function DualSlider({
         value={minIdx}
         onChange={(e) => onMin(Number(e.target.value))}
         aria-label="Minimum compute units"
-        className="absolute inset-x-0 top-2 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
+        className="neon-range pointer-events-none absolute inset-x-0 top-2 w-full [&::-webkit-slider-thumb]:pointer-events-auto"
       />
       <input
         type="range"
@@ -278,7 +279,7 @@ function DualSlider({
         value={maxIdx}
         onChange={(e) => onMax(Number(e.target.value))}
         aria-label="Maximum compute units"
-        className="absolute inset-x-0 top-2 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
+        className="neon-range pointer-events-none absolute inset-x-0 top-2 w-full [&::-webkit-slider-thumb]:pointer-events-auto"
       />
       <div className="absolute inset-x-0 top-6 flex justify-between text-[10px] text-muted-foreground">
         {CU_STEPS.map((cu) => (

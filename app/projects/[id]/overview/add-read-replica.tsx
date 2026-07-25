@@ -3,7 +3,9 @@ import { useState, useTransition } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -126,7 +128,7 @@ export function AddReadReplica({
                   · optional
                 </span>
               </Label>
-              <input
+              <Input
                 id="replica-suspend"
                 name="suspendSeconds"
                 type="number"
@@ -135,7 +137,7 @@ export function AddReadReplica({
                 value={suspendSeconds}
                 placeholder="Project default (300 = 5 min)"
                 onChange={(e) => setSuspendSeconds(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm font-mono"
+                className="font-mono"
               />
               <p className="text-[11px] text-muted-foreground">
                 Leave blank to inherit the project default. 0 = never
@@ -182,18 +184,18 @@ function CuField({
   return (
     <label className="flex flex-col gap-1">
       <Label>{label}</Label>
-      <select
+      <NativeSelect
         name={name}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm font-mono"
+        className="font-mono"
       >
         {CU_VALUES.map((cu) => (
           <option key={cu} value={cu}>
             {cu}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

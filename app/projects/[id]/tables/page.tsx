@@ -4,6 +4,7 @@ import { neon } from "@/lib/neon";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/neon-ui/empty-state";
 import { TableProperties, ChevronLeft, ChevronRight } from "lucide-react";
 import { TablePreviewActions } from "./table-preview-actions";
 
@@ -134,12 +135,12 @@ export default async function TablesPage({
 
   return (
     <div className="px-8 py-6">
-      <h1 className="text-xl font-semibold mb-1">Tables</h1>
-      <p className="text-sm text-muted-foreground mb-4">
+      <h1 className="mb-1 font-semibold text-2xl tracking-tight">Tables</h1>
+      <p className="mb-4 text-muted-foreground text-sm">
         Schemas and tables on branch{" "}
         <span className="font-mono">{activeBranch?.name}</span>
         {activeBranch?.id !== defaultBranch?.id && (
-          <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             (non-default)
           </span>
         )}
@@ -152,13 +153,17 @@ export default async function TablesPage({
             <div className="p-4 text-xs text-destructive">{listError}</div>
           )}
           {!listError && tables.length === 0 && (
-            <div className="p-4 text-sm text-muted-foreground">
-              No user tables.
-            </div>
+            <EmptyState
+              variant="bare"
+              size="sm"
+              icon={<TableProperties />}
+              title="No user tables"
+              description="Run a CREATE TABLE in the SQL Editor and it shows up here."
+            />
           )}
           {Object.entries(groupBySchema(tables)).map(([s, ts]) => (
             <div key={s}>
-              <div className="px-3 py-1.5 bg-muted/30 text-[10px] uppercase font-semibold tracking-wider text-muted-foreground border-b">
+              <div className="border-b bg-muted/30 px-3 py-1.5 font-mono font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 {s}
               </div>
               {ts.map((t) => {
@@ -167,15 +172,17 @@ export default async function TablesPage({
                   <Link
                     key={`${s}.${t.table_name}`}
                     href={linkFor(s, t.table_name)}
-                    className={`flex items-center justify-between px-3 py-1.5 text-sm border-b last:border-b-0 ${
-                      isActive ? "bg-muted font-medium" : "hover:bg-muted/50"
+                    className={`flex items-center justify-between border-b px-3 py-1.5 text-sm transition-colors last:border-b-0 ${
+                      isActive
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "hover:bg-muted/50"
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
-                      <TableProperties className="h-3.5 w-3.5 text-muted-foreground" />
+                      <TableProperties className="size-3.5 text-muted-foreground" />
                       <span className="font-mono">{t.table_name}</span>
                     </span>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                    <span className="tabular-nums text-[10px] text-muted-foreground">
                       {t.row_estimate < 0 ? "—" : t.row_estimate.toLocaleString()}
                     </span>
                   </Link>
@@ -187,12 +194,13 @@ export default async function TablesPage({
 
         <Card className="p-0 min-h-[400px] overflow-hidden">
           {!table && (
-            <div className="h-[400px] grid place-items-center text-center text-sm text-muted-foreground">
-              <div>
-                <ChevronRight className="h-6 w-6 mx-auto mb-2 opacity-30" />
-                Select a table to preview its rows.
-              </div>
-            </div>
+            <EmptyState
+              variant="bare"
+              size="lg"
+              className="h-[400px]"
+              title="Select a table to preview its rows"
+              description="Pick a table on the left to page through its first rows."
+            />
           )}
           {table && previewError && (
             <div className="p-6">
@@ -220,9 +228,12 @@ export default async function TablesPage({
                 </div>
               </div>
               {preview.rows.length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground">
-                  Table is empty.
-                </div>
+                <EmptyState
+                  variant="bare"
+                  size="md"
+                  title="Table is empty"
+                  description="No rows on this page yet."
+                />
               ) : (
                 <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                   <table className="w-full text-sm">
@@ -231,7 +242,7 @@ export default async function TablesPage({
                         {preview.columns.map((c) => (
                           <th
                             key={c}
-                            className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 whitespace-nowrap"
+                            className="whitespace-nowrap bg-muted/30 px-3 py-2 text-left font-mono font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
                           >
                             {c}
                           </th>
@@ -265,8 +276,8 @@ export default async function TablesPage({
                       href={pageHref(1, size)}
                       className={
                         size === pageSize
-                          ? "rounded bg-muted px-1.5 py-0.5 text-foreground"
-                          : "rounded px-1.5 py-0.5 hover:bg-muted"
+                          ? "rounded-md bg-primary/10 px-1.5 py-0.5 font-medium text-primary"
+                          : "rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted"
                       }
                     >
                       {size}
@@ -280,7 +291,7 @@ export default async function TablesPage({
                       size="sm"
                       variant="outline"
                       nativeButton={false}
-            render={<Link href={pageHref(page - 1)} />}
+                      render={<Link href={pageHref(page - 1)} />}
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
                       Previous
@@ -296,7 +307,7 @@ export default async function TablesPage({
                       size="sm"
                       variant="outline"
                       nativeButton={false}
-            render={<Link href={pageHref(page + 1)} />}
+                      render={<Link href={pageHref(page + 1)} />}
                     >
                       Next
                       <ChevronRight className="h-3.5 w-3.5" />

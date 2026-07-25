@@ -6,6 +6,7 @@ import type { CreateCredentialResponse } from "@/lib/neon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Callout } from "@/components/ui/callout";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   Dialog,
@@ -120,8 +121,8 @@ export function CreateCredentialDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90">
-          <Plus className="h-3.5 w-3.5" />
+        <Button size="sm">
+          <Plus className="size-3.5" />
           Create credential
         </Button>
       </DialogTrigger>
@@ -205,13 +206,10 @@ export function CreateCredentialDialog({
               <DialogTitle>Credential created</DialogTitle>
             </DialogHeader>
 
-            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <div>
-                Copy these now. For your security, the S3 secret access key is
-                shown <strong>only once</strong> and cannot be retrieved again.
-              </div>
-            </div>
+            <Callout tone="warning" icon={<AlertTriangle />} className="text-xs">
+              Copy these now. For your security, the S3 secret access key is
+              shown <strong>only once</strong> and cannot be retrieved again.
+            </Callout>
 
             <div className="rounded-md border bg-muted/40 overflow-hidden">
               <pre className="overflow-x-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed">

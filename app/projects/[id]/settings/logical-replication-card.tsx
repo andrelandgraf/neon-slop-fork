@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { enableLogicalReplicationAction } from "@/app/actions";
 
 export function LogicalReplicationCard({
@@ -38,36 +39,30 @@ export function LogicalReplicationCard({
       </p>
 
       {enabled ? (
-        <div className="rounded-md border border-emerald-300/40 bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-900 flex gap-2 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
-          <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-          <div>
-            Logical replication is enabled for this project. Postgres
-            <code className="mx-1 font-mono">wal_level</code>is set to
-            <code className="mx-1 font-mono">logical</code>and can&apos;t be
-            turned off.
-          </div>
-        </div>
+        <Callout tone="success" icon={<CheckCircle2 />}>
+          Logical replication is enabled for this project. Postgres
+          <code className="mx-1 font-mono">wal_level</code>is set to
+          <code className="mx-1 font-mono">logical</code>and can&apos;t be
+          turned off.
+        </Callout>
       ) : (
-        <div className="rounded-md border border-yellow-300/50 bg-yellow-50 px-3 py-2.5 text-[13px] text-yellow-900 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-200">
-          <div className="flex gap-2">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <div>
-              <div className="font-medium">Enabling logical replication:</div>
-              <ul className="mt-1 ml-5 list-disc space-y-0.5">
-                <li>
-                  Restarts all computes in your Neon project, dropping any
-                  active connections
-                </li>
-                <li>
-                  Changes your Postgres{" "}
-                  <code className="font-mono">wal_level</code> setting to{" "}
-                  <code className="font-mono">logical</code>
-                </li>
-                <li>Can not be turned off once enabled</li>
-              </ul>
-            </div>
+        <Callout tone="warning" icon={<AlertTriangle />} className="flex-col">
+          <div>
+            <div className="font-medium">Enabling logical replication:</div>
+            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+              <li>
+                Restarts all computes in your Neon project, dropping any active
+                connections
+              </li>
+              <li>
+                Changes your Postgres{" "}
+                <code className="font-mono">wal_level</code> setting to{" "}
+                <code className="font-mono">logical</code>
+              </li>
+              <li>Can not be turned off once enabled</li>
+            </ul>
           </div>
-        </div>
+        </Callout>
       )}
 
       <div>

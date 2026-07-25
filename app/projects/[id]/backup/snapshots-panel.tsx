@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -360,12 +361,11 @@ function CreateSnapshotDialog({
           <div className="space-y-3 my-3">
             <div className="space-y-1.5">
               <Label htmlFor="snapshot-branch">Source branch</Label>
-              <select
+              <NativeSelect
                 id="snapshot-branch"
                 name="branchId"
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 {rootBranches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -373,7 +373,7 @@ function CreateSnapshotDialog({
                     {b.default ? " (default)" : ""}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {rootBranches.length === 0 && (
                 <p className="text-[11px] text-destructive">
                   No root branches in this project — snapshots can only be
@@ -529,12 +529,11 @@ function RestoreSnapshotButton({
             ) : (
               <div className="space-y-1.5">
                 <Label htmlFor="restore-target-branch">Target branch</Label>
-                <select
+                <NativeSelect
                   id="restore-target-branch"
                   name="targetBranchId"
                   value={targetBranchId}
                   onChange={(e) => setTargetBranchId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                 >
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -542,7 +541,7 @@ function RestoreSnapshotButton({
                       {b.default ? " (default)" : ""}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
                 <p className="text-[11px] text-muted-foreground">
                   The current target branch will be orphaned with “(old)”
                   appended. The compute endpoint moves to the restored

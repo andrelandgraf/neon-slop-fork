@@ -192,7 +192,7 @@ function GuideCard({
         variant="outline"
         size="sm"
         nativeButton={false}
-            render={<a href={href} target="_blank" rel="noreferrer" />}
+        render={<a href={href} target="_blank" rel="noreferrer" />}
       >
         Open guide
       </Button>

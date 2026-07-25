@@ -99,6 +99,36 @@
     transform 260ms var(--ease-out-soft), background-color 220ms ease;
 }
 
+/*
+ * Range thumb — the console's autoscaling and history sliders are native
+ * `input[type=range]`, which Tailwind can only reach through vendor
+ * pseudo-elements. Centralised here so every slider shares one thumb.
+ */
+.neon-range {
+  appearance: none;
+  background: transparent;
+}
+
+.neon-range::-webkit-slider-thumb {
+  appearance: none;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent);
+  cursor: grab;
+}
+
+.neon-range::-moz-range-thumb {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 2px solid var(--background);
+  cursor: grab;
+}
+
 /* Shimmer — a light sweep across a label while an action is working. */
 @keyframes neon-label-shimmer {
   from {

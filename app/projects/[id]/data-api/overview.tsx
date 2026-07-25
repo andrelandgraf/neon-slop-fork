@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Badge } from "@/components/ui/badge";
 import type { DataApiReponse, NeonAuthIntegration } from "@neon/sdk";
 import { refreshDataApiSchemaCacheAction } from "@/app/actions";
@@ -89,7 +90,7 @@ export function DataApiOverview({
               aria-label="Copy API URL"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Check className="size-3.5 text-primary" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
@@ -164,55 +165,44 @@ export function DataApiOverview({
           .
         </p>
 
-        <div
-          className={`rounded-md border p-3 ${
-            authIntegration
-              ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-500/10"
-              : "border-amber-200 bg-amber-50/40 dark:border-amber-500/30 dark:bg-amber-500/10"
-          }`}
+        <Callout
+          tone={authIntegration ? "success" : "warning"}
+          icon={authIntegration ? <ShieldCheck /> : <ShieldAlert />}
+          className="text-xs"
         >
-          <div className="flex items-start gap-2.5">
-            {authIntegration ? (
-              <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5 dark:text-emerald-300" />
-            ) : (
-              <ShieldAlert className="h-4 w-4 text-amber-700 shrink-0 mt-0.5 dark:text-amber-300" />
-            )}
-            <div className="text-xs flex-1">
-              {authIntegration ? (
-                <>
-                  <div className="font-semibold mb-0.5">Neon Auth is ready</div>
-                  <p className="text-muted-foreground">
-                    Go to the{" "}
-                    <Link
-                      href={`/projects/${projectId}/auth?branch=${branchId}`}
-                      className="text-primary hover:underline"
-                    >
-                      Neon Auth
-                    </Link>{" "}
-                    page for instructions on configuring authentication for
-                    your application.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="font-semibold mb-0.5">
-                    Neon Auth is not enabled
-                  </div>
-                  <p className="text-muted-foreground">
-                    Enable Neon Auth on this branch to issue JWTs the Data API
-                    can verify.{" "}
-                    <Link
-                      href={`/projects/${projectId}/auth?branch=${branchId}`}
-                      className="text-primary hover:underline"
-                    >
-                      Go to Neon Auth →
-                    </Link>
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+          {authIntegration ? (
+            <>
+              <div className="mb-0.5 font-semibold">Neon Auth is ready</div>
+              <p className="text-muted-foreground">
+                Go to the{" "}
+                <Link
+                  href={`/projects/${projectId}/auth?branch=${branchId}`}
+                  className="text-primary hover:underline"
+                >
+                  Neon Auth
+                </Link>{" "}
+                page for instructions on configuring authentication for your
+                application.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="mb-0.5 font-semibold">
+                Neon Auth is not enabled
+              </div>
+              <p className="text-muted-foreground">
+                Enable Neon Auth on this branch to issue JWTs the Data API can
+                verify.{" "}
+                <Link
+                  href={`/projects/${projectId}/auth?branch=${branchId}`}
+                  className="text-primary hover:underline"
+                >
+                  Go to Neon Auth →
+                </Link>
+              </p>
+            </>
+          )}
+        </Callout>
       </Card>
     </div>
   );

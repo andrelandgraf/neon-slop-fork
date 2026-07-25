@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -152,10 +153,10 @@ export function EditComputeDialog({
 
         <div className="space-y-5 my-4">
           <FieldGroup label="Name">
-            <input
+            <Input
               value={endpoint.id}
               readOnly
-              className="w-full h-9 rounded-md border bg-muted/30 px-3 text-sm font-mono"
+              className="bg-muted/30 font-mono"
             />
             <p className="text-[11px] text-muted-foreground mt-1">
               Endpoint names are immutable through the public API in this
@@ -207,13 +208,13 @@ export function EditComputeDialog({
                 : `Suspend after ${suspendSeconds}s of inactivity.`
             }
           >
-            <input
+            <Input
               type="number"
               min={0}
               step={60}
               value={suspendSeconds}
               onChange={(e) => setSuspendSeconds(Number(e.target.value))}
-              className="w-[200px] h-9 rounded-md border bg-background px-3 text-sm font-mono"
+              className="w-[200px] font-mono"
             />
             <p className="text-[11px] text-muted-foreground mt-1">
               The Free plan rejects custom suspend intervals — you&apos;ll
@@ -303,9 +304,9 @@ function DualSlider({
 
   return (
     <div className="relative pt-1 pb-6">
-      <div className="relative h-1 rounded bg-muted">
+      <div className="relative h-1 rounded-full bg-muted">
         <div
-          className="absolute h-1 rounded bg-foreground"
+          className="absolute h-1 rounded-full bg-primary"
           style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
         />
       </div>
@@ -317,7 +318,7 @@ function DualSlider({
         value={minIdx}
         onChange={(e) => onMin(Number(e.target.value))}
         aria-label="Minimum compute units"
-        className="absolute inset-x-0 top-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
+        className="neon-range pointer-events-none absolute inset-x-0 top-0 w-full [&::-webkit-slider-thumb]:pointer-events-auto"
       />
       <input
         type="range"
@@ -327,7 +328,7 @@ function DualSlider({
         value={maxIdx}
         onChange={(e) => onMax(Number(e.target.value))}
         aria-label="Maximum compute units"
-        className="absolute inset-x-0 top-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
+        className="neon-range pointer-events-none absolute inset-x-0 top-0 w-full [&::-webkit-slider-thumb]:pointer-events-auto"
       />
       <div className="absolute inset-x-0 top-4 flex justify-between text-[10px] text-muted-foreground">
         {CU_STEPS.map((cu) => (

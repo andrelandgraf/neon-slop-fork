@@ -109,7 +109,7 @@ export default async function MonitoringPage({
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 primary?.current_state === "active"
-                  ? "bg-emerald-500"
+                  ? "bg-status-active"
                   : "bg-gray-400"
               }`}
             />
@@ -298,8 +298,8 @@ function RangeButton({
       href={href}
       className={
         selected
-          ? "rounded-md border px-2 py-1 text-xs bg-foreground text-background"
-          : "rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+          ? "rounded-md border border-primary/40 bg-primary/10 px-2 py-1 font-medium text-primary text-xs"
+          : "rounded-md border border-border/60 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
       }
     >
       {children}

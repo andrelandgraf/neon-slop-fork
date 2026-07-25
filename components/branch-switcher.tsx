@@ -48,12 +48,12 @@ export function BranchSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="w-full flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+        <button className="flex w-full items-center justify-between rounded-md border border-border/60 bg-card px-2 py-1.5 text-sm transition-colors hover:border-border hover:bg-sidebar-accent">
           <span className="flex items-center gap-1.5 truncate font-mono text-xs">
-            <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" />
+            <GitBranch className="size-3 shrink-0 text-primary" />
             <span className="truncate">{active?.name ?? "—"}</span>
           </span>
-          <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
+          <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[260px]">
@@ -67,12 +67,12 @@ export function BranchSwitcher({
               className="flex items-center gap-2"
             >
               <Check
-                className={`h-3.5 w-3.5 ${isActive ? "opacity-100" : "opacity-0"}`}
+                className={`size-3.5 text-primary ${isActive ? "opacity-100" : "opacity-0"}`}
               />
-              <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="font-mono text-xs flex-1 truncate">{b.name}</span>
+              <GitBranch className="size-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate font-mono text-xs">{b.name}</span>
               {b.default && (
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
                   default
                 </span>
               )}
@@ -85,7 +85,7 @@ export function BranchSwitcher({
             href={`/projects/${projectId}/branches`}
             className="flex items-center gap-2"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="size-3.5" />
             <span>Manage branches</span>
           </Link>
         </DropdownMenuItem>

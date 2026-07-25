@@ -360,7 +360,7 @@ function SmallSelect({
         {dot && (
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              dot === "active" ? "bg-emerald-500" : "bg-gray-400"
+              dot === "active" ? "bg-status-active" : "bg-status-sleeping"
             }`}
           />
         )}

@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { DataApiSettings } from "@neon/sdk";
@@ -123,15 +124,14 @@ export function DataApiSettings({
 
         <div className="space-y-1">
           <Label htmlFor="openapiMode">OpenAPI specification</Label>
-          <select
+          <NativeSelect
             id="openapiMode"
             name="openapiMode"
             defaultValue={settings?.openapi_mode ?? "disabled"}
-            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
           >
             <option value="disabled">Disabled</option>
             <option value="ignore-privileges">Ignore privileges</option>
-          </select>
+          </NativeSelect>
           <p className="text-xs text-muted-foreground">
             Controls OpenAPI spec generation.
           </p>
@@ -158,7 +158,7 @@ export function DataApiSettings({
           </div>
         )}
         {feedback && feedback.ok && (
-          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+          <div className="flex items-center gap-2 text-primary text-xs">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Settings saved.
           </div>

@@ -52,7 +52,7 @@ export function HipaaCard({
         <span
           className={
             enabled
-              ? "h-1.5 w-1.5 rounded-full bg-emerald-500"
+              ? "size-1.5 rounded-full bg-status-active"
               : "h-1.5 w-1.5 rounded-full bg-muted-foreground/50"
           }
         />

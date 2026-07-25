@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { updateNetworkingAction, updateIpAllowlistAction } from "@/app/actions";
 
 /**
@@ -171,11 +172,11 @@ function IpAllowlistSubsection({
           means &ldquo;allow all&rdquo;. CIDR ranges are accepted.
         </p>
       </div>
-      <textarea
+      <Textarea
         rows={4}
         value={ips}
         onChange={(e) => setIps(e.target.value)}
-        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+        className="font-mono"
         placeholder={"203.0.113.0/24\n198.51.100.42"}
       />
       <label className="flex items-center gap-2 text-sm">
@@ -183,6 +184,7 @@ function IpAllowlistSubsection({
           type="checkbox"
           checked={protectedOnly}
           onChange={(e) => setProtectedOnly(e.target.checked)}
+          className="size-3.5 accent-primary"
         />
         Apply only to protected branches
       </label>

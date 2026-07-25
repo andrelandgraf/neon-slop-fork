@@ -85,8 +85,8 @@ export default function IntegrationsPage() {
   return (
     <div className="max-w-5xl px-8 py-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">Integrations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-semibold text-2xl tracking-tight">Integrations</h1>
+        <p className="mt-1 text-pretty text-muted-foreground text-sm">
           Connect Neon with the tools you use to develop, deploy, query, and
           replicate data.
         </p>
@@ -99,7 +99,9 @@ export default function IntegrationsPage() {
           );
           return (
             <section key={category}>
-              <h2 className="mb-3 text-sm font-semibold">{category}</h2>
+              <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {category}
+              </h2>
               <div className="grid gap-3 md:grid-cols-2">
                 {integrations.map((integration) => (
                   <IntegrationCard key={integration.name} integration={integration} />
@@ -118,17 +120,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const isConsoleOAuth = integration.setup === "console-oauth";
 
   return (
-    <div className="flex min-h-32 flex-col rounded-lg border bg-card p-4">
+    <div className="flex min-h-32 flex-col rounded-xl border border-border/60 bg-card p-4 transition-colors hover:border-border">
       <div className="flex items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+          <Icon className="size-4 text-muted-foreground" />
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">{integration.name}</h3>
+            <h3 className="font-semibold text-sm">{integration.name}</h3>
             {isConsoleOAuth && <Badge variant="secondary">Console setup</Badge>}
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-pretty text-muted-foreground text-xs leading-relaxed">
             {integration.description}
           </p>
         </div>
@@ -138,12 +140,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           variant="outline"
           size="sm"
           nativeButton={false}
-            render={
+          render={
             <a href={integration.docs} target="_blank" rel="noreferrer" />
           }
         >
           {isConsoleOAuth ? "Open setup guide" : "Read guide"}
-          <ArrowUpRight className="h-3.5 w-3.5" />
+          <ArrowUpRight className="size-3.5" />
         </Button>
       </div>
     </div>

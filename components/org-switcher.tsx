@@ -105,17 +105,17 @@ export function OrgSwitcher({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1.5 text-sm rounded-md px-1.5 py-0.5 -mx-0.5 hover:bg-muted"
+            className="-mx-0.5 flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm transition-colors hover:bg-sidebar-accent"
           >
             <span className="font-semibold">{activeOrg.name}</span>
-            <span className="px-1.5 py-0.5 text-[10px] rounded bg-muted border font-medium">
+            <span className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-medium text-[10px]">
               Free
             </span>
-            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            <ChevronsUpDown className="size-3.5 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[280px]">
-          <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             Organizations
           </DropdownMenuLabel>
           {orgs.map((o) => (
@@ -130,14 +130,14 @@ export function OrgSwitcher({
             >
               <div className="min-w-0 flex-1">
                 <div className="truncate">{o.name}</div>
-                <div className="text-[10px] text-muted-foreground font-mono truncate">
+                <div className="truncate font-mono text-[10px] text-muted-foreground">
                   {o.slug}
                 </div>
               </div>
               {pending && o.id !== activeOrg.id ? (
-                <Loader2 className="h-4 w-4 animate-spin opacity-60" />
+                <Loader2 className="size-4 animate-spin opacity-60" />
               ) : o.id === activeOrg.id ? (
-                <Check className="h-4 w-4" />
+                <Check className="size-4 text-primary" />
               ) : null}
             </DropdownMenuItem>
           ))}
@@ -150,7 +150,7 @@ export function OrgSwitcher({
             }}
             className="text-primary"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="size-3.5" />
             Create organization
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -173,7 +173,7 @@ export function OrgSwitcher({
                 org and only its members can see them.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-1.5 my-3">
+            <div className="my-4 space-y-1.5">
               <Label htmlFor="org-name">Name</Label>
               <Input
                 id="org-name"
@@ -200,7 +200,7 @@ export function OrgSwitcher({
                 disabled={createPending || !orgName.trim()}
               >
                 {createPending && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 )}
                 {createPending ? "Creating…" : "Create"}
               </Button>

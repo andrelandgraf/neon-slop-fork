@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -125,12 +126,14 @@ export function CreateBranchDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create new branch</DialogTitle>
-            <div className="text-xs text-muted-foreground mt-1">
-              Parent branch{" "}
-              <select
+            <div className="mt-1 flex items-center gap-2 text-muted-foreground text-xs">
+              Parent branch
+              <NativeSelect
+                size="sm"
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
-                className="inline-flex h-7 rounded-md border bg-background px-2 text-xs font-mono"
+                wrapperClassName="w-[200px]"
+                className="font-mono text-xs"
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -138,7 +141,7 @@ export function CreateBranchDialog({
                     {b.default ? " (default)" : ""}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </DialogHeader>
 
@@ -165,18 +168,18 @@ export function CreateBranchDialog({
                   Automatically delete branch after:
                 </span>
               </label>
-              <select
+              <NativeSelect
                 value={ttlSeconds}
                 onChange={(e) => setTtlSeconds(Number(e.target.value))}
                 disabled={!ttlEnabled}
-                className="flex h-9 w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                wrapperClassName="w-[200px]"
               >
                 {TTL_OPTIONS.map((o) => (
                   <option key={o.seconds} value={o.seconds}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {ttlEnabled && (
                 <p className="text-[11px] text-muted-foreground">
                   Branch will expire around{" "}
