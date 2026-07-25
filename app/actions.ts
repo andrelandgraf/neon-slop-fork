@@ -467,22 +467,44 @@ export async function createBranchAction(
 export async function deleteBranchAction(
   projectId: string,
   branchId: string
-): Promise<void> {
+): Promise<BranchResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
-  await neon.deleteProjectBranch(projectId, branchId);
+  try {
+    await neon.deleteProjectBranch(projectId, branchId);
+  } catch (err) {
+    return { ok: false, error: extractApiError(err) ?? "Failed to delete branch." };
+  }
   revalidatePath(`/projects/${projectId}/branches`);
   revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
 }
 
+/**
+ * Promotes a branch to the project's default.
+ *
+ * Neon refuses this for some branches — an expiring branch can't be the
+ * default, for one — and answers with a 400 rather than a crash. The UI
+ * disables the obvious cases, but the rule set is the API's to own, so any
+ * rejection is returned for the caller to show instead of thrown.
+ */
 export async function setDefaultBranchAction(
   projectId: string,
   branchId: string
-): Promise<void> {
+): Promise<BranchResult> {
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
-  await neon.setDefaultProjectBranch(projectId, branchId);
+  try {
+    await neon.setDefaultProjectBranch(projectId, branchId);
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractApiError(err) ?? "Failed to set the default branch.",
+    };
+  }
   revalidatePath(`/projects/${projectId}/branches`);
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
 }
 
 export async function restoreToTimestampAction(
@@ -930,6 +952,16 @@ export async function updateIpAllowlistAction(
   return { ok: true };
 }
 
+/**
+ * Neon appends the identifiers it was working on to an error message, as in
+ * `…cannot be the default branch; project_id:"x", branch_id:"y"`. The prose is
+ * the part worth showing; the trailing pairs just repeat what the user is
+ * already looking at.
+ */
+function stripApiErrorContext(message: string): string {
+  return message.replace(/;\s*\w+:".*$/s, "").trim() || message;
+}
+
 function extractApiError(err: unknown): string | null {
   if (err instanceof NeonApiError) {
     const body = err.body;
@@ -939,11 +971,11 @@ function extractApiError(err: unknown): string | null {
       "message" in body &&
       typeof body.message === "string"
     ) {
-      return body.message;
+      return stripApiErrorContext(body.message);
     }
-    return err.message;
+    return stripApiErrorContext(err.message);
   }
-  if (err instanceof Error && err.message) return err.message;
+  if (err instanceof Error && err.message) return stripApiErrorContext(err.message);
   return null;
 }
 

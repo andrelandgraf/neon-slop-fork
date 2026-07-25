@@ -1,10 +1,9 @@
 import { neon } from "@/lib/neon";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { deleteBranchAction, setDefaultBranchAction } from "@/app/actions";
 import { relativeTime, relativeFuture } from "@/lib/utils";
-import { GitBranch, Trash2, Clock } from "lucide-react";
+import { GitBranch, Clock } from "lucide-react";
+import { BranchRowActions } from "./branch-row-actions";
 import { CreateBranchDialog } from "./create-branch-dialog";
 
 export const dynamic = "force-dynamic";
@@ -86,38 +85,12 @@ export default async function BranchesPage({
                   </td>
                   <td className="px-4 py-3 text-right">
                     {!b.default && (
-                      <div className="flex justify-end gap-1">
-                        <form
-                          action={async () => {
-                            "use server";
-                            await setDefaultBranchAction(id, b.id);
-                          }}
-                        >
-                          <SubmitButton
-                            variant="ghost"
-                            size="sm"
-                            pendingLabel="Updating…"
-                          >
-                            Set default
-                          </SubmitButton>
-                        </form>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteBranchAction(id, b.id);
-                          }}
-                        >
-                          <SubmitButton
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10"
-                            pendingLabel="Deleting…"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </SubmitButton>
-                        </form>
-                      </div>
+                      <BranchRowActions
+                        branchId={b.id}
+                        canSetDefault={!expiresAt}
+                        projectId={id}
+                        setDefaultDisabledReason="A branch with an expiration date cannot be the default branch."
+                      />
                     )}
                   </td>
                 </tr>
