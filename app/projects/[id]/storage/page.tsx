@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HardDrive, ExternalLink, Lock, Globe } from "lucide-react";
+import { requireCapability } from "@/lib/capabilities";
 import { neon, type Bucket, type BranchStorage } from "@/lib/neon";
 import { Badge } from "@/components/ui/badge";
 import { CreateBucketDialog } from "./create-bucket-dialog";
@@ -31,6 +32,8 @@ export default async function StoragePage({
   const defaultBranch = branches.find((b) => b.default) ?? branches[0];
   const activeBranch =
     branches.find((b) => b.id === branchParam) ?? defaultBranch;
+
+  await requireCapability(projectId, activeBranch.id, "storage");
 
   const [buckets, storage] = await Promise.all([
     neon

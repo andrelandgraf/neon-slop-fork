@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { requireCapability } from "@/lib/capabilities";
 import { neon } from "@/lib/neon";
 import { Button } from "@/components/ui/button";
 import { CopyableCode } from "@/components/copyable-code";
@@ -28,6 +29,8 @@ export default async function FunctionsPage({
   const defaultBranch = branches.find((b) => b.default) ?? branches[0];
   const activeBranch =
     branches.find((b) => b.id === branchParam) ?? defaultBranch;
+
+  await requireCapability(projectId, activeBranch.id, "functions");
 
   const deploySnippet = `neonctl link --project-id ${projectId} --branch-id ${activeBranch.id}\nneonctl function deploy <function-slug> --src <path-to-index.ts>`;
 

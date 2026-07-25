@@ -3,7 +3,9 @@ import {
   createNeonClient,
   raw,
   type ActiveRegionsResponse,
+  type BranchAiGateway,
   type BranchStorage,
+  type NeonFunction,
   type Bucket,
   type BucketAccessLevel,
   type BucketCreateRequest,
@@ -635,6 +637,34 @@ export const neon = {
     providerId: NeonAuthOauthProviderId
   ) {
     await sdk.auth.oauthProviders.delete(projectId, branchId, providerId);
+  },
+
+  // -------------------------------------------------------------------------
+  // AI Gateway and Functions (per-branch). Both are only wired up in some
+  // regions; `lib/capabilities.ts` probes them to decide what the project
+  // nav should offer.
+  // -------------------------------------------------------------------------
+
+  async getBranchAiGateway(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: BranchAiGateway }> {
+    const data = await sdk.aiGateway.get(projectId, branchId);
+    return { data };
+  },
+
+  /**
+   * First page of a branch's functions. Deliberately not `all()`: callers
+   * either probe for availability or preview the list, and neither should
+   * walk every cursor.
+   */
+  async listFunctionsFirstPage(
+    projectId: string,
+    branchId: string
+  ): Promise<{ data: { functions: NeonFunction[] } }> {
+    const result = await sdk.functions.list(projectId, branchId).page();
+    if (result.error) throw result.error;
+    return { data: { functions: result.data.items } };
   },
 
   // -------------------------------------------------------------------------

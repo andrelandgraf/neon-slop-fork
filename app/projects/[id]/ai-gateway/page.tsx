@@ -1,25 +1,93 @@
-import { Sparkles, Check, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, ExternalLink } from "lucide-react";
+import { requireCapability } from "@/lib/capabilities";
+import { neon } from "@/lib/neon";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { CodeSnippetTabs } from "@/components/code-snippet-tabs";
 
 export const dynamic = "force-dynamic";
+
+const MODEL = "openai/gpt-5";
 
 /**
  * `/projects/[id]/ai-gateway`
  *
- * Mirrors console.neon.tech's per-branch AI Gateway screen. AI Gateway is a
- * paid feature, so on a Free project the console shows a gated "Upgrade to
- * use AI Gateway" state rather than the routes/analytics UI. Billing isn't
- * wired in this clone, so the upgrade CTA points at Neon's pricing page.
+ * Mirrors console.neon.tech's per-branch AI Gateway screen: the branch's
+ * OpenAI-compatible base URL, per-language snippets wired to it, and links to
+ * the credential that authorizes calls. The gateway only exists in regions
+ * where it has been rolled out, so the nav entry and this route are both
+ * gated on the branch reporting one.
+ *
+ * The Console additionally offers a model picker; the public API exposes no
+ * model catalog, so the snippets name a representative model instead.
  */
-const HIGHLIGHTS = [
-  "OpenAI-compatible endpoint — no SDK changes",
-  "Per-branch credentials with granular scopes",
-  "Usage analytics across every model and route",
-];
+export default async function AiGatewayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ branch?: string }>;
+}) {
+  const { id: projectId } = await params;
+  const { branch: branchParam } = await searchParams;
 
-export default async function AiGatewayPage() {
+  const branchesRes = await neon.listProjectBranches({ projectId });
+  const branches = branchesRes.data.branches;
+  const defaultBranch = branches.find((b) => b.default) ?? branches[0];
+  const activeBranch =
+    branches.find((b) => b.id === branchParam) ?? defaultBranch;
+
+  await requireCapability(projectId, activeBranch.id, "aiGateway");
+
+  const gateway = await neon
+    .getBranchAiGateway(projectId, activeBranch.id)
+    .then((r) => r.data)
+    .catch(() => null);
+
+  const branchQuery = branchParam ? `?branch=${branchParam}` : "";
+  const baseUrl = gateway?.base_url ?? "";
+
+  const envCode = `NEON_AI_GATEWAY_BASE_URL=${baseUrl}
+# Create an ai_gateway:invoke credential on the Credentials page:
+NEON_AI_GATEWAY_TOKEN=nak_live_...`;
+
+  const aiSdkCode = `import { generateText } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+
+const gateway = createOpenAI({
+  baseURL: \`\${process.env.NEON_AI_GATEWAY_BASE_URL}/ai-gateway/openai/v1\`,
+  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,
+});
+
+const { text } = await generateText({
+  model: gateway("${MODEL}"),
+  prompt: "Explain Serverless Postgres.",
+});
+
+console.log(text);`;
+
+  const pythonCode = `import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}/ai-gateway/openai/v1",
+    api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],
+)
+
+response = client.responses.create(
+    model="${MODEL}",
+    input="Explain Serverless Postgres.",
+)
+
+print(response.output_text)`;
+
+  const curlCode = `curl "$NEON_AI_GATEWAY_BASE_URL/ai-gateway/openai/v1/responses" \\
+  -H "Authorization: Bearer $NEON_AI_GATEWAY_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model":"${MODEL}","input":"Explain Serverless Postgres."}'`;
+
   return (
     <div className="px-8 py-6 max-w-3xl">
       <div className="flex items-center gap-2 mb-1">
@@ -30,58 +98,69 @@ export default async function AiGatewayPage() {
         <Badge variant="secondary">Beta</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
-        Send AI model requests through this branch using an OpenAI-compatible
-        endpoint.
+        Send AI model requests through{" "}
+        <span className="font-medium text-foreground">{activeBranch.name}</span>{" "}
+        using an OpenAI-compatible endpoint.
       </p>
 
-      <Card className="p-8">
-        <div className="flex flex-col items-center text-center">
-          <div className="h-10 w-10 rounded-md bg-primary/10 grid place-items-center">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">
-            Upgrade to use AI Gateway
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-            AI Gateway is available on paid plans. Route requests to Llama,
-            Mistral, GPT, Claude, and Gemini through a single OpenAI-compatible
-            endpoint with usage analytics and per-branch credentials. Free
-            during Beta; future usage will be billed at provider list prices
-            with no Neon markup.
-          </p>
-          <div className="mt-5 flex items-center gap-3">
-            <Button
-              nativeButton={false}
-              render={
-                <a
-                  href="https://neon.com/pricing"
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
-            >
-              Upgrade to Paid
-            </Button>
-            <a
-              href="https://neon.com/docs/ai-gateway/get-started"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-0.5 text-sm text-primary hover:underline"
-            >
-              Learn more about AI Gateway <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
+      {gateway ? (
+        <CodeSnippetTabs
+          snippets={[
+            {
+              id: "env",
+              label: ".env",
+              filename: ".env",
+              language: "bash",
+              code: envCode,
+            },
+            {
+              id: "ai-sdk",
+              label: "AI SDK",
+              filename: "generate.ts",
+              language: "typescript",
+              code: aiSdkCode,
+            },
+            {
+              id: "python",
+              label: "Python",
+              filename: "generate.py",
+              language: "python",
+              code: pythonCode,
+            },
+            {
+              id: "curl",
+              label: "cURL",
+              filename: "request.sh",
+              language: "bash",
+              code: curlCode,
+            },
+          ]}
+        />
+      ) : (
+        <Callout tone="warning">
+          Couldn&apos;t read this branch&apos;s gateway endpoint. Reload to try
+          again.
+        </Callout>
+      )}
 
-        <div className="mt-7 border-t pt-5 space-y-2.5">
-          {HIGHLIGHTS.map((h) => (
-            <div key={h} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-primary shrink-0" />
-              {h}
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div className="mt-5 flex items-center gap-3">
+        <Button
+          nativeButton={false}
+          render={
+            <Link href={`/projects/${projectId}/credentials${branchQuery}`} />
+          }
+        >
+          Generate credential
+        </Button>
+        <a
+          href="https://neon.com/docs/ai-gateway/get-started"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-0.5 text-sm text-primary hover:underline"
+        >
+          Learn more about AI Gateway <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
     </div>
   );
 }

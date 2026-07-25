@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 export interface CodeSnippet {
   id: string;
+  /** Tab text. Often the filename, but the console labels some tab strips by
+   *  language or SDK instead. */
   label: string;
   filename: string;
   language: string;
@@ -40,7 +42,7 @@ export function CodeSnippetTabs({ snippets }: Props) {
                   : "text-zinc-400 hover:text-zinc-200"
               )}
             >
-              {s.filename}
+              {s.label}
             </button>
           ))}
         </div>

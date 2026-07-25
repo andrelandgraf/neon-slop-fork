@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/topbar";
 import { Sidebar } from "@/components/sidebar";
+import { getProjectCapabilities } from "@/lib/capabilities";
 import { neon } from "@/lib/neon";
 import { requireTenant, requireProjectAccess } from "@/lib/tenancy";
 
@@ -37,6 +38,8 @@ export default async function ProjectLayout({
     notFound();
   }
 
+  const capabilities = await getProjectCapabilities(id, defaultBranchId);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <TopBar tenant={tenant} context={project.name} />
@@ -45,6 +48,7 @@ export default async function ProjectLayout({
           projectId={id}
           projectName={project.name}
           branches={branches}
+          capabilities={capabilities}
           defaultBranchId={defaultBranchId}
         />
         <main className="flex-1 min-w-0">{children}</main>

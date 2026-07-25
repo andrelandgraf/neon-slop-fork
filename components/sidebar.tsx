@@ -24,6 +24,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ProjectCapabilities } from "@/lib/capabilities";
 import { Badge } from "@/components/ui/badge";
 import { BranchSwitcher } from "@/components/branch-switcher";
 
@@ -31,6 +32,7 @@ interface SidebarProps {
   projectId: string;
   projectName: string;
   branches: { id: string; name: string; default: boolean }[];
+  capabilities: ProjectCapabilities;
   defaultBranchId: string;
 }
 
@@ -38,6 +40,7 @@ export function Sidebar({
   projectId,
   projectName,
   branches,
+  capabilities,
   defaultBranchId,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -68,6 +71,9 @@ export function Sidebar({
     },
   ];
 
+  // Data API and Auth exist in every region, so they are always listed. The
+  // rest are per-region rollouts, and the Console omits the ones a project's
+  // region can't serve instead of linking to a dead screen.
   const appBackend = [
     {
       href: `${base}/data-api`,
@@ -85,26 +91,30 @@ export function Sidebar({
       label: "Storage",
       icon: HardDrive,
       beta: true,
+      available: capabilities.storage,
     },
     {
       href: `${base}/credentials`,
       label: "Credentials",
       icon: KeyRound,
       beta: true,
+      available: capabilities.credentials,
     },
     {
       href: `${base}/ai-gateway`,
       label: "AI Gateway",
       icon: Sparkles,
       beta: true,
+      available: capabilities.aiGateway,
     },
     {
       href: `${base}/functions`,
       label: "Functions",
       icon: SquareFunction,
       beta: true,
+      available: capabilities.functions,
     },
-  ];
+  ].filter(({ available }) => available !== false);
 
   return (
     <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-[240px] shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">

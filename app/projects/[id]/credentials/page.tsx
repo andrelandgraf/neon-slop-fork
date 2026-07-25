@@ -1,4 +1,5 @@
 import { KeyRound, ExternalLink } from "lucide-react";
+import { requireCapability } from "@/lib/capabilities";
 import {
   neon,
   type CredentialMeta,
@@ -33,6 +34,8 @@ export default async function CredentialsPage({
   const defaultBranch = branches.find((b) => b.default) ?? branches[0];
   const activeBranch =
     branches.find((b) => b.id === branchParam) ?? defaultBranch;
+
+  await requireCapability(projectId, activeBranch.id, "credentials");
 
   const [credentials, storage] = await Promise.all([
     neon
