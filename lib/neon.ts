@@ -2,6 +2,7 @@ import "server-only";
 import {
   createNeonClient,
   raw,
+  type ActiveRegionsResponse,
   type BranchStorage,
   type Bucket,
   type BucketAccessLevel,
@@ -105,6 +106,20 @@ async function collectAll<T>(
  * `{ data: … }` response shapes used throughout this app.
  */
 export const neon = {
+  /**
+   * Regions available for new projects, with the coordinates the
+   * new-project globe plots. Organization-scoped API keys are rejected by
+   * this endpoint, so callers are expected to handle the failure — see
+   * `lib/regions.ts`.
+   */
+  async listActiveRegions(): Promise<{ data: ActiveRegionsResponse }> {
+    const { data } = await raw.getActiveRegions({
+      client: sdk.client,
+      throwOnError: true,
+    });
+    return { data };
+  },
+
   async listProjects(query?: { org_id?: string; limit?: number }) {
     const projects = await collectAll(
       sdk.projects.list({ org_id: query?.org_id, limit: query?.limit })

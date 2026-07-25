@@ -50,8 +50,34 @@ export async function createProjectAction(formData: FormData): Promise<void> {
     tenant.activeOrg.id,
     tenant.session.user.id
   );
+  if (formData.get("enable_auth") === "on") {
+    await enableAuthOnDefaultBranch(res.data.project.id);
+  }
   revalidatePath("/projects");
   redirect(`/projects/${res.data.project.id}`);
+}
+
+/**
+ * Provisions Neon Auth on a freshly created project, mirroring the Console's
+ * "Enable Neon Auth" switch in the create-project dialog.
+ *
+ * The project already exists by the time this runs, so a failure here must
+ * not fail creation — the user lands on a working project and can retry from
+ * the Auth page.
+ */
+async function enableAuthOnDefaultBranch(projectId: string): Promise<void> {
+  try {
+    const { data } = await neon.listProjectBranches({ projectId });
+    const branch =
+      data.branches.find((candidate) => candidate.default) ?? data.branches[0];
+    if (!branch) return;
+    await neon.createNeonAuth(projectId, branch.id, {
+      auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
+    });
+    revalidatePath(`/projects/${projectId}/auth`);
+  } catch {
+    /* Surfaced on the Auth page, where enabling can be retried. */
+  }
 }
 
 export async function deleteProjectAction(projectId: string): Promise<void> {
