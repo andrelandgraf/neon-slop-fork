@@ -163,17 +163,17 @@ function VisibilityOption({
   description: string;
 }) {
   return (
-    <label className="flex items-start gap-2.5 cursor-pointer">
+    <label className="flex cursor-pointer items-start gap-2.5">
       <input
         type="radio"
         name="visibility-radio"
         checked={checked}
         onChange={onSelect}
-        className="mt-0.5 h-3.5 w-3.5 accent-primary"
+        className="mt-0.5 size-3.5 accent-primary"
       />
       <div className="text-sm">
         <div className="font-medium">{title}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-muted-foreground text-xs">{description}</p>
       </div>
     </label>
   );

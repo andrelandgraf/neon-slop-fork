@@ -78,7 +78,7 @@ export function RestoreForm({
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <Label className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             Source branch
           </Label>
           <NativeSelect
@@ -95,7 +95,7 @@ export function RestoreForm({
           </NativeSelect>
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <Label className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             Point in time
           </Label>
           <Input

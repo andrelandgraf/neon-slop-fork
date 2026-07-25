@@ -26,7 +26,7 @@ export default async function SqlEditorPage({
       <p className="text-sm text-muted-foreground mb-4">
         Branch <span className="font-mono">{activeBranch?.name}</span>
         {activeBranch?.id !== defaultBranch?.id && (
-          <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="ml-1 text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             (non-default)
           </span>
         )}{" "}

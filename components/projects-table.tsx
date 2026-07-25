@@ -173,7 +173,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
     <th
-      className={`px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider text-muted-foreground ${
+      className={`px-4 py-2.5 font-medium text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground ${
         className ?? ""
       }`}
     >

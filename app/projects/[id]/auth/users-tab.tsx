@@ -95,13 +95,13 @@ export async function AuthUsersTab({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30 text-left">
-                  <th className="px-4 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-2 font-mono font-medium text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     User
                   </th>
-                  <th className="px-4 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-2 font-mono font-medium text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     Email
                   </th>
-                  <th className="px-4 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-2 font-mono font-medium text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     Created
                   </th>
                   <th className="px-4 py-2"></th>

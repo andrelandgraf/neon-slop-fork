@@ -48,7 +48,7 @@ export function ChildBranchesTab({
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr className="border-b bg-muted/30 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
               <th className="px-5 py-2 font-medium">Name</th>
               <th className="px-5 py-2 font-medium">Created</th>
               <th className="px-5 py-2 font-medium">Expires</th>

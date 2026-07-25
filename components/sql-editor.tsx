@@ -320,7 +320,7 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
                       {result.columns.map((c) => (
                         <th
                           key={c}
-                          className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30"
+                          className="px-3 py-2 text-left text-[11px] font-semibold font-mono uppercase tracking-[0.14em] text-muted-foreground bg-muted/30"
                         >
                           {c}
                         </th>

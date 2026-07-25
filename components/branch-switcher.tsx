@@ -57,7 +57,9 @@ export function BranchSwitcher({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[260px]">
-        <DropdownMenuLabel>Branches</DropdownMenuLabel>
+        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.14em]">
+          Branches
+        </DropdownMenuLabel>
         {branches.map((b) => {
           const isActive = b.id === active?.id;
           return (

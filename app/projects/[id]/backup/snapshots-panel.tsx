@@ -128,7 +128,7 @@ export function SnapshotsPanel({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b text-left text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                 <th className="py-2 font-medium">Name</th>
                 <th className="py-2 font-medium">Source branch</th>
                 <th className="py-2 font-medium">Captured</th>

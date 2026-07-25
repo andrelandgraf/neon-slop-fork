@@ -169,9 +169,9 @@ export default async function MonitoringPage({
             href={`/projects/${id}/overview?tab=computes${
               branchParam ? `&branch=${branchParam}` : ""
             }`}
-            className="mt-3 inline-block text-[11px] underline text-primary"
+            className="mt-3 inline-block text-primary text-xs hover:underline"
           >
-            EDIT ENDPOINT
+            Edit endpoint →
           </a>
         </Card>
 
@@ -310,7 +310,7 @@ function RangeButton({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
       {children}
@@ -348,7 +348,7 @@ function ChartCard({
         <div>
           <div className="text-xs font-semibold">{title}</div>
           {subtitle && (
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+            <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {subtitle}
             </div>
           )}

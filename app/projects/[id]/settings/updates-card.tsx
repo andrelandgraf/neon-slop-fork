@@ -118,7 +118,7 @@ export function UpdatesCard({
         )}
       >
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="text-[11px] font-semibold font-mono uppercase tracking-[0.14em] text-muted-foreground">
             Weekdays
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -144,7 +144,7 @@ export function UpdatesCard({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="text-[11px] font-semibold font-mono uppercase tracking-[0.14em] text-muted-foreground">
               Start (UTC)
             </div>
             <Input
@@ -155,7 +155,7 @@ export function UpdatesCard({
             />
           </div>
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="text-[11px] font-semibold font-mono uppercase tracking-[0.14em] text-muted-foreground">
               End (UTC)
             </div>
             <Input

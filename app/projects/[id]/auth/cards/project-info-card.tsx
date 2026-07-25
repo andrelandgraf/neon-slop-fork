@@ -76,7 +76,7 @@ function ReadonlyField({
   }
   return (
     <div className="space-y-1">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground font-medium">
         {label}
       </div>
       <div className="flex items-center gap-2">

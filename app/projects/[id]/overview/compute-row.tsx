@@ -99,7 +99,7 @@ export function ComputeRow({
           </div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             {endpoint.current_state === "active"
               ? "Last active"
               : "Suspended"}
@@ -107,7 +107,7 @@ export function ComputeRow({
           <div className="text-sm">{relativeLastActive}</div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             Size
           </div>
           <div className="text-sm font-mono">{sizeText}</div>

@@ -163,6 +163,7 @@ export function CreateBranchDialog({
                   type="checkbox"
                   checked={ttlEnabled}
                   onChange={(e) => setTtlEnabled(e.target.checked)}
+                  className="size-3.5 accent-primary"
                 />
                 <span className="font-medium">
                   Automatically delete branch after:

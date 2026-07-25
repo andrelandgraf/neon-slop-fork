@@ -23,7 +23,9 @@ export function ThemeMenuItems() {
 
   return (
     <>
-      <DropdownMenuLabel>Theme</DropdownMenuLabel>
+      <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.14em]">
+        Theme
+      </DropdownMenuLabel>
       {OPTIONS.map(({ value, label, icon: Icon }) => (
         <DropdownMenuItem
           key={value}
@@ -32,9 +34,9 @@ export function ThemeMenuItems() {
             setTheme(value);
           }}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className="size-3.5" />
           <span className="flex-1">{label}</span>
-          {theme === value && <Check className="h-3.5 w-3.5" />}
+          {theme === value && <Check className="size-3.5 text-primary" />}
         </DropdownMenuItem>
       ))}
     </>
