@@ -84,7 +84,7 @@ export async function AuthConfigurationTab({
               Auth provider for this branch.
             </p>
           </div>
-          <Badge variant="muted">{integration.auth_provider}</Badge>
+          <Badge variant="secondary">{integration.auth_provider}</Badge>
         </div>
         <dl className="grid grid-cols-2 gap-4 text-xs">
           <div>

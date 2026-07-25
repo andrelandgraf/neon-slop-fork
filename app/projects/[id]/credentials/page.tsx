@@ -80,8 +80,8 @@ export default async function CredentialsPage({
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           Credentials
         </h1>
-        <Badge variant="muted">Beta</Badge>
-        <Badge variant="muted">{activeBranch.name}</Badge>
+        <Badge variant="secondary">Beta</Badge>
+        <Badge variant="secondary">{activeBranch.name}</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Credentials for this branch, scoped per service. Use them as S3 access
@@ -117,7 +117,7 @@ export default async function CredentialsPage({
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{cred.name ?? "—"}</span>
-                    <Badge variant="muted">
+                    <Badge variant="secondary">
                       {cred.scopes.length} scope{cred.scopes.length === 1 ? "" : "s"}
                     </Badge>
                   </div>
@@ -135,7 +135,7 @@ export default async function CredentialsPage({
                 </td>
                 <td className="px-4 py-2.5 text-muted-foreground">
                   {cred.revoked_at ? (
-                    <Badge variant="warn">Revoked</Badge>
+                    <Badge variant="destructive">Revoked</Badge>
                   ) : (
                     "—"
                   )}

@@ -85,7 +85,7 @@ export default async function DataApiPage({
           <Database className="h-4 w-4 text-muted-foreground" />
           Data API
         </h1>
-        <Badge variant="muted">{activeBranch.name}</Badge>
+        <Badge variant="secondary">{activeBranch.name}</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Access your database through auto-generated REST API endpoints.{" "}

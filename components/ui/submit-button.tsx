@@ -2,7 +2,9 @@
 import * as React from "react";
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+
+type ButtonProps = React.ComponentProps<typeof Button>;
 
 interface SubmitButtonProps extends Omit<ButtonProps, "type"> {
   /**

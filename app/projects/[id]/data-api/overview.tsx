@@ -96,7 +96,7 @@ export function DataApiOverview({
             </Button>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-            <Badge variant="muted">{dataApi.status ?? "unknown"}</Badge>
+            <Badge variant="secondary">{dataApi.status ?? "unknown"}</Badge>
             <span>·</span>
             <span>
               Database <code className="font-mono">{databaseName}</code>

@@ -196,7 +196,7 @@ export default async function TablesPage({
           )}
           {table && previewError && (
             <div className="p-6">
-              <Badge variant="warn">Error</Badge>
+              <Badge variant="destructive">Error</Badge>
               <pre className="mt-3 text-[13px] font-mono whitespace-pre-wrap text-destructive">
                 {previewError}
               </pre>
@@ -276,11 +276,14 @@ export default async function TablesPage({
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Page {page}</span>
                   {page > 1 ? (
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={pageHref(page - 1)}>
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                        Previous
-                      </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      nativeButton={false}
+            render={<Link href={pageHref(page - 1)} />}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Previous
                     </Button>
                   ) : (
                     <Button size="sm" variant="outline" disabled>
@@ -289,11 +292,14 @@ export default async function TablesPage({
                     </Button>
                   )}
                   {preview.rows.length === pageSize ? (
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={pageHref(page + 1)}>
-                        Next
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      nativeButton={false}
+            render={<Link href={pageHref(page + 1)} />}
+                    >
+                      Next
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   ) : (
                     <Button size="sm" variant="outline" disabled>

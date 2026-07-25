@@ -68,17 +68,20 @@ export default async function BranchOverviewPage({
           <div className="flex items-center gap-2 mt-1 text-sm">
             <GitBranchIcon />
             <span className="font-mono">{activeBranch.name}</span>
-            {activeBranch.default && <Badge variant="muted">Default</Badge>}
+            {activeBranch.default && <Badge variant="secondary">Default</Badge>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link
-              href={`/projects/${projectId}/branches?parent=${activeBranch.id}`}
-            >
-              <GitBranch className="h-3.5 w-3.5" />
-              Create child branch
-            </Link>
+          <Button
+            nativeButton={false}
+            render={
+              <Link
+                href={`/projects/${projectId}/branches?parent=${activeBranch.id}`}
+              />
+            }
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            Create child branch
           </Button>
           <Button
             variant="outline"

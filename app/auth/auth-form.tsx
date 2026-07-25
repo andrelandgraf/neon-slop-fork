@@ -314,7 +314,7 @@ export function AuthForm({
           className={cn(
             "inline-flex w-full animate-rise items-center justify-center gap-2 rounded-md py-2.5 text-[14px] font-semibold transition-all duration-300 active:scale-[0.98] disabled:cursor-not-allowed",
             charged || pending
-              ? "bg-primary text-primary-foreground shadow-[0_0_24px_-6px_hsl(var(--primary))] hover:shadow-[0_0_34px_-6px_hsl(var(--primary))]"
+              ? "bg-primary text-primary-foreground shadow-[0_0_24px_-6px_var(--primary)] hover:shadow-[0_0_34px_-6px_var(--primary)]"
               : "border border-border bg-transparent text-muted-foreground hover:text-foreground"
           )}
         >
@@ -398,12 +398,12 @@ function BeamInput({
   const valid = verdict?.valid === true;
 
   const beamColor = hasError
-    ? "hsl(var(--destructive))"
+    ? "var(--destructive)"
     : meterTone === "weak"
-      ? "hsl(var(--destructive))"
+      ? "var(--destructive)"
       : meterTone === "fair"
-        ? "hsl(var(--muted-foreground))"
-        : "hsl(var(--primary))";
+        ? "var(--muted-foreground)"
+        : "var(--primary)";
 
   const beamFixed = hasError || meterRatio !== undefined;
 
@@ -421,7 +421,7 @@ function BeamInput({
           onBlur?.();
         }}
         className={cn(
-          "w-full rounded-md border border-border bg-card/40 px-3 py-2.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
+          "w-full rounded-md border border-border bg-card/40 px-3 py-2.5 text-[13px] text-foreground outline-hidden transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
           !hideGlyph && (valid || hasError) && "pr-9",
           className
         )}

@@ -126,7 +126,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold">{integration.name}</h3>
-            {isConsoleOAuth && <Badge variant="muted">Console setup</Badge>}
+            {isConsoleOAuth && <Badge variant="secondary">Console setup</Badge>}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {integration.description}
@@ -134,11 +134,16 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         </div>
       </div>
       <div className="mt-auto pt-4">
-        <Button variant="outline" size="sm" asChild>
-          <a href={integration.docs} target="_blank" rel="noreferrer">
-            {isConsoleOAuth ? "Open setup guide" : "Read guide"}
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </a>
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+            render={
+            <a href={integration.docs} target="_blank" rel="noreferrer" />
+          }
+        >
+          {isConsoleOAuth ? "Open setup guide" : "Read guide"}
+          <ArrowUpRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>

@@ -90,8 +90,9 @@ export default async function NewProjectPage() {
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button asChild variant="outline">
-              <Link href="/projects">Cancel</Link>
+            <Button nativeButton={false}
+            render={<Link href="/projects" />} variant="outline">
+              Cancel
             </Button>
             <SubmitButton pendingLabel="Provisioning…">
               Create project

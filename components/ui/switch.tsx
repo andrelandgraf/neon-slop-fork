@@ -1,54 +1,23 @@
-"use client";
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
 
-interface SwitchProps {
-  checked: boolean;
-  onCheckedChange?: (next: boolean) => void;
-  disabled?: boolean;
-  id?: string;
-  "aria-label"?: string;
-  className?: string;
-}
+import { cn } from "@/lib/utils"
 
-/**
- * Minimal headless switch. Renders as a button with `role="switch"`
- * and `aria-checked`, which is exactly what assistive tech expects
- * and what Radix's Switch does — we don't pull in another Radix
- * dependency just for this. Colors match the Neon console: bright
- * green track when on, neutral grey when off.
- */
-export function Switch({
-  checked,
-  onCheckedChange,
-  disabled,
-  id,
-  className,
-  ...aria
-}: SwitchProps) {
+function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
   return (
-    <button
-      type="button"
-      role="switch"
-      id={id}
-      aria-checked={checked}
-      aria-label={aria["aria-label"]}
-      disabled={disabled}
-      onClick={() => onCheckedChange?.(!checked)}
+    <SwitchPrimitive.Root
+      data-slot="switch"
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
-        checked
-          ? "bg-[#00b27a] border-[#00b27a]"
-          : "bg-muted border-border",
+        "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-unchecked:bg-input",
         className
       )}
+      {...props}
     >
-      <span
-        className={cn(
-          "pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm ring-0 transition-transform",
-          checked ? "translate-x-[18px]" : "translate-x-[2px]"
-        )}
+      <SwitchPrimitive.Thumb
+        data-slot="switch-thumb"
+        className="pointer-events-none block size-4 rounded-full bg-background shadow-sm transition-transform data-checked:translate-x-[18px] data-unchecked:translate-x-0.5"
       />
-    </button>
-  );
+    </SwitchPrimitive.Root>
+  )
 }
+
+export { Switch }

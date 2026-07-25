@@ -71,7 +71,7 @@ export default async function BackupPage({
             <div className="font-semibold mb-0.5">Restore from history</div>
             <p className="text-xs text-muted-foreground mb-3">
               Instantly revert a branch to any point in the last{" "}
-              <Badge variant="muted" className="mx-0.5">
+              <Badge variant="secondary" className="mx-0.5">
                 {retentionDays} day{retentionDays === 1 ? "" : "s"}
               </Badge>
               . Restores via{" "}

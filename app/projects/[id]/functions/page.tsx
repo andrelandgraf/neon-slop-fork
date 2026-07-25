@@ -51,14 +51,20 @@ export default async function FunctionsPage({
         </div>
 
         <div className="mt-6">
-          <Button variant="default" size="sm" asChild className="bg-foreground text-background hover:bg-foreground/90">
-            <a
-              href="https://neon.com/docs/functions/get-started"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read the docs <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-foreground text-background hover:bg-foreground/90"
+            nativeButton={false}
+            render={
+              <a
+                href="https://neon.com/docs/functions/get-started"
+                target="_blank"
+                rel="noreferrer"
+              />
+            }
+          >
+            Read the docs <ExternalLink className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

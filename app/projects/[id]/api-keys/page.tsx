@@ -35,7 +35,7 @@ export default async function ApiKeysPage({
         <div>
           <h1 className="text-xl font-semibold mb-1 flex items-center gap-2">
             API keys
-            <Badge variant="muted">Not available</Badge>
+            <Badge variant="secondary">Not available</Badge>
           </h1>
           <p className="text-sm text-muted-foreground max-w-xl">
             Project-scoped API keys aren&apos;t surfaced by the public Neon

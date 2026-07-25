@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/neon-ui/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,15 +70,9 @@ export function ComputeRow({
 
   const stateBadge =
     endpoint.current_state === "active" ? (
-      <Badge variant="muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        ACTIVE
-      </Badge>
+      <StatusBadge status="ready" label="active" />
     ) : (
-      <Badge variant="muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-        SUSPENDED
-      </Badge>
+      <StatusBadge status="stopped" label="suspended" />
     );
 
   const sizeText = `${endpoint.autoscaling_limit_min_cu}${
@@ -96,7 +90,9 @@ export function ComputeRow({
               {isPrimary ? "Primary" : "Read replica"}
             </span>
             {stateBadge}
-            {endpoint.disabled && <Badge variant="warn">Disabled</Badge>}
+            {endpoint.disabled && (
+              <StatusBadge status="stopped" label="disabled" />
+            )}
           </div>
           <div className="text-xs text-muted-foreground font-mono truncate">
             {endpoint.id}

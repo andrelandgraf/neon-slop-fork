@@ -75,7 +75,7 @@ export function ChildBranchesTab({
                 </td>
                 <td className="px-5 py-3">
                   {b.expires_at ? (
-                    <Badge variant="muted">
+                    <Badge variant="secondary">
                       <Clock className="h-3 w-3" />
                       {relativeFuture(b.expires_at)}
                     </Badge>

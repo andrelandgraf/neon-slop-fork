@@ -73,7 +73,7 @@ export function OauthProvidersCard({
           >
             <div className="flex items-center gap-2">
               <span className="font-medium capitalize">{p.id}</span>
-              <Badge variant="muted">
+              <Badge variant="secondary">
                 {p.type === "shared" ? "Shared keys" : "Standard"}
               </Badge>
             </div>

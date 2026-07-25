@@ -103,7 +103,7 @@ export function SnapshotsPanel({
           <div>
             <div className="flex items-center gap-2 mb-0.5">
               <div className="font-semibold">Snapshots</div>
-              <Badge variant="muted">Beta</Badge>
+              <Badge variant="secondary">Beta</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               Capture point-in-time versions of any root branch. Restore
@@ -177,7 +177,7 @@ function SnapshotRow({
             {snapshot.name || "(unnamed)"}
           </span>
           {snapshot.manual === false && (
-            <Badge variant="muted" className="shrink-0">
+            <Badge variant="secondary" className="shrink-0">
               Scheduled
             </Badge>
           )}

@@ -58,7 +58,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search projects by name, ID, or region…"
-          className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
@@ -69,7 +69,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
               className="pointer-events-none absolute inset-0 opacity-[0.6]"
               style={{
                 background:
-                  "radial-gradient(420px circle at 50% 0%, hsl(var(--primary) / 0.12), transparent 70%)",
+                  "radial-gradient(420px circle at 50% 0%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 70%)",
               }}
             />
             <div className="relative">
@@ -83,7 +83,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
               </p>
               <Link
                 href="/projects/new"
-                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_0_24px_-6px_hsl(var(--primary))] transition-shadow hover:shadow-[0_0_34px_-6px_hsl(var(--primary))]"
+                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_0_24px_-6px_var(--primary)] transition-shadow hover:shadow-[0_0_34px_-6px_var(--primary)]"
               >
                 <Database className="h-4 w-4" />
                 New project
@@ -136,7 +136,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
                     {formatStorage(p.storageMb)}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="muted">v{p.pg_version}</Badge>
+                    <Badge variant="secondary">v{p.pg_version}</Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground tabular-nums">
                     <span className="inline-flex items-center gap-1">
@@ -145,7 +145,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="muted">
+                    <Badge variant="secondary">
                       <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                       Disabled
                     </Badge>

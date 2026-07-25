@@ -135,7 +135,7 @@ export function ConnectButton({
           <Field label="Branch">
             <ReadonlyPill>
               {branchName}
-              <Badge variant="muted" className="ml-1">
+              <Badge variant="secondary" className="ml-1">
                 Default
               </Badge>
             </ReadonlyPill>
@@ -209,7 +209,7 @@ export function ConnectButton({
               >
                 <span
                   className={cn(
-                    "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                    "inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform",
                     pooled ? "translate-x-[18px]" : "translate-x-[2px]"
                   )}
                 />

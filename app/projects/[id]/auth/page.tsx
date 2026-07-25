@@ -65,8 +65,8 @@ export default async function AuthPage({
           <Lock className="h-4 w-4 text-muted-foreground" />
           Auth
         </h1>
-        <Badge variant="muted">{activeBranch.name}</Badge>
-        <Badge variant="muted">Beta</Badge>
+        <Badge variant="secondary">{activeBranch.name}</Badge>
+        <Badge variant="secondary">Beta</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Serverless authentication that branches with your database. Powered by{" "}

@@ -60,7 +60,7 @@ export function AuthScreen({
 
         <div className="relative flex h-full flex-col justify-between p-10 xl:p-14">
           <Link href="/" className="inline-flex w-fit items-center gap-2.5" title="Home">
-            <span className="grid h-9 w-9 place-items-center rounded-lg border border-white/15 bg-white/10 backdrop-blur">
+            <span className="grid h-9 w-9 place-items-center rounded-lg border border-white/15 bg-white/10 backdrop-blur-sm">
               <NeonLogomark className="h-[18px] w-[18px] text-neon-green" />
             </span>
             <span className="text-sm font-semibold tracking-tight text-white">Neon Clone</span>
@@ -85,7 +85,7 @@ export function AuthScreen({
             <ul className="mt-9 flex flex-col gap-4">
               {HIGHLIGHTS.map(({ icon: Icon, label, body }) => (
                 <li key={label} className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md border border-white/10 bg-white/5 text-neon-green backdrop-blur">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md border border-white/10 bg-white/5 text-neon-green backdrop-blur-sm">
                     <Icon className="h-4 w-4" />
                   </span>
                   <div>

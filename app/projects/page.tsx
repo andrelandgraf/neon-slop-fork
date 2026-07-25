@@ -75,11 +75,10 @@ export default async function ProjectsIndex() {
             <h1 className="text-2xl font-semibold tracking-tight">
               {tenant.activeOrg.name}
             </h1>
-            <Button asChild>
-              <Link href="/projects/new">
-                <Plus className="h-4 w-4" />
-                New project
-              </Link>
+            <Button nativeButton={false}
+            render={<Link href="/projects/new" />}>
+              <Plus className="h-4 w-4" />
+              New project
             </Button>
           </div>
 

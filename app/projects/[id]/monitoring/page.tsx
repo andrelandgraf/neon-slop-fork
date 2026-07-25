@@ -404,7 +404,7 @@ function SparkLine({
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full">
       <polyline
         fill="none"
-        stroke="hsl(var(--foreground))"
+        stroke="var(--foreground)"
         strokeWidth={1.5}
         points={points2}
       />

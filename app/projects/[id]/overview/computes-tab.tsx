@@ -73,7 +73,7 @@ export async function ComputesTab({
       )}
 
       <p className="text-[11px] text-muted-foreground">
-        <Badge variant="muted">Beta</Badge> Connection-pool limits and
+        <Badge variant="secondary">Beta</Badge> Connection-pool limits and
         autoscaling caps depend on the project plan.
       </p>
     </div>

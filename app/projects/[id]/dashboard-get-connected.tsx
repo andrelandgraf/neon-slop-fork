@@ -187,10 +187,14 @@ function GuideCard({
       <p className="mt-1 min-h-10 text-xs leading-relaxed text-muted-foreground">
         {body}
       </p>
-      <Button className="mt-3" variant="outline" size="sm" asChild>
-        <a href={href} target="_blank" rel="noreferrer">
-          Open guide
-        </a>
+      <Button
+        className="mt-3"
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+            render={<a href={href} target="_blank" rel="noreferrer" />}
+      >
+        Open guide
       </Button>
     </div>
   );

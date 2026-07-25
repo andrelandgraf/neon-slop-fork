@@ -178,7 +178,7 @@ function VisibilityOption({
         name="visibility-radio"
         checked={checked}
         onChange={onSelect}
-        className="mt-0.5 h-3.5 w-3.5 accent-[color:hsl(var(--primary))]"
+        className="mt-0.5 h-3.5 w-3.5 accent-primary"
       />
       <div className="text-sm">
         <div className="font-medium">{title}</div>

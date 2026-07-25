@@ -69,7 +69,7 @@ AWS_SECRET_ACCESS_KEY=nsk_live_...`;
           <span>Branch</span>
           <span className="inline-flex items-center gap-1 rounded-md border bg-muted/30 px-2 py-1 font-mono">
             {branchName}
-            <Badge variant="muted">Default</Badge>
+            <Badge variant="secondary">Default</Badge>
           </span>
         </div>
 

@@ -297,7 +297,7 @@ function DataOptionCard({
           aria-hidden
         />
         {label}
-        {badge && <Badge variant="muted">{badge}</Badge>}
+        {badge && <Badge variant="secondary">{badge}</Badge>}
       </div>
       <p className="ml-[18px] mt-1 text-[11px] text-muted-foreground leading-snug">
         {description}

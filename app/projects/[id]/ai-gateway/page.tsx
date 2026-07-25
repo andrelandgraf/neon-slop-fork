@@ -27,7 +27,7 @@ export default async function AiGatewayPage() {
           <Sparkles className="h-4 w-4 text-muted-foreground" />
           AI Gateway
         </h1>
-        <Badge variant="muted">Beta</Badge>
+        <Badge variant="secondary">Beta</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         Send AI model requests through this branch using an OpenAI-compatible
@@ -51,12 +51,17 @@ export default async function AiGatewayPage() {
           </p>
           <div className="mt-5 flex items-center gap-3">
             <Button
-              asChild
               className="bg-foreground text-background hover:bg-foreground/90"
+              nativeButton={false}
+            render={
+                <a
+                  href="https://neon.com/pricing"
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
             >
-              <a href="https://neon.com/pricing" target="_blank" rel="noreferrer">
-                Upgrade to Paid
-              </a>
+              Upgrade to Paid
             </Button>
             <a
               href="https://neon.com/docs/ai-gateway/get-started"

@@ -248,7 +248,7 @@ export function CreateCredentialDialog({
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
-                className="h-3.5 w-3.5 accent-[color:hsl(var(--primary))]"
+                className="h-3.5 w-3.5 accent-primary"
               />
               I have copied the S3 access key ID and S3 secret access key
             </label>
@@ -297,7 +297,7 @@ function ScopeGroup({
               type="checkbox"
               checked={selected.has(s.id)}
               onChange={() => onToggle(s.id)}
-              className="mt-0.5 h-3.5 w-3.5 accent-[color:hsl(var(--primary))]"
+              className="mt-0.5 h-3.5 w-3.5 accent-primary"
             />
             <span className="text-sm">
               <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">

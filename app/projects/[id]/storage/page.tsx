@@ -85,8 +85,8 @@ export default async function StoragePage({
           <HardDrive className="h-4 w-4 text-muted-foreground" />
           Storage
         </h1>
-        <Badge variant="muted">Beta</Badge>
-        <Badge variant="muted">{activeBranch.name}</Badge>
+        <Badge variant="secondary">Beta</Badge>
+        <Badge variant="secondary">{activeBranch.name}</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         S3-compatible object storage for this project. Create buckets, then

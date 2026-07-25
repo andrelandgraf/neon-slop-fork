@@ -106,11 +106,14 @@ export default async function ProjectDashboard({
             <ArrowLeftRight className="h-3.5 w-3.5" />
             Import data
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/projects/${id}/settings#collaborators`}>
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/projects/${id}/settings#collaborators`} />}
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
           </Button>
         </div>
       </div>
@@ -227,12 +230,12 @@ export default async function ProjectDashboard({
                         <GitBranchIcon />
                         <span className="font-medium">{b.name}</span>
                         {b.default && (
-                          <Badge variant="muted">Default</Badge>
+                          <Badge variant="secondary">Default</Badge>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Badge variant="muted">
+                      <Badge variant="secondary">
                         <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                         Idle
                       </Badge>
@@ -243,7 +246,7 @@ export default async function ProjectDashboard({
               </tbody>
             </table>
             <div className="px-4 py-3 border-t">
-              <Badge variant="muted">
+              <Badge variant="secondary">
                 <Info className="h-3 w-3" />
                 Preview Workflow
               </Badge>
@@ -299,7 +302,7 @@ export default async function ProjectDashboard({
             <SettingRow
               label="HIPAA compliance"
               value={
-                <Badge variant="muted">
+                <Badge variant="secondary">
                   <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                   {project.settings?.hipaa ? "Enabled" : "Disabled"}
                 </Badge>
@@ -362,7 +365,7 @@ function SmallSelect({
           />
         )}
         <span className="font-mono">{value}</span>
-        {active && <Badge variant="muted">Default</Badge>}
+        {active && <Badge variant="secondary">Default</Badge>}
       </div>
     </div>
   );

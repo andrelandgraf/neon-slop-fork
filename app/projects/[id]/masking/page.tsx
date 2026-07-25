@@ -23,7 +23,7 @@ export default function DataMaskingPage() {
           <h1 className="text-xl font-semibold">
             Mask and anonymize sensitive data
           </h1>
-          <Badge variant="muted">Beta</Badge>
+          <Badge variant="secondary">Beta</Badge>
         </div>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
           Mask sensitive information according to rules you define, giving you
@@ -34,14 +34,18 @@ export default function DataMaskingPage() {
           <Button disabled title="The public Neon API does not expose Data Masking operations.">
             Create anonymized branch
           </Button>
-          <Button variant="outline" asChild>
-            <a
-              href="https://neon.com/docs/guides/data-masking"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Learn more <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={
+              <a
+                href="https://neon.com/docs/guides/data-masking"
+                target="_blank"
+                rel="noreferrer"
+              />
+            }
+          >
+            Learn more <ArrowUpRight className="h-3.5 w-3.5" />
           </Button>
         </div>
         <p className="mt-5 max-w-lg text-xs text-muted-foreground">

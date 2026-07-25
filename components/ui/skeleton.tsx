@@ -1,18 +1,16 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-/**
- * Shimmer block for use in `loading.tsx` files. Inherits the page's
- * border radius so callers don't have to spell out `rounded-…` every
- * time.
- */
-export function Skeleton({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted/60", className)}
+      data-slot="skeleton"
+      className={cn(
+        "animate-[neon-skeleton-pulse_2.8s_cubic-bezier(0.4,0,0.2,1)_infinite] rounded-md bg-muted will-change-[opacity] motion-reduce:animate-none motion-reduce:opacity-80",
+        className
+      )}
       {...props}
     />
-  );
+  )
 }
+
+export { Skeleton }

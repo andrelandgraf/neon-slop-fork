@@ -28,7 +28,7 @@ export function EmailProviderCard({
           <div>
             <dt className="text-xs text-muted-foreground mb-0.5">Server</dt>
             <dd>
-              <Badge variant="muted">
+              <Badge variant="secondary">
                 {provider.type === "shared" ? "Shared" : "Standard SMTP"}
               </Badge>
             </dd>

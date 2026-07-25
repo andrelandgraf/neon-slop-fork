@@ -63,10 +63,10 @@ export default async function BranchesPage({
                     <div className="flex items-center gap-2 flex-wrap">
                       <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium">{b.name}</span>
-                      {b.default && <Badge variant="muted">Default</Badge>}
+                      {b.default && <Badge variant="secondary">Default</Badge>}
                       {expiresAt && (
                         <Badge
-                          variant="muted"
+                          variant="secondary"
                           title={`Auto-deletes at ${new Date(expiresAt).toLocaleString()}`}
                         >
                           <Clock className="h-3 w-3" />

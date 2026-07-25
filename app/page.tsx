@@ -24,7 +24,7 @@ export default function LandingPage() {
 
 function LandingHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-black/80 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-black/80 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-6 px-6">
         <Link
           href="/"

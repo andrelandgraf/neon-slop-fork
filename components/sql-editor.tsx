@@ -280,7 +280,7 @@ export function SqlEditor({ branchId, projectId, runAction }: Props) {
           }}
           spellCheck={false}
           rows={10}
-          className="w-full p-4 font-mono text-[13px] leading-relaxed bg-background outline-none resize-y min-h-[180px]"
+          className="w-full p-4 font-mono text-[13px] leading-relaxed bg-background outline-hidden resize-y min-h-[180px]"
         />
         <div className="px-3 py-1.5 border-t bg-muted/20 text-[11px] text-muted-foreground">
           ⌘+Enter to run
