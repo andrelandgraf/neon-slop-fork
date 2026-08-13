@@ -53,16 +53,32 @@ following are intentionally inert with `Mock` tags:
 
 ## Configuration
 
+The meta database is a Neon project, maintained through `neon.ts` and the `neon` CLI.
+
 ```bash
+neon link
+neon checkout main
+```
+
+That writes `.neon` (gitignored) and pulls `DATABASE_URL` into `.env.local`. Project: `lively-truth-10185875` (`neon-slop-fork-meta`) in org `org-nameless-thunder-12993511`.
+
+App runtime env is separate — the CLI does not produce these:
+
+```bash
+META_DATABASE_URL=          # copy DATABASE_URL; the app has not switched to that name
 NEON_API_KEY=<org-level Neon API key>
 NEON_ORG_ID=org-nameless-thunder-12993511
 NEON_ORG_NAME="Neon Clone"
+BETTER_AUTH_SECRET=<32+ character secret>
+BETTER_AUTH_URL=http://localhost:3030
 ```
 
 ## Local dev
 
 ```bash
 bun install
+neon link
+neon checkout main
 bun run dev
 # http://localhost:3030
 ```

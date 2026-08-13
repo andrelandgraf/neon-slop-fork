@@ -23,6 +23,7 @@
     "demos",
     ".next",
     ".vercel",
-    "scripts"
+    "scripts",
+    "neon.ts"
   ]
 }
