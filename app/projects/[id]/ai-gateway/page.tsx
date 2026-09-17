@@ -9,7 +9,7 @@ import { CodeSnippetTabs } from "@/components/code-snippet-tabs";
 
 export const dynamic = "force-dynamic";
 
-const MODEL = "openai/gpt-5";
+const MODEL = "gpt-5";
 
 /**
  * `/projects/[id]/ai-gateway`
@@ -54,15 +54,10 @@ export default async function AiGatewayPage({
 NEON_AI_GATEWAY_TOKEN=nak_live_...`;
 
   const aiSdkCode = `import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-
-const gateway = createOpenAI({
-  baseURL: \`\${process.env.NEON_AI_GATEWAY_BASE_URL}/ai-gateway/openai/v1\`,
-  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,
-});
+import { neon } from "@neon/ai-sdk-provider";
 
 const { text } = await generateText({
-  model: gateway("${MODEL}"),
+  model: neon("${MODEL}"),
   prompt: "Explain Serverless Postgres.",
 });
 
@@ -72,7 +67,7 @@ console.log(text);`;
 from openai import OpenAI
 
 client = OpenAI(
-    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}/ai-gateway/openai/v1",
+    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}/openai/v1",
     api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],
 )
 
@@ -83,7 +78,7 @@ response = client.responses.create(
 
 print(response.output_text)`;
 
-  const curlCode = `curl "$NEON_AI_GATEWAY_BASE_URL/ai-gateway/openai/v1/responses" \\
+  const curlCode = `curl "$NEON_AI_GATEWAY_BASE_URL/openai/v1/responses" \\
   -H "Authorization: Bearer $NEON_AI_GATEWAY_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"${MODEL}","input":"Explain Serverless Postgres."}'`;

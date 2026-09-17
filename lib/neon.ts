@@ -95,12 +95,8 @@ const sdk = createNeonClient({
   waitForReadiness: true,
 });
 
-async function collectAll<T>(
-  list: { all(): Promise<{ data: T[]; error: undefined } | { data: undefined; error: Error }> }
-): Promise<T[]> {
-  const result = await list.all();
-  if (result.error) throw result.error;
-  return result.data;
+async function collectAll<T>(list: { all(): Promise<T[]> }): Promise<T[]> {
+  return list.all();
 }
 
 /**
@@ -130,7 +126,7 @@ export const neon = {
   },
 
   async getProject(projectId: string) {
-    const project = await sdk.projects.get(projectId);
+    const project = await sdk.projects.get({ projectId });
     return { data: { project } };
   },
 
@@ -147,29 +143,30 @@ export const neon = {
   },
 
   async deleteProject(projectId: string) {
-    await sdk.projects.delete(projectId);
+    await sdk.projects.delete({ projectId });
   },
 
   async updateProject(projectId: string, body: ProjectUpdateRequest) {
-    await sdk.projects.update(projectId, body.project ?? {});
+    await sdk.projects.update({ projectId, ...(body.project ?? {}) });
   },
 
   async grantPermissionToProject(
     projectId: string,
     body: NonNullable<GrantPermissionToProjectData["body"]>
   ) {
-    await sdk.projects.permissions.grant(projectId, body.email);
+    await sdk.projects.permissions.grant({ projectId, email: body.email });
   },
 
   async revokePermissionFromProject(projectId: string, permissionId: string) {
-    await sdk.projects.permissions.revoke(projectId, permissionId);
+    await sdk.projects.permissions.revoke({ projectId, permissionId });
   },
 
   async listProjectPermissions(
     projectId: string
   ): Promise<{ data: ListProjectPermissionsResponse }> {
-    const project_permissions =
-      await sdk.projects.permissions.list(projectId);
+    const project_permissions = await sdk.projects.permissions.list({
+      projectId,
+    });
     return { data: { project_permissions } };
   },
 
@@ -185,7 +182,9 @@ export const neon = {
   },
 
   async listProjectBranches(params: { projectId: string }) {
-    const branches = await collectAll(sdk.branches.list(params.projectId));
+    const branches = await collectAll(
+      sdk.branches.list({ projectId: params.projectId })
+    );
     return { data: { branches } };
   },
 
@@ -199,11 +198,11 @@ export const neon = {
   },
 
   async deleteProjectBranch(projectId: string, branchId: string) {
-    await sdk.branches.delete(projectId, branchId);
+    await sdk.branches.delete({ projectId, branchId });
   },
 
   async setDefaultProjectBranch(projectId: string, branchId: string) {
-    await sdk.branches.setDefault(projectId, branchId);
+    await sdk.branches.setDefault({ projectId, branchId });
   },
 
   async restoreProjectBranch(
@@ -220,7 +219,7 @@ export const neon = {
   },
 
   async listSnapshots(projectId: string) {
-    const snapshots = await sdk.snapshots.list(projectId);
+    const snapshots = await sdk.snapshots.list({ projectId });
     return { data: { snapshots } };
   },
 
@@ -234,15 +233,15 @@ export const neon = {
       ...(input.name ? { name: input.name } : {}),
       ...(input.expires_at ? { expiresAt: input.expires_at } : {}),
     };
-    await sdk.snapshots.create(
-      input.projectId,
-      input.branchId,
-      snapshotInput
-    );
+    await sdk.snapshots.create({
+      projectId: input.projectId,
+      branchId: input.branchId,
+      ...snapshotInput,
+    });
   },
 
   async deleteSnapshot(projectId: string, snapshotId: string) {
-    await sdk.snapshots.delete(projectId, snapshotId);
+    await sdk.snapshots.delete({ projectId, snapshotId });
   },
 
   async updateSnapshot(
@@ -250,7 +249,11 @@ export const neon = {
     snapshotId: string,
     body: { snapshot: { name: string } }
   ) {
-    await sdk.snapshots.update(projectId, snapshotId, body.snapshot);
+    await sdk.snapshots.update({
+      projectId,
+      snapshotId,
+      ...body.snapshot,
+    });
   },
 
   async restoreSnapshot(
@@ -270,11 +273,15 @@ export const neon = {
         ? { finalize: body.finalize_restore }
         : {}),
     };
-    await sdk.snapshots.restore(ids.projectId, ids.snapshotId, input);
+    await sdk.snapshots.restore({
+      projectId: ids.projectId,
+      snapshotId: ids.snapshotId,
+      ...input,
+    });
   },
 
   async listProjectBranchRoles(projectId: string, branchId: string) {
-    const roles = await sdk.postgres.roles.list(projectId, branchId);
+    const roles = await sdk.postgres.roles.list({ projectId, branchId });
     return { data: { roles } };
   },
 
@@ -283,7 +290,11 @@ export const neon = {
     branchId: string,
     body: { role: { name: string } }
   ) {
-    await sdk.postgres.roles.create(projectId, branchId, body.role);
+    await sdk.postgres.roles.create({
+      projectId,
+      branchId,
+      ...body.role,
+    });
   },
 
   async deleteProjectBranchRole(
@@ -291,7 +302,7 @@ export const neon = {
     branchId: string,
     roleName: string
   ) {
-    await sdk.postgres.roles.delete(projectId, branchId, roleName);
+    await sdk.postgres.roles.delete({ projectId, branchId, roleName });
   },
 
   async resetProjectBranchRolePassword(
@@ -299,16 +310,19 @@ export const neon = {
     branchId: string,
     roleName: string
   ) {
-    const role = await sdk.postgres.roles.resetPassword(
+    const role = await sdk.postgres.roles.resetPassword({
       projectId,
       branchId,
-      roleName
-    );
+      roleName,
+    });
     return { data: { role } };
   },
 
   async listProjectBranchDatabases(projectId: string, branchId: string) {
-    const databases = await sdk.postgres.databases.list(projectId, branchId);
+    const databases = await sdk.postgres.databases.list({
+      projectId,
+      branchId,
+    });
     return { data: { databases } };
   },
 
@@ -317,7 +331,11 @@ export const neon = {
     branchId: string,
     body: { database: { name: string; owner_name: string } }
   ) {
-    await sdk.postgres.databases.create(projectId, branchId, body.database);
+    await sdk.postgres.databases.create({
+      projectId,
+      branchId,
+      ...body.database,
+    });
   },
 
   async deleteProjectBranchDatabase(
@@ -325,11 +343,15 @@ export const neon = {
     branchId: string,
     databaseName: string
   ) {
-    await sdk.postgres.databases.delete(projectId, branchId, databaseName);
+    await sdk.postgres.databases.delete({
+      projectId,
+      branchId,
+      databaseName,
+    });
   },
 
   async listProjectEndpoints(projectId: string) {
-    const endpoints = await sdk.postgres.endpoints.list(projectId);
+    const endpoints = await sdk.postgres.endpoints.list({ projectId });
     return { data: { endpoints } };
   },
 
@@ -337,23 +359,23 @@ export const neon = {
     projectId: string,
     branchId: string
   ): Promise<{ data: EndpointsResponse }> {
-    const endpoints = await sdk.postgres.endpoints.listByBranch(
+    const endpoints = await sdk.postgres.endpoints.listByBranch({
       projectId,
-      branchId
-    );
+      branchId,
+    });
     return { data: { endpoints } };
   },
 
   async startProjectEndpoint(projectId: string, endpointId: string) {
-    await sdk.postgres.endpoints.start(projectId, endpointId);
+    await sdk.postgres.endpoints.start({ projectId, endpointId });
   },
 
   async suspendProjectEndpoint(projectId: string, endpointId: string) {
-    await sdk.postgres.endpoints.suspend(projectId, endpointId);
+    await sdk.postgres.endpoints.suspend({ projectId, endpointId });
   },
 
   async restartProjectEndpoint(projectId: string, endpointId: string) {
-    await sdk.postgres.endpoints.restart(projectId, endpointId);
+    await sdk.postgres.endpoints.restart({ projectId, endpointId });
   },
 
   async updateProjectEndpoint(
@@ -361,22 +383,25 @@ export const neon = {
     endpointId: string,
     body: EndpointUpdateRequest
   ) {
-    await sdk.postgres.endpoints.update(
+    await sdk.postgres.endpoints.update({
       projectId,
       endpointId,
-      body.endpoint ?? {}
-    );
+      ...(body.endpoint ?? {}),
+    });
   },
 
   async createProjectEndpoint(
     projectId: string,
     body: EndpointCreateRequest
   ) {
-    await sdk.postgres.endpoints.create(projectId, body.endpoint ?? {});
+    await sdk.postgres.endpoints.create({
+      projectId,
+      ...(body.endpoint ?? {}),
+    });
   },
 
   async deleteProjectEndpoint(projectId: string, endpointId: string) {
-    await sdk.postgres.endpoints.delete(projectId, endpointId);
+    await sdk.postgres.endpoints.delete({ projectId, endpointId });
   },
 
   async getConnectionUri(params: {
@@ -414,11 +439,11 @@ export const neon = {
     branchId: string,
     databaseName: string
   ) {
-    const data = await sdk.postgres.dataApi.get(
+    const data = await sdk.postgres.dataApi.get({
       projectId,
       branchId,
-      databaseName
-    );
+      databaseName,
+    });
     return { data };
   },
 
@@ -428,12 +453,12 @@ export const neon = {
     databaseName: string,
     body?: DataApiCreateRequest
   ) {
-    await sdk.postgres.dataApi.create(
+    await sdk.postgres.dataApi.create({
       projectId,
       branchId,
       databaseName,
-      body
-    );
+      ...body,
+    });
   },
 
   async updateProjectBranchDataApi(
@@ -442,12 +467,12 @@ export const neon = {
     databaseName: string,
     body: DataApiUpdateRequest
   ) {
-    await sdk.postgres.dataApi.update(
+    await sdk.postgres.dataApi.update({
       projectId,
       branchId,
       databaseName,
-      body
-    );
+      ...body,
+    });
   },
 
   async deleteProjectBranchDataApi(
@@ -455,14 +480,14 @@ export const neon = {
     branchId: string,
     databaseName: string
   ) {
-    await sdk.postgres.dataApi.delete(projectId, branchId, databaseName);
+    await sdk.postgres.dataApi.delete({ projectId, branchId, databaseName });
   },
 
   async getNeonAuth(
     projectId: string,
     branchId: string
   ): Promise<{ data: NeonAuthIntegration }> {
-    const data = await sdk.auth.get(projectId, branchId);
+    const data = await sdk.auth.get({ projectId, branchId });
     return { data };
   },
 
@@ -471,7 +496,7 @@ export const neon = {
     branchId: string,
     body: EnableNeonAuthIntegrationRequest
   ) {
-    await sdk.auth.create(projectId, branchId, body);
+    await sdk.auth.create({ projectId, branchId, ...body });
   },
 
   async disableNeonAuth(
@@ -479,7 +504,9 @@ export const neon = {
     branchId: string,
     body?: { delete_data?: boolean }
   ) {
-    await sdk.auth.disable(projectId, branchId, {
+    await sdk.auth.disable({
+      projectId,
+      branchId,
       deleteData: body?.delete_data,
     });
   },
@@ -491,7 +518,7 @@ export const neon = {
       import("@neon/sdk").AddBranchNeonAuthTrustedDomainData["body"]
     >
   ) {
-    await sdk.auth.trustedDomains.add(projectId, branchId, body);
+    await sdk.auth.trustedDomains.add({ projectId, branchId, ...body });
   },
 
   async deleteBranchNeonAuthTrustedDomain(
@@ -501,7 +528,7 @@ export const neon = {
       import("@neon/sdk").DeleteBranchNeonAuthTrustedDomainData["body"]
     >
   ) {
-    await sdk.auth.trustedDomains.delete(projectId, branchId, body);
+    await sdk.auth.trustedDomains.delete({ projectId, branchId, ...body });
   },
 
   async updateNeonAuthAllowLocalhost(
@@ -548,7 +575,7 @@ export const neon = {
     branchId: string,
     body: NonNullable<import("@neon/sdk").CreateBranchNeonAuthNewUserData["body"]>
   ) {
-    await sdk.auth.users.create(projectId, branchId, body);
+    await sdk.auth.users.create({ projectId, branchId, ...body });
   },
 
   async deleteBranchNeonAuthUser(
@@ -556,14 +583,21 @@ export const neon = {
     branchId: string,
     userId: string
   ) {
-    await sdk.auth.users.delete(projectId, branchId, userId);
+    await sdk.auth.users.delete({
+      projectId,
+      branchId,
+      authUserId: userId,
+    });
   },
 
   async listBranchNeonAuthOauthProviders(
     projectId: string,
     branchId: string
   ): Promise<{ data: ListNeonAuthOauthProvidersResponse }> {
-    const providers = await sdk.auth.oauthProviders.list(projectId, branchId);
+    const providers = await sdk.auth.oauthProviders.list({
+      projectId,
+      branchId,
+    });
     return { data: { providers } };
   },
 
@@ -571,7 +605,10 @@ export const neon = {
     projectId: string,
     branchId: string
   ): Promise<{ data: NeonAuthRedirectUriWhitelistResponse }> {
-    const domains = await sdk.auth.trustedDomains.list(projectId, branchId);
+    const domains = await sdk.auth.trustedDomains.list({
+      projectId,
+      branchId,
+    });
     return { data: { domains } };
   },
 
@@ -628,7 +665,7 @@ export const neon = {
     branchId: string,
     body: NeonAuthAddOAuthProviderRequest
   ) {
-    await sdk.auth.oauthProviders.add(projectId, branchId, body);
+    await sdk.auth.oauthProviders.add({ projectId, branchId, ...body });
   },
 
   async deleteBranchNeonAuthOauthProvider(
@@ -636,7 +673,11 @@ export const neon = {
     branchId: string,
     providerId: NeonAuthOauthProviderId
   ) {
-    await sdk.auth.oauthProviders.delete(projectId, branchId, providerId);
+    await sdk.auth.oauthProviders.delete({
+      projectId,
+      branchId,
+      providerId,
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -649,7 +690,7 @@ export const neon = {
     projectId: string,
     branchId: string
   ): Promise<{ data: BranchAiGateway }> {
-    const data = await sdk.aiGateway.get(projectId, branchId);
+    const data = await sdk.aiGateway.get({ projectId, branchId });
     return { data };
   },
 
@@ -662,9 +703,8 @@ export const neon = {
     projectId: string,
     branchId: string
   ): Promise<{ data: { functions: NeonFunction[] } }> {
-    const result = await sdk.functions.list(projectId, branchId).page();
-    if (result.error) throw result.error;
-    return { data: { functions: result.data.items } };
+    const page = await sdk.functions.list({ projectId, branchId }).page();
+    return { data: { functions: page.items } };
   },
 
   // -------------------------------------------------------------------------
@@ -675,12 +715,12 @@ export const neon = {
     projectId: string,
     branchId: string
   ): Promise<{ data: BranchStorage }> {
-    const data = await sdk.storage.get(projectId, branchId);
+    const data = await sdk.storage.get({ projectId, branchId });
     return { data };
   },
 
   async listBuckets(projectId: string, branchId: string) {
-    const buckets = await sdk.storage.buckets.list(projectId, branchId);
+    const buckets = await sdk.storage.buckets.list({ projectId, branchId });
     return { data: { buckets } };
   },
 
@@ -689,12 +729,16 @@ export const neon = {
     branchId: string,
     input: BucketCreateRequest
   ) {
-    const bucket = await sdk.storage.buckets.create(projectId, branchId, input);
+    const bucket = await sdk.storage.buckets.create({
+      projectId,
+      branchId,
+      ...input,
+    });
     return { data: { bucket } };
   },
 
   async deleteBucket(projectId: string, branchId: string, bucketName: string) {
-    await sdk.storage.buckets.delete(projectId, branchId, bucketName);
+    await sdk.storage.buckets.delete({ projectId, branchId, bucketName });
   },
 
   async listBucketObjects(
@@ -703,12 +747,12 @@ export const neon = {
     bucketName: string,
     query?: { prefix?: string; delimiter?: string; cursor?: string; limit?: number }
   ): Promise<{ data: BucketObjectsListResponse }> {
-    const data = await sdk.storage.objects.list(
+    const data = await sdk.storage.objects.list({
       projectId,
       branchId,
       bucketName,
-      query
-    );
+      ...query,
+    });
     return { data };
   },
 
@@ -719,13 +763,13 @@ export const neon = {
     objectKey: string,
     input: PresignRequest
   ): Promise<{ data: PresignResponse }> {
-    const data = await sdk.storage.objects.presign(
+    const data = await sdk.storage.objects.presign({
       projectId,
       branchId,
       bucketName,
       objectKey,
-      input
-    );
+      ...input,
+    });
     return { data };
   },
 
@@ -735,7 +779,12 @@ export const neon = {
     bucketName: string,
     objectKey: string
   ) {
-    await sdk.storage.objects.delete(projectId, branchId, bucketName, objectKey);
+    await sdk.storage.objects.delete({
+      projectId,
+      branchId,
+      bucketName,
+      objectKey,
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -744,7 +793,7 @@ export const neon = {
   // -------------------------------------------------------------------------
 
   async listCredentials(projectId: string, branchId: string) {
-    const credentials = await sdk.credentials.list(projectId, branchId);
+    const credentials = await sdk.credentials.list({ projectId, branchId });
     return { data: { credentials } };
   },
 
@@ -753,7 +802,11 @@ export const neon = {
     branchId: string,
     input: CreateCredentialRequest
   ): Promise<{ data: CreateCredentialResponse }> {
-    const data = await sdk.credentials.create(projectId, branchId, input);
+    const data = await sdk.credentials.create({
+      projectId,
+      branchId,
+      ...input,
+    });
     return { data };
   },
 
@@ -762,7 +815,7 @@ export const neon = {
     branchId: string,
     tokenId: string
   ) {
-    await sdk.credentials.revoke(projectId, branchId, tokenId);
+    await sdk.credentials.revoke({ projectId, branchId, tokenId });
   },
 };
 

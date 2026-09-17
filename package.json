@@ -14,8 +14,8 @@
     "@better-auth/drizzle-adapter": "^1.6.10",
     "@hugeicons/core-free-icons": "^4.2.2",
     "@hugeicons/react": "^1.1.9",
-    "@neon/sdk": "^1.0.0",
-    "@neondatabase/serverless": "^1.0.0",
+    "@neon/sdk": "^6.0.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",
     "@radix-ui/react-label": "^2.1.0",
@@ -39,6 +39,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@neon/config": "^1.7.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bun": "^1.2",
     "@types/node": "^22",
