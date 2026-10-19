@@ -142,8 +142,8 @@ export async function syncServices(projectId: string, branchId: string, version?
       .returning({ txid }),
     upsert(
       neonFunction,
-      [neonFunction.id],
-      ["id"],
+      [neonFunction.branch_id, neonFunction.id],
+      ["branch_id", "id"],
       branchRows(s.functions.map((f) => ({ id: f.id, data: withoutEnvironment(f) }))),
       current
     ),
@@ -153,8 +153,8 @@ export async function syncServices(projectId: string, branchId: string, version?
       .returning({ txid }),
     upsert(
       neonTrigger,
-      [neonTrigger.trigger_id],
-      ["trigger_id"],
+      [neonTrigger.branch_id, neonTrigger.trigger_id],
+      ["branch_id", "trigger_id"],
       branchRows(s.triggers.map((t) => ({ trigger_id: t.trigger_id, data: t }))),
       current
     ),
@@ -166,8 +166,8 @@ export async function syncServices(projectId: string, branchId: string, version?
       .returning({ txid }),
     upsert(
       neonCustomDomain,
-      [neonCustomDomain.domain],
-      ["domain"],
+      [neonCustomDomain.branch_id, neonCustomDomain.domain],
+      ["branch_id", "domain"],
       branchRows(s.domains.map((d) => ({ domain: d.domain, data: d }))),
       current
     ),
@@ -179,8 +179,8 @@ export async function syncServices(projectId: string, branchId: string, version?
       .returning({ txid }),
     upsert(
       neonCredential,
-      [neonCredential.token_id],
-      ["token_id"],
+      [neonCredential.branch_id, neonCredential.token_id],
+      ["branch_id", "token_id"],
       branchRows(s.credentials.map((c) => ({ token_id: c.token_id, data: c }))),
       current
     ),

@@ -396,46 +396,62 @@ export const neonBucket = pgTable(
   (t) => [primaryKey({ columns: [t.branch_id, t.name] })]
 );
 
-export const neonFunction = pgTable("neon_function", {
-  id: text("id").primaryKey(),
-  project_id: text("project_id").notNull(),
-  branch_id: text("branch_id")
-    .notNull()
-    .references(() => neonBranch.id, { onDelete: "cascade" }),
-  data: jsonb("data").$type<NeonFunction>().notNull(),
-  mirrored_at: tz("mirrored_at").notNull(),
-});
+export const neonFunction = pgTable(
+  "neon_function",
+  {
+    id: text("id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<NeonFunction>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.id] })]
+);
 
-export const neonTrigger = pgTable("neon_trigger", {
-  trigger_id: text("trigger_id").primaryKey(),
-  project_id: text("project_id").notNull(),
-  branch_id: text("branch_id")
-    .notNull()
-    .references(() => neonBranch.id, { onDelete: "cascade" }),
-  data: jsonb("data").$type<FunctionTrigger>().notNull(),
-  mirrored_at: tz("mirrored_at").notNull(),
-});
+export const neonTrigger = pgTable(
+  "neon_trigger",
+  {
+    trigger_id: text("trigger_id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<FunctionTrigger>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.trigger_id] })]
+);
 
-export const neonCustomDomain = pgTable("neon_custom_domain", {
-  domain: text("domain").primaryKey(),
-  project_id: text("project_id").notNull(),
-  branch_id: text("branch_id")
-    .notNull()
-    .references(() => neonBranch.id, { onDelete: "cascade" }),
-  data: jsonb("data").$type<CustomDomain>().notNull(),
-  mirrored_at: tz("mirrored_at").notNull(),
-});
+export const neonCustomDomain = pgTable(
+  "neon_custom_domain",
+  {
+    domain: text("domain").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<CustomDomain>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.domain] })]
+);
 
 /** Credential metadata; the secret is only ever in the create response. */
-export const neonCredential = pgTable("neon_credential", {
-  token_id: text("token_id").primaryKey(),
-  project_id: text("project_id").notNull(),
-  branch_id: text("branch_id")
-    .notNull()
-    .references(() => neonBranch.id, { onDelete: "cascade" }),
-  data: jsonb("data").$type<CredentialMeta>().notNull(),
-  mirrored_at: tz("mirrored_at").notNull(),
-});
+export const neonCredential = pgTable(
+  "neon_credential",
+  {
+    token_id: text("token_id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<CredentialMeta>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.token_id] })]
+);
 
 export const neonSnapshot = pgTable("neon_snapshot", {
   id: text("id").primaryKey(),

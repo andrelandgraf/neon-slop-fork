@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { LiveStatus } from "@/components/live/live-status";
@@ -10,8 +10,8 @@ import type { BranchServiceRow } from "@/lib/live/queries";
 /**
  * Shows an Auth page's enabled view or its "enable" view from the branch's
  * live Auth state. The enabled view reads data the mirror doesn't hold
- * (the tenant's own database), so when the service turns on elsewhere and
- * the server rendered no enabled view, it asks the server for a fresh render.
+ * (the tenant's own database), so when Auth turns on elsewhere it asks the
+ * server for a fresh render instead of showing one from before Auth was off.
  */
 export function LiveAuthGate({
   branchId,
@@ -29,14 +29,17 @@ export function LiveAuthGate({
   const query = useLiveQuery({ query: (q) => q.from({ s: services }).where(({ s }) => eq(s.branch_id, branchId)) });
   const row = query.data[0];
   const enabled = Boolean(row?.auth);
-  const needsRender = enabled && !children;
+  const [stale, setStale] = useState<React.ReactNode>(null);
+  if (!enabled && children && stale !== children) setStale(children);
+  const fresh = children && children !== stale ? children : null;
+  const needsRender = enabled && !fresh;
   useEffect(() => {
     if (needsRender) router.refresh();
   }, [needsRender, router]);
   return (
     <>
       <LiveStatus queries={[query]} />
-      {enabled && children ? children : off}
+      {enabled && fresh ? fresh : off}
     </>
   );
 }

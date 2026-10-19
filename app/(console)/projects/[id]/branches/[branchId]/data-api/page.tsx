@@ -28,18 +28,19 @@ export default async function DataApiPage({
 
   await ensureMirrored({ kind: "services", projectId, branchId });
   const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
-  const [dataApis, services, tableStats] = await Promise.all([
-    loadLive("data-apis", live),
-    loadLive("branch-services", live),
-    runProjectSql(
-      projectId,
-      `SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT c.relrowsecurity)::int AS without_rls
-       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-       WHERE c.relkind = 'r' AND n.nspname = 'public'`,
-      { branchId, databaseName }
-    ),
-  ]);
-  const row = tableStats.rows[0];
+  const [dataApis, services] = await Promise.all([loadLive("data-apis", live), loadLive("branch-services", live)]);
+  // The statistics need a running compute, so the enable view doesn't wake one.
+  const enabled = dataApis.initialData.some((d) => d.database_name === databaseName);
+  const tableStats = enabled
+    ? await runProjectSql(
+        projectId,
+        `SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT c.relrowsecurity)::int AS without_rls
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE c.relkind = 'r' AND n.nspname = 'public'`,
+        { branchId, databaseName }
+      )
+    : null;
+  const row = tableStats?.rows[0];
 
   return (
     <LiveDataApi
@@ -48,7 +49,7 @@ export default async function DataApiPage({
       databaseName={databaseName}
       project={{ id: project.id, name: project.name }}
       branch={{ id: branch.id, name: branch.name, default: branch.default }}
-      tables={{ total: Number(row?.total ?? 0), withoutRls: Number(row?.without_rls ?? 0) }}
+      tables={row ? { total: Number(row.total), withoutRls: Number(row.without_rls) } : null}
       dataApis={dataApis}
       services={services}
     />
