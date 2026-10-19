@@ -1,161 +1,80 @@
 import Link from "next/link";
-import { Sparkles, ExternalLink } from "lucide-react";
-import { requireCapability } from "@/lib/capabilities";
-import { neon } from "@/lib/neon";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Callout } from "@/components/ui/callout";
-import { CodeSnippetTabs } from "@/components/code-snippet-tabs";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { requireCapability } from "@/lib/capabilities";
+import { loadGatewayModels, type GatewayModel } from "@/lib/ai-gateway/models";
+import { neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { GetStarted, type WorkflowModels } from "./get-started";
+import { ModelCatalog } from "./model-catalog";
 
 export const dynamic = "force-dynamic";
 
-const MODEL = "gpt-5";
+/** The newest model from a provider that fits a workflow, for the code examples. */
+function newest(models: GatewayModel[], provider: string, fits: (m: GatewayModel) => boolean) {
+  return models
+    .filter((m) => m.provider === provider && fits(m))
+    .sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""))[0]?.id;
+}
 
-/**
- * `/projects/[id]/ai-gateway`
- *
- * Mirrors console.neon.tech's per-branch AI Gateway screen: the branch's
- * OpenAI-compatible base URL, per-language snippets wired to it, and links to
- * the credential that authorizes calls. The gateway only exists in regions
- * where it has been rolled out, so the nav entry and this route are both
- * gated on the branch reporting one.
- *
- * The Console additionally offers a model picker; the public API exposes no
- * model catalog, so the snippets name a representative model instead.
- */
 export default async function AiGatewayPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ branch?: string }>;
+  params: Promise<{ id: string; branchId: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
-  const { id: projectId } = await params;
-  const { branch: branchParam } = await searchParams;
+  const { id: projectId, branchId } = await params;
+  const { view } = await searchParams;
+  const { project, branch, defaultBranch } = await loadBranch(projectId, branchId);
+  await requireCapability(projectId, defaultBranch.id, "aiGateway");
+  const [gateway, models] = await Promise.all([
+    neonSdk.aiGateway.get({ projectId, branchId }),
+    loadGatewayModels(),
+  ]);
+  const base = `/projects/${projectId}/branches/${branchId}/ai-gateway`;
 
-  const branchesRes = await neon.listProjectBranches({ projectId });
-  const branches = branchesRes.data.branches;
-  const defaultBranch = branches.find((b) => b.default) ?? branches[0];
-  const activeBranch =
-    branches.find((b) => b.id === branchParam) ?? defaultBranch;
-
-  await requireCapability(projectId, activeBranch.id, "aiGateway");
-
-  const gateway = await neon
-    .getBranchAiGateway(projectId, activeBranch.id)
-    .then((r) => r.data)
-    .catch(() => null);
-
-  const branchQuery = branchParam ? `?branch=${branchParam}` : "";
-  const baseUrl = gateway?.base_url ?? "";
-
-  const envCode = `NEON_AI_GATEWAY_BASE_URL=${baseUrl}
-# Create an ai_gateway:invoke credential on the Credentials page:
-NEON_AI_GATEWAY_TOKEN=nak_live_...`;
-
-  const aiSdkCode = `import { generateText } from "ai";
-import { neon } from "@neon/ai-sdk-provider";
-
-const { text } = await generateText({
-  model: neon("${MODEL}"),
-  prompt: "Explain Serverless Postgres.",
-});
-
-console.log(text);`;
-
-  const pythonCode = `import os
-from openai import OpenAI
-
-client = OpenAI(
-    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}/openai/v1",
-    api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],
-)
-
-response = client.responses.create(
-    model="${MODEL}",
-    input="Explain Serverless Postgres.",
-)
-
-print(response.output_text)`;
-
-  const curlCode = `curl "$NEON_AI_GATEWAY_BASE_URL/openai/v1/responses" \\
-  -H "Authorization: Bearer $NEON_AI_GATEWAY_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{"model":"${MODEL}","input":"Explain Serverless Postgres."}'`;
+  if (view === "get_started") {
+    const chat = (m: GatewayModel) => m.output.includes("text");
+    const workflowModels: WorkflowModels = {
+      openai: {
+        chat: newest(models, "openai", (m) => chat(m) && m.id.includes("mini")) ?? newest(models, "openai", chat),
+        images: newest(models, "openai", (m) => m.capabilities.includes("Image generation")),
+        search: newest(models, "openai", (m) => m.capabilities.includes("Web search")),
+        embeddings: newest(models, "openai", (m) => m.capabilities.includes("Embeddings")) ??
+          models.find((m) => m.capabilities.includes("Embeddings"))?.id,
+      },
+      google: {
+        chat: newest(models, "google", (m) => chat(m) && m.family.startsWith("gemini")),
+      },
+    };
+    return (
+      <PageBody>
+        <GetStarted
+          projectId={projectId}
+          branchId={branchId}
+          baseUrl={gateway.base_url}
+          models={workflowModels}
+          catalogHref={base}
+        />
+      </PageBody>
+    );
+  }
 
   return (
-    <div className="px-8 py-6 max-w-3xl">
-      <div className="flex items-center gap-2 mb-1">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-          AI Gateway
-        </h1>
-        <Badge variant="secondary">Beta</Badge>
-      </div>
-      <p className="text-sm text-muted-foreground mb-5">
-        Send AI model requests through{" "}
-        <span className="font-medium text-foreground">{activeBranch.name}</span>{" "}
-        using an OpenAI-compatible endpoint.
-      </p>
-
-      {gateway ? (
-        <CodeSnippetTabs
-          snippets={[
-            {
-              id: "env",
-              label: ".env",
-              filename: ".env",
-              language: "bash",
-              code: envCode,
-            },
-            {
-              id: "ai-sdk",
-              label: "AI SDK",
-              filename: "generate.ts",
-              language: "typescript",
-              code: aiSdkCode,
-            },
-            {
-              id: "python",
-              label: "Python",
-              filename: "generate.py",
-              language: "python",
-              code: pythonCode,
-            },
-            {
-              id: "curl",
-              label: "cURL",
-              filename: "request.sh",
-              language: "bash",
-              code: curlCode,
-            },
-          ]}
-        />
-      ) : (
-        <Callout tone="warning">
-          Couldn&apos;t read this branch&apos;s gateway endpoint. Reload to try
-          again.
-        </Callout>
-      )}
-
-      <div className="mt-5 flex items-center gap-3">
-        <Button
-          nativeButton={false}
-          render={
-            <Link href={`/projects/${projectId}/credentials${branchQuery}`} />
-          }
-        >
-          Generate credential
-        </Button>
-        <a
-          href="https://neon.com/docs/ai-gateway/get-started"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-0.5 text-sm text-primary hover:underline"
-        >
-          Learn more about AI Gateway <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
-    </div>
+    <PageBody>
+      <PageHeader
+        title="AI Gateway"
+        project={project}
+        branch={branch}
+        description="One endpoint for every major model. Pick a workflow, choose a provider, and copy the code to start building."
+        actions={
+          <Button nativeButton={false} render={<Link href={`${base}?view=get_started`} />}>
+            Get started
+          </Button>
+        }
+      />
+      <ModelCatalog models={models} />
+    </PageBody>
   );
 }

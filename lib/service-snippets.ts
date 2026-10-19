@@ -208,3 +208,267 @@ export function gatewaySnippet(
       ].join("\n");
   }
 }
+
+export type GatewayWorkflow = "chat" | "images" | "search" | "embeddings";
+
+export const GATEWAY_WORKFLOWS: {
+  value: GatewayWorkflow;
+  title: string;
+  description: string;
+  languages: GatewayLanguage[];
+}[] = [
+  {
+    value: "chat",
+    title: "Send a simple chat message",
+    description: "Send a simple message to an agent and get a response back.",
+    languages: ["aisdk", "mastra", "ts", "python", "curl"],
+  },
+  {
+    value: "images",
+    title: "Generate images",
+    description: "Create images from a text prompt.",
+    languages: ["aisdk", "mastra", "ts", "python"],
+  },
+  {
+    value: "search",
+    title: "Search the web",
+    description: "Ground answers in live web results.",
+    languages: ["aisdk", "mastra", "ts", "python", "curl"],
+  },
+  {
+    value: "embeddings",
+    title: "Generate embeddings",
+    description: "Turn text into vectors for semantic search and retrieval.",
+    languages: ["ts", "python", "curl"],
+  },
+];
+
+const RESPONSES_PATH = "/openai/v1";
+const lines = (...l: string[]) => l.join("\n");
+
+const WORKFLOW_SNIPPETS: Record<
+  Exclude<GatewayWorkflow, "chat">,
+  Partial<Record<GatewayLanguage, (model: string) => string>>
+> = {
+  images: {
+    aisdk: (m) =>
+      lines(
+        'import { streamText } from "ai";',
+        'import { neon } from "@neondatabase/ai-sdk-provider";',
+        "",
+        "const result = streamText({",
+        `  model: neon("${m}"),`,
+        '  prompt: "A red apple on a wooden table.",',
+        "  tools: {",
+        '    image_generation: neon.tools.imageGeneration({ outputFormat: "jpeg" }),',
+        "  },",
+        "});",
+        "",
+        "for await (const _ of result.textStream) {}",
+        "",
+        'const images = (await result.toolResults).filter((r) => r.toolName === "image_generation");',
+        "console.log(images.length);"
+      ),
+    mastra: (m) =>
+      lines(
+        'import { Agent } from "@mastra/core/agent";',
+        'import { neon } from "@neondatabase/ai-sdk-provider";',
+        "",
+        "const agent = new Agent({",
+        '  id: "neon-demo",',
+        '  name: "neon-demo",',
+        '  instructions: "Generate the image the user asks for.",',
+        `  model: "neon/${m}",`,
+        '  tools: { image_generation: neon.tools.imageGeneration({ outputFormat: "jpeg" }) },',
+        "});",
+        "",
+        'const { toolResults } = await agent.generate("A red apple on a wooden table.");',
+        'const images = toolResults.filter((r) => r.payload.toolName === "image_generation");',
+        "console.log(images.map((r) => r.payload.result.result.length));"
+      ),
+    ts: (m) =>
+      lines(
+        'import OpenAI from "openai";',
+        "",
+        "const client = new OpenAI({",
+        "  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,",
+        `  baseURL: \`\${process.env.NEON_AI_GATEWAY_BASE_URL}${RESPONSES_PATH}\`,`,
+        "});",
+        "",
+        "const stream = client.responses.stream({",
+        `  model: "${m}",`,
+        '  input: "A red apple on a wooden table.",',
+        '  tools: [{ type: "image_generation" }],',
+        "});",
+        "",
+        "const response = await stream.finalResponse();",
+        "const sizes = response.output.flatMap((item) => {",
+        '  if (item.type !== "image_generation_call") return [];',
+        '  if (!("result" in item) || typeof item.result !== "string") return [];',
+        "  return [item.result.length];",
+        "});",
+        "console.log(sizes);"
+      ),
+    python: (m) =>
+      lines(
+        "import os",
+        "from openai import OpenAI",
+        "",
+        "client = OpenAI(",
+        '    api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],',
+        `    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}${RESPONSES_PATH}",`,
+        ")",
+        "",
+        "with client.responses.stream(",
+        `    model="${m}",`,
+        '    input="A red apple on a wooden table.",',
+        '    tools=[{"type": "image_generation"}],',
+        ") as stream:",
+        "    for _ in stream:",
+        "        pass",
+        "    response = stream.get_final_response()",
+        "",
+        "sizes = [",
+        "    len(item.result)",
+        "    for item in response.output",
+        '    if item.type == "image_generation_call" and getattr(item, "result", None)',
+        "]",
+        "print(sizes)"
+      ),
+  },
+  search: {
+    aisdk: (m) =>
+      lines(
+        'import { generateText } from "ai";',
+        'import { neon } from "@neondatabase/ai-sdk-provider";',
+        "",
+        "const { text, sources } = await generateText({",
+        `  model: neon("${m}"),`,
+        '  prompt: "What is the latest stable Postgres release?",',
+        "  tools: { web_search: neon.tools.webSearch({}) },",
+        "});",
+        "",
+        "console.log(text);",
+        'console.log(sources.filter((source) => source.sourceType === "url").map((source) => source.url));'
+      ),
+    mastra: (m) =>
+      lines(
+        'import { Agent } from "@mastra/core/agent";',
+        'import { neon } from "@neondatabase/ai-sdk-provider";',
+        "",
+        "const agent = new Agent({",
+        '  id: "neon-demo",',
+        '  name: "neon-demo",',
+        '  instructions: "Use web search when you need current information.",',
+        `  model: "neon/${m}",`,
+        "  tools: { web_search: neon.tools.webSearch({}) },",
+        "});",
+        "",
+        'const { text } = await agent.generate("What is the latest stable Postgres release?");',
+        "console.log(text);"
+      ),
+    ts: (m) =>
+      lines(
+        'import OpenAI from "openai";',
+        "",
+        "const client = new OpenAI({",
+        "  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,",
+        `  baseURL: \`\${process.env.NEON_AI_GATEWAY_BASE_URL}${RESPONSES_PATH}\`,`,
+        "});",
+        "",
+        "const response = await client.responses.create({",
+        `  model: "${m}",`,
+        '  input: "What is the latest stable Postgres release?",',
+        '  tools: [{ type: "web_search" }],',
+        "});",
+        "console.log(response.output_text);"
+      ),
+    python: (m) =>
+      lines(
+        "import os",
+        "from openai import OpenAI",
+        "",
+        "client = OpenAI(",
+        '    api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],',
+        `    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}${RESPONSES_PATH}",`,
+        ")",
+        "",
+        "response = client.responses.create(",
+        `    model="${m}",`,
+        '    input="What is the latest stable Postgres release?",',
+        '    tools=[{"type": "web_search"}],',
+        ")",
+        "print(response.output_text)"
+      ),
+    curl: (m) =>
+      lines(
+        `curl "\${NEON_AI_GATEWAY_BASE_URL}/openai/v1/responses" \\`,
+        '  -H "Authorization: Bearer ${NEON_AI_GATEWAY_TOKEN}" \\',
+        '  -H "Content-Type: application/json" \\',
+        "  -d '{",
+        `    "model": "${m}",`,
+        '    "input": "What is the latest stable Postgres release?",',
+        '    "tools": [{"type": "web_search"}]',
+        "  }'"
+      ),
+  },
+  embeddings: {
+    ts: (m) =>
+      lines(
+        'import OpenAI from "openai";',
+        "",
+        "const client = new OpenAI({",
+        "  apiKey: process.env.NEON_AI_GATEWAY_TOKEN,",
+        `  baseURL: \`\${process.env.NEON_AI_GATEWAY_BASE_URL}${OPENAI_PATH}\`,`,
+        "});",
+        "",
+        "const resp = await client.embeddings.create({",
+        `  model: "${m}",`,
+        '  input: ["Explain Serverless Postgres."],',
+        '  encoding_format: "float",',
+        "});",
+        "console.log(resp.data[0].embedding.length, resp.usage);"
+      ),
+    python: (m) =>
+      lines(
+        "import os",
+        "from openai import OpenAI",
+        "",
+        "client = OpenAI(",
+        '    api_key=os.environ["NEON_AI_GATEWAY_TOKEN"],',
+        `    base_url=f"{os.environ['NEON_AI_GATEWAY_BASE_URL']}${OPENAI_PATH}",`,
+        ")",
+        "",
+        "resp = client.embeddings.create(",
+        `    model="${m}",`,
+        '    input=["Explain Serverless Postgres."],',
+        '    encoding_format="float",',
+        ")",
+        "print(len(resp.data[0].embedding), resp.usage)"
+      ),
+    curl: (m) =>
+      lines(
+        `curl "\${NEON_AI_GATEWAY_BASE_URL}/v1/embeddings" \\`,
+        '  -H "Authorization: Bearer ${NEON_AI_GATEWAY_TOKEN}" \\',
+        '  -H "Content-Type: application/json" \\',
+        "  -d '{",
+        `    "model": "${m}",`,
+        '    "input": ["Explain Serverless Postgres."],',
+        '    "encoding_format": "float"',
+        "  }'"
+      ),
+  },
+};
+
+export function workflowSnippet(
+  workflow: GatewayWorkflow,
+  language: GatewayLanguage,
+  baseUrl: string,
+  model: string
+): string {
+  if (workflow === "chat") return gatewaySnippet(language, baseUrl, model);
+  const build = WORKFLOW_SNIPPETS[workflow][language];
+  if (!build) throw new Error(`No ${language} example for ${workflow}`);
+  const comment = language === "python" || language === "curl" ? "#" : "//";
+  return [...envHeader(baseUrl, comment), build(model)].join("\n");
+}
