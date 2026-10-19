@@ -85,6 +85,7 @@ export function Sidebar({
     if (path.endsWith("/settings/general")) {
       return pathname.startsWith(`/projects/${projectId}/settings`);
     }
+    if (path === `/projects/${projectId}/branches`) return pathname === path;
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
@@ -188,7 +189,7 @@ function PostgresGroupToggle({
       <Icon className="size-4 shrink-0" />
       {!collapsed && (
         <>
-          <span>Postgres database</span>
+          <span className="whitespace-nowrap">Postgres database</span>
           <ChevronDown
             className={cn("size-3.5 transition-transform", !open && "-rotate-90")}
           />

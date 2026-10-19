@@ -159,7 +159,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function PostgresTab({
+export function PostgresTab({
   projectId,
   branchId,
   details,

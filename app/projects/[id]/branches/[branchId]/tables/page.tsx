@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { runProjectSql } from "@/lib/sql";
-import { neon } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { PageBody, PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,20 +23,18 @@ export default async function TablesPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; branchId: string }>;
   searchParams: Promise<{
     table?: string;
     schema?: string;
-    branch?: string;
     page?: string;
     pageSize?: string;
   }>;
 }) {
-  const { id } = await params;
+  const { id, branchId } = await params;
   const {
     table,
     schema = "public",
-    branch: branchParam,
     page: pageParam,
     pageSize: pageSizeParam,
   } = await searchParams;
@@ -43,12 +42,7 @@ export default async function TablesPage({
   const pageSize = allowedPageSize(pageSizeParam);
   const offset = (page - 1) * pageSize;
 
-  // Resolve the active branch from the URL.
-  const bRes = await neon.listProjectBranches({ projectId: id });
-  const defaultBranch =
-    bRes.data.branches.find((b) => b.default) ?? bRes.data.branches[0];
-  const activeBranch =
-    bRes.data.branches.find((b) => b.id === branchParam) ?? defaultBranch;
+  const { project, branch: activeBranch } = await loadBranch(id, branchId);
 
   let tables: TableRow[] = [];
   let listError: string | null = null;
@@ -63,7 +57,7 @@ export default async function TablesPage({
        WHERE c.relkind = 'r'
          AND n.nspname NOT IN ('pg_catalog','information_schema')
        ORDER BY n.nspname, c.relname;`,
-      { branchId: activeBranch?.id }
+      { branchId: activeBranch.id }
     );
     tables = result.rows.flatMap((row) => {
       const schemaValue = row.table_schema;
@@ -107,7 +101,7 @@ export default async function TablesPage({
       preview = await runProjectSql(
         id,
         `SELECT * FROM ${qSchema}.${qTable} LIMIT ${pageSize} OFFSET ${offset};`,
-        { branchId: activeBranch?.id }
+        { branchId: activeBranch.id }
       );
     } catch (e) {
       previewError = e instanceof Error ? e.message : String(e);
@@ -119,7 +113,6 @@ export default async function TablesPage({
     const params = new URLSearchParams();
     params.set("table", t);
     params.set("schema", s);
-    if (branchParam) params.set("branch", branchParam);
     params.set("pageSize", String(pageSize));
     return `?${params.toString()}`;
   };
@@ -127,25 +120,14 @@ export default async function TablesPage({
     const params = new URLSearchParams();
     if (table) params.set("table", table);
     params.set("schema", schema);
-    if (branchParam) params.set("branch", branchParam);
     params.set("page", String(targetPage));
     params.set("pageSize", String(targetPageSize));
     return `?${params.toString()}`;
   };
 
   return (
-    <div className="px-8 py-6">
-      <h1 className="mb-1 font-semibold text-2xl tracking-tight">Tables</h1>
-      <p className="mb-4 text-muted-foreground text-sm">
-        Schemas and tables on branch{" "}
-        <span className="font-mono">{activeBranch?.name}</span>
-        {activeBranch?.id !== defaultBranch?.id && (
-          <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            (non-default)
-          </span>
-        )}
-        .
-      </p>
+    <PageBody>
+      <PageHeader title="Tables" project={project} branch={activeBranch} />
 
       <div className="grid grid-cols-[260px_1fr] gap-5">
         <Card className="p-0 overflow-hidden h-fit max-h-[600px] overflow-y-auto">
@@ -174,7 +156,7 @@ export default async function TablesPage({
                     href={linkFor(s, t.table_name)}
                     className={`flex items-center justify-between border-b px-3 py-1.5 text-sm transition-colors last:border-b-0 ${
                       isActive
-                        ? "bg-primary/10 font-medium text-primary"
+                        ? "bg-nav-active font-semibold"
                         : "hover:bg-muted/50"
                     }`}
                   >
@@ -242,7 +224,7 @@ export default async function TablesPage({
                         {preview.columns.map((c) => (
                           <th
                             key={c}
-                            className="whitespace-nowrap bg-muted/30 px-3 py-2 text-left font-mono font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
+                            className="whitespace-nowrap bg-table-head px-3 py-2 text-left font-semibold"
                           >
                             {c}
                           </th>
@@ -324,7 +306,7 @@ export default async function TablesPage({
           )}
         </Card>
       </div>
-    </div>
+    </PageBody>
   );
 }
 
