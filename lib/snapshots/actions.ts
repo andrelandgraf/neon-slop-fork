@@ -1,4 +1,5 @@
 "use server";
+import { projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import type { SnapshotFrequency } from "@neon/sdk";
 import { neonSdk } from "@/lib/neon";
@@ -25,7 +26,7 @@ export async function setSnapshotScheduleAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update the schedule." };
   }
-  revalidatePath(`/projects/${projectId}`, "layout");
+  await projectChanged(projectId);
   return { ok: true };
 }
 
@@ -50,6 +51,6 @@ export async function createSnapshotNowAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create snapshot." };
   }
-  revalidatePath(`/projects/${projectId}`, "layout");
+  await projectChanged(projectId);
   return { ok: true, elapsedMs: Date.now() - started };
 }

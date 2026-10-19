@@ -1,4 +1,5 @@
 "use server";
+import { projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import { neonRaw } from "@/lib/neon";
 import { loadProject } from "@/lib/project-context";
@@ -27,7 +28,7 @@ export async function createClaimLinkAction(projectId: string): Promise<ClaimLin
   try {
     const request = await neonRaw.createTransferRequest(projectId);
     await recordClaimLinkExpiry(projectId, new Date(request.expires_at));
-    revalidatePath(`/projects/${projectId}`, "layout");
+    await projectChanged(projectId);
     const url = `https://console.neon.tech/app/claim?${new URLSearchParams({
       tr: request.id,
       p: projectId,

@@ -5,7 +5,8 @@ import type { CommandBarProject } from "./command-bar";
 
 /**
  * The Console frame: top bar and sidebar on a gray canvas, page content in
- * a bordered white panel that scrolls on its own.
+ * a bordered white panel that scrolls on its own. Rendered inside the
+ * console layout's LiveRoot.
  */
 export function AppShell({
   tenant,

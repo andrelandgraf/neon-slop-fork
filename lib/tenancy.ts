@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { auth, type Session } from "@/lib/auth";
 import { db } from "@/lib/db/client";
-import { appOrg, appOrgMember, appProject, user } from "@/lib/db/schema";
+import { appOrg, appOrgMember, appProject, neonProject, user } from "@/lib/db/schema";
 
 /**
  * Cookie that stores the user's *active* virtual org. The session
@@ -64,6 +64,42 @@ export async function requireTenant(returnTo?: string): Promise<TenantContext> {
   return { session, orgs, activeOrg };
 }
 
+/** The user and org a page was rendered for; live renewals and writes echo it back. */
+export interface PageIdentity {
+  userId: string;
+  orgId: string;
+}
+
+export type IdentityCheck =
+  | { ok: true; session: Session; role: string }
+  | { ok: false; status: 401 | 403; error: string };
+
+/**
+ * Confirms a request comes from the user and active org its page was
+ * rendered for, without redirecting. A tab left open across a sign-out, a
+ * different sign-in or an org switch in another tab gets 401, so it reloads
+ * instead of acting as someone else.
+ */
+export async function verifyPageIdentity(expected: PageIdentity): Promise<IdentityCheck> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session || session.user.id !== expected.userId) {
+    return { ok: false, status: 401, error: "Your session changed. Reload the page." };
+  }
+  const memberships = await db
+    .select({ orgId: appOrgMember.orgId, role: appOrgMember.role })
+    .from(appOrgMember)
+    .innerJoin(appOrg, eq(appOrg.id, appOrgMember.orgId))
+    .where(eq(appOrgMember.userId, session.user.id))
+    .orderBy(appOrg.createdAt);
+  const activeId = (await cookies()).get(ACTIVE_ORG_COOKIE)?.value;
+  const active = memberships.find((m) => m.orgId === activeId) ?? memberships[0];
+  if (!active) return { ok: false, status: 403, error: "You aren't a member of this organization." };
+  if (active.orgId !== expected.orgId) {
+    return { ok: false, status: 401, error: "You switched organizations in another tab. Reload the page." };
+  }
+  return { ok: true, session, role: active.role };
+}
+
 /**
  * Create a "Personal" org + membership row for a brand-new user.
  * Slug is `personal-<short user id>` so two different users can both
@@ -113,18 +149,6 @@ export async function setActiveOrgCookie(orgId: string): Promise<void> {
   });
 }
 
-/**
- * List the Neon project ids owned by an app org. This is the
- * authoritative scope for every "what can this user see?" check —
- * the Neon API itself has no concept of our virtual tenancy.
- */
-export async function listOrgProjectIds(orgId: string): Promise<string[]> {
-  const rows = await db
-    .select({ projectId: appProject.projectId })
-    .from(appProject)
-    .where(eq(appProject.orgId, orgId));
-  return rows.map((r) => r.projectId);
-}
 
 /**
  * Throw / redirect 404 if the active org doesn't own the project.
@@ -162,8 +186,12 @@ export async function attachProjectToOrg(
     .onConflictDoNothing();
 }
 
+/** Drops ownership and the project's mirror rows; live lists lose the project in one transaction. */
 export async function detachProject(projectId: string): Promise<void> {
-  await db.delete(appProject).where(eq(appProject.projectId, projectId));
+  await db.batch([
+    db.delete(appProject).where(eq(appProject.projectId, projectId)),
+    db.delete(neonProject).where(eq(neonProject.id, projectId)),
+  ]);
 }
 
 /**
@@ -273,10 +301,6 @@ export async function getMemberRole(
     .where(and(eq(appOrgMember.orgId, orgId), eq(appOrgMember.userId, userId)))
     .limit(1);
   return rows[0]?.role ?? null;
-}
-
-export async function renameAppOrg(orgId: string, name: string): Promise<void> {
-  await db.update(appOrg).set({ name }).where(eq(appOrg.id, orgId));
 }
 
 export type VirtualTransferResult =

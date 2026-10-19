@@ -15,7 +15,7 @@ export default async function OrgSettingsPage() {
         <section className="space-y-3">
           <h2 className="font-semibold text-lg">General information</h2>
           <p className="text-sm">For billing purposes you can use the organization ID below.</p>
-          <OrgNameForm id={tenant.activeOrg.id} name={tenant.activeOrg.name} canEdit={role === "owner"} />
+          <OrgNameForm id={tenant.activeOrg.id} canEdit={role === "owner"} />
         </section>
         <section className="space-y-2">
           <h2 className="font-semibold text-lg">API keys</h2>

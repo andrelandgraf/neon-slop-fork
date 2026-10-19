@@ -38,6 +38,10 @@ import { cn } from "@/lib/utils";
 import { agentPrompt, envFile, type ServiceId } from "@/lib/onboarding";
 import { PASSWORD_MASK } from "@/lib/connect-snippets";
 import { createProjectWithServicesAction, type CreatedProject } from "@/lib/projects/create";
+import { eq, useLiveQuery } from "@tanstack/react-db";
+import { useIdentity } from "@/components/live/live-root";
+import type { useProjectCreations } from "@/lib/live/hooks";
+import { leavePage } from "@/lib/live/renew";
 import { getRealtimeSecretAction } from "@/lib/realtime/actions";
 import { createCredentialAction } from "@/app/actions";
 
@@ -54,9 +58,12 @@ const SERVICES: { key: Toggle; label: string; description: string; icon: LucideI
   { key: "auth", label: "Neon Auth", description: "Ready-to-use authentication for your app.", icon: UserRoundCheck, backend: false },
 ];
 
+type CreationsCollection = ReturnType<typeof useProjectCreations>;
+
 export function CreateProjectModal({
   open,
   onOpenChange,
+  creations,
   regions,
   defaultRegionId,
   pgVersions,
@@ -64,6 +71,7 @@ export function CreateProjectModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  creations: CreationsCollection;
   regions: ServerRegion[];
   defaultRegionId: string;
   pgVersions: readonly number[];
@@ -84,6 +92,7 @@ export function CreateProjectModal({
           <SetupStep created={created.project} services={created.services} onClose={() => handleOpenChange(false)} />
         ) : (
           <FormStep
+            creations={creations}
             regions={regions}
             defaultRegionId={defaultRegionId}
             pgVersions={pgVersions}
@@ -107,6 +116,7 @@ function StepBars({ step }: { step: 1 | 2 }) {
 }
 
 function FormStep({
+  creations,
   regions,
   defaultRegionId,
   pgVersions,
@@ -114,6 +124,7 @@ function FormStep({
   onCreated,
   onClose,
 }: {
+  creations: CreationsCollection;
   regions: ServerRegion[];
   defaultRegionId: string;
   pgVersions: readonly number[];
@@ -135,6 +146,12 @@ function FormStep({
   });
   const [expanded, setExpanded] = useState<"postgres" | "storage" | null>("postgres");
   const [pending, startTransition] = useTransition();
+  const identity = useIdentity();
+  const [creationId, setCreationId] = useState<string | null>(null);
+  const { data: creation } = useLiveQuery({
+    query: (q) => (creationId ? q.from({ c: creations }).where(({ c }) => eq(c.id, creationId)) : undefined),
+  });
+  const step = creation?.[0]?.status;
   const backend = backendRegions.includes(regionId);
   const available = (key: Toggle) => !SERVICES.find((s) => s.key === key)?.backend || backend;
   const on = (key: Toggle) => enabled[key] && available(key);
@@ -142,8 +159,12 @@ function FormStep({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (pending) return;
+    const id = crypto.randomUUID();
+    setCreationId(id);
     startTransition(async () => {
       const result = await createProjectWithServicesAction({
+        id,
+        identity,
         name,
         regionId,
         pgVersion,
@@ -158,6 +179,7 @@ function FormStep({
         auth: on("auth"),
       });
       if (!result.ok) {
+        if (result.status === 401) leavePage();
         toast.error(result.error);
         return;
       }
@@ -298,6 +320,11 @@ function FormStep({
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
             Close
           </Button>
+          {pending && (
+            <span role="status" className="self-center text-muted-foreground text-sm">
+              {step === "configuring" ? "Setting up services" : "Creating project"}
+            </span>
+          )}
           <Button type="submit" disabled={pending || !name.trim()}>
             {pending && <Loader2 className="size-3.5 animate-spin" />}
             Create project

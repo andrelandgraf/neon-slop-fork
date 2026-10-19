@@ -2,16 +2,25 @@
 
 ```bash
 bun install
-neon link
-neon checkout main
+neon link --project-id bitter-dawn-83086481
+neon branches create --name dev-<you> --parent main
+neon checkout dev-<you>
 ```
+
+Work on your own branch: it copies production data and inherits Realtime.
 
 `.neon` is gitignored and records which Neon project this checkout points at.
 
-`neon checkout` writes `DATABASE_URL` to `.env.local`. The app still reads `META_DATABASE_URL` for the meta database, so copy that value. Local runs also need:
+`neon checkout` writes `DATABASE_URL`, `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` to `.env.local`. Add the names the app reads to the same file (Next.js only expands `$VAR` within one file, and `neon env pull` keeps these lines):
 
 ```bash
-META_DATABASE_URL=          # same value as DATABASE_URL
+META_DATABASE_URL=$DATABASE_URL_UNPOOLED
+NEXT_PUBLIC_NEON_REALTIME_URL=$NEON_REALTIME_URL
+```
+
+Put the rest in `.env.development.local`:
+
+```bash
 NEON_API_KEY=               # org-level key for the Neon Clone org
 NEON_ORG_ID=org-nameless-thunder-12993511
 NEON_ORG_NAME="Neon Clone"
@@ -32,4 +41,4 @@ bun test lib/
 bun run build
 ```
 
-Changing `lib/db/schema.ts` means running `bunx drizzle-kit push` against your meta database branch. Production needs the same push before the deploy that depends on it.
+Changing `lib/db/schema.ts` means running `META_DATABASE_URL=<your branch URL> bunx drizzle-kit push` against your branch. Production needs the same push before the deploy that depends on it.

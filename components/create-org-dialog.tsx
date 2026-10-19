@@ -2,7 +2,6 @@
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { unstable_rethrow } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +37,8 @@ export function CreateOrgDialog({
     startTransition(async () => {
       try {
         await createOrgAction(formData);
+        window.location.assign("/projects");
       } catch (err) {
-        unstable_rethrow(err);
         toast.error(
           err instanceof Error ? err.message : "Failed to create organization."
         );

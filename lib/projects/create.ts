@@ -1,11 +1,20 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { and, eq } from "drizzle-orm";
 import { DEMO_STORAGE_LIMITS, neon, neonSdk, ORG_ID } from "@/lib/neon";
 import { apiErrorMessage } from "@/lib/errors";
-import { attachProjectToOrg, requireTenant } from "@/lib/tenancy";
+import { attachProjectToOrg, verifyPageIdentity, type PageIdentity } from "@/lib/tenancy";
 import { APP_BACKEND_REGIONS } from "@/lib/region-catalog";
+import { db } from "@/lib/db/client";
+import { projectCreation } from "@/lib/db/schema";
+import { txid } from "@/lib/mirror/sql";
+import { mirrorProject } from "@/lib/mirror/after-write";
+import type { LiveWriteResult } from "@/lib/live/writes";
+import { creationUpdate, pruneCreations, recordCreationStart } from "./creation";
 
 export interface CreateProjectInput {
+  /** Picked by the browser, so a retry of the same submission can't create a second project. */
+  id: string;
+  identity: PageIdentity;
   name: string;
   regionId: string;
   pgVersion: number;
@@ -33,20 +42,38 @@ export interface CreatedProject {
   realtimeUrl: string | null;
 }
 
-export type CreateProjectResult = { ok: true; project: CreatedProject } | { ok: false; error: string };
+export type CreateProjectResult =
+  | { ok: true; project: CreatedProject }
+  | { ok: false; error: string; status?: 401 | 403 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const BRANCH_NAME = "production";
 
 export async function createProjectWithServicesAction(
   input: CreateProjectInput
 ): Promise<CreateProjectResult> {
-  const tenant = await requireTenant();
+  const check = await verifyPageIdentity(input.identity);
+  if (!check.ok) return check;
+  const { userId, orgId } = input.identity;
+  if (!UUID.test(input.id)) return { ok: false, error: "Invalid creation id." };
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Project name is required." };
   const backend = APP_BACKEND_REGIONS.has(input.regionId);
   if (input.buckets.length > DEMO_STORAGE_LIMITS.maxBucketsPerBranch) {
     return { ok: false, error: `This demo instance allows ${DEMO_STORAGE_LIMITS.maxBucketsPerBranch} buckets per branch.` };
   }
+
+  await pruneCreations(orgId);
+  const start = await recordCreationStart({
+    id: input.id,
+    orgId,
+    userId,
+    name,
+    regionId: input.regionId,
+    pgVersion: input.pgVersion,
+  });
+  if (start === "duplicate") return { ok: false, error: "This project is already being created." };
 
   const started = Date.now();
   let projectId: string;
@@ -66,13 +93,24 @@ export async function createProjectWithServicesAction(
     });
     projectId = data.project.id;
   } catch (err) {
-    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create project." };
+    const error = apiErrorMessage(err) ?? "Failed to create project.";
+    await creationUpdate(input.id, { status: "failed", error });
+    return { ok: false, error };
   }
   const elapsedMs = Date.now() - started;
   // Ownership is recorded before anything else can fail, so a broken service
-  // step never leaves a project nobody can see.
-  await attachProjectToOrg(projectId, tenant.activeOrg.id, tenant.session.user.id);
-  revalidatePath("/projects");
+  // step never leaves a project nobody can see. The creation row names the
+  // project before its mirror row lands, so lists swap one for the other.
+  try {
+    await attachProjectToOrg(projectId, orgId, userId);
+  } catch (cause) {
+    console.error(`Neon project ${projectId} was created but attaching it to org ${orgId} failed.`, cause);
+    const error = "The Neon project was created, but recording its owner failed.";
+    await creationUpdate(input.id, { status: "failed", project_id: projectId, error });
+    return { ok: false, error };
+  }
+  await creationUpdate(input.id, { status: "configuring", project_id: projectId });
+  await mirrorProject(projectId);
 
   const branch = await neonSdk.branches.getDefault({ projectId });
   const branchId = branch.id;
@@ -123,6 +161,7 @@ export async function createProjectWithServicesAction(
   const gateway = backend && input.aiGateway ? await attempt("AI Gateway", () => neonSdk.aiGateway.get({ projectId, branchId })) : null;
   const realtime = backend && input.realtime ? await attempt("Realtime", () => neonSdk.realtime.get({ projectId, branchId })) : null;
 
+  await creationUpdate(input.id, { status: "ready", failures });
   return {
     ok: true,
     project: {
@@ -141,4 +180,17 @@ export async function createProjectWithServicesAction(
       realtimeUrl: realtime?.invocation_url ?? null,
     },
   };
+}
+
+/** Removes a failed creation row from the org's projects list. */
+export async function dismissCreationAction(identity: PageIdentity, id: string): Promise<LiveWriteResult> {
+  const check = await verifyPageIdentity(identity);
+  if (!check.ok) return check;
+  const [removed] = await db
+    .delete(projectCreation)
+    .where(
+      and(eq(projectCreation.id, id), eq(projectCreation.org_id, identity.orgId), eq(projectCreation.status, "failed"))
+    )
+    .returning({ txid });
+  return { ok: true, result: removed ? { kind: "committed", txid: removed.txid } : { kind: "unchanged" } };
 }

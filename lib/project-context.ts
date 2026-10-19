@@ -2,9 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { NeonApiError } from "@neon/sdk";
-import { neon, ORG_ID, type Branch, type Project } from "@/lib/neon";
+import { neon, type Branch, type Project } from "@/lib/neon";
 import {
-  listOrgProjectIds,
   requireProjectAccess,
   requireTenant,
   type TenantContext,
@@ -89,11 +88,3 @@ export function branchPath(
   const base = `/projects/${projectId}/branches/${branchId}`;
   return page ? `${base}/${page}` : base;
 }
-
-/** The active org's projects, newest first, for the switcher and lists. */
-export const loadOrgProjects = cache(async (orgId: string) => {
-  const ownedIds = new Set(await listOrgProjectIds(orgId));
-  if (ownedIds.size === 0) return [];
-  const { data } = await neon.listProjects({ org_id: ORG_ID, limit: 400 });
-  return data.projects.filter((p) => ownedIds.has(p.id));
-});

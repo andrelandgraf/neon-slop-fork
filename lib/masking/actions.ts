@@ -1,4 +1,5 @@
 "use server";
+import { projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import type { MaskingRule } from "@neon/sdk";
 import { neonRaw } from "@/lib/neon";
@@ -24,6 +25,6 @@ export async function applyMaskingRulesAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to apply masking rules." };
   }
-  revalidatePath(`/projects/${projectId}`, "layout");
+  await projectChanged(projectId);
   return { ok: true };
 }
