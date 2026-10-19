@@ -18,7 +18,7 @@ export function leavePage(): never {
   throw new Error("The session changed. Reloading the page.");
 }
 
-function isSealedQuery<Row>(value: unknown): value is SealedLiveQuery<Row> {
+export function isSealedQuery<Row>(value: unknown): value is SealedLiveQuery<Row> {
   return (
     typeof value === "object" &&
     value !== null &&

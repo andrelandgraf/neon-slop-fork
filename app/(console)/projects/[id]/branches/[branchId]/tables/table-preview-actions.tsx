@@ -2,12 +2,7 @@
 
 import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-function cellString(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
+import type { TableRow } from "@/lib/tables/preview-sql";
 
 function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
@@ -22,15 +17,17 @@ function csvCell(value: string): string {
 export function TablePreviewActions({
   columns,
   rows,
+  showRefresh,
 }: {
   columns: string[];
-  rows: Record<string, unknown>[];
+  rows: readonly TableRow[];
+  showRefresh: boolean;
 }) {
   function exportCurrentPage() {
     const csv = [
       columns.map(csvCell).join(","),
       ...rows.map((row) =>
-        columns.map((column) => csvCell(cellString(row[column]))).join(",")
+        columns.map((column) => csvCell(row[column] ?? "")).join(",")
       ),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -44,10 +41,12 @@ export function TablePreviewActions({
 
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
-        <RefreshCw className="h-3.5 w-3.5" />
-        Refresh rows
-      </Button>
+      {showRefresh && (
+        <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+          <RefreshCw className="h-3.5 w-3.5" />
+          Refresh rows
+        </Button>
+      )}
       <Button
         size="sm"
         variant="outline"

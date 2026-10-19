@@ -29,10 +29,14 @@ state is live too: Realtime, Auth and Data API on/off, buckets, functions
 with their triggers and domains, credentials, snapshots and their schedule,
 collaborators, and Data Masking progress.
 
-Not live, by design: object listings inside a bucket (uploads go from the
-browser straight to S3), Auth users, Tables, SQL Editor and active queries
-(they read the tenant's own database), logs (they have "Go live"), and the
-AI Gateway model catalog.
+Tables shows a table's rows live when the tenant branch has Realtime on and
+the table has a primary key. The page subscribes to the tenant's own
+Realtime endpoint, not the control database's, and says why when it can't.
+
+Not live, by design: the table list on the Tables page, object listings
+inside a bucket (uploads go from the browser straight to S3), Auth users,
+SQL Editor and active queries (they read the tenant's own database), logs
+(they have "Go live"), and the AI Gateway model catalog.
 
 Organization:
 
@@ -143,6 +147,13 @@ BETTER_AUTH_URL=http://localhost:3030
   losing membership or ownership drops the rows live.
 - Renewals and live writes carry the user and org the page was rendered
   for. A different session or active org answers 401, and the page reloads.
+- The Tables page seals `SELECT * FROM <table> ORDER BY <primary key>
+  LIMIT/OFFSET` with the tenant branch's Realtime secret, fetched from the
+  Neon API on each seal, and renews through `POST /api/live/table-rows`,
+  which rebuilds the SQL from the catalog. Both the server render and the
+  live rows keep every value as Postgres text, so cells don't change when
+  the subscription takes over. It needs the console's origin in the
+  branch's Realtime allowed origins, or the list empty.
 ## Local dev
 
 ```bash
