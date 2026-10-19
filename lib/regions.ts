@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ServerRegion } from "@/components/neon-ui/region-select";
 import { neon } from "./neon";
+import { FALLBACK_REGIONS } from "./region-catalog";
 
 /**
  * Regions offered on the new-project screen, shaped for the region picker
@@ -22,74 +23,12 @@ function providerOf(regionId: string): string | undefined {
   return provider ? provider.toUpperCase() : undefined;
 }
 
-/**
- * Mirrors the eight regions the Console offers, with datacenter
- * coordinates. Names match `/api/v2/regions` so the two paths render
- * identically.
- */
-const FALLBACK_REGIONS: ServerRegion[] = [
-  {
-    id: "aws-us-east-1",
-    name: "US East 1 (N. Virginia)",
-    provider: "AWS",
-    lat: 38.9,
-    lng: -77.4,
-  },
-  {
-    id: "aws-us-east-2",
-    name: "US East 2 (Ohio)",
-    provider: "AWS",
-    lat: 40.1,
-    lng: -83,
-  },
-  {
-    id: "aws-us-west-2",
-    name: "US West 2 (Oregon)",
-    provider: "AWS",
-    lat: 45.6,
-    lng: -121.2,
-  },
-  {
-    id: "aws-ap-southeast-1",
-    name: "Asia Pacific 1 (Singapore)",
-    provider: "AWS",
-    lat: 1.35,
-    lng: 103.82,
-  },
-  {
-    id: "aws-ap-southeast-2",
-    name: "Asia Pacific 2 (Sydney)",
-    provider: "AWS",
-    lat: -33.87,
-    lng: 151.21,
-  },
-  {
-    id: "aws-eu-central-1",
-    name: "Europe Central 1 (Frankfurt)",
-    provider: "AWS",
-    lat: 50.11,
-    lng: 8.68,
-  },
-  {
-    id: "aws-eu-west-2",
-    name: "Europe West 2 (London)",
-    provider: "AWS",
-    lat: 51.51,
-    lng: -0.13,
-  },
-  {
-    id: "aws-sa-east-1",
-    name: "South America East 1 (São Paulo)",
-    provider: "AWS",
-    lat: -23.55,
-    lng: -46.63,
-  },
-];
 
-export const DEFAULT_REGION_ID = "aws-us-east-1";
+
+export const DEFAULT_REGION_ID = "aws-us-east-2";
 
 /** Postgres versions the Console offers, newest first. */
-export const PG_VERSIONS = ["18", "17", "16", "15", "14"];
+export const PG_VERSIONS = [18, 17, 16, 15, 14] as const;
 
 /**
  * The API returns coordinates as strings and leaves them empty when a

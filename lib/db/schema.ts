@@ -144,6 +144,14 @@ export const appProject = pgTable("app_project", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /**
+   * Expiry of the newest claim link (Neon transfer request). Neon has no way
+   * to list or revoke those, so a live link blocks moving the project to
+   * another virtual org: whoever holds it could still take the project.
+   */
+  claimLinkExpiresAt: timestamp("claim_link_expires_at", {
+    withTimezone: true,
+  }),
 });
 
 export type AppOrg = typeof appOrg.$inferSelect;

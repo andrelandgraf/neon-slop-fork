@@ -97,3 +97,62 @@ export async function getDatabaseAndRole(
   if (!role) throw new Error("No role on branch");
   return { databaseName: db.name, roleName: role.name };
 }
+
+export interface StatementResult {
+  /** "SELECT", "INSERT", … from the server's command tag. */
+  command: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+}
+
+export interface ScriptResult {
+  statements: StatementResult[];
+  durationMs: number;
+}
+
+/**
+ * Runs each statement of a script in order on one connection and returns
+ * every result, the way the Console's SQL Editor shows one tab per
+ * statement. Stops at the first failing statement and reports which one.
+ */
+export async function runProjectSqlScript(
+  projectId: string,
+  branchId: string,
+  sql: string,
+  databaseName?: string
+): Promise<ScriptResult> {
+  const statements = splitSqlStatements(sql);
+  if (statements.length === 0) throw new Error("Empty query.");
+  const db = await getDatabaseAndRole(projectId, branchId, databaseName);
+  const uriRes = await neon.getConnectionUri({
+    projectId,
+    branch_id: branchId,
+    database_name: db.databaseName,
+    role_name: db.roleName,
+    pooled: true,
+  });
+  const pool = new Pool({ connectionString: uriRes.data.uri });
+  const started = Date.now();
+  const results: StatementResult[] = [];
+  try {
+    for (const [index, statement] of statements.entries()) {
+      let result: QueryResult<Record<string, unknown>>;
+      try {
+        result = await pool.query<Record<string, unknown>>(statement);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(`Statement ${index + 1}: ${message}`);
+      }
+      results.push({
+        command: result.command ?? "",
+        columns: (result.fields ?? []).map((f: { name: string }) => f.name),
+        rows: result.rows ?? [],
+        rowCount: typeof result.rowCount === "number" ? result.rowCount : result.rows.length,
+      });
+    }
+  } finally {
+    await pool.end();
+  }
+  return { statements: results, durationMs: Date.now() - started };
+}

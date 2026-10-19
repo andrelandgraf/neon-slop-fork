@@ -23,3 +23,13 @@ BETTER_AUTH_URL=http://localhost:3030
 bun run dev
 # http://localhost:3030
 ```
+
+Checks before a PR:
+
+```bash
+bun run typecheck
+bun test lib/
+bun run build
+```
+
+Changing `lib/db/schema.ts` means running `bunx drizzle-kit push` against your meta database branch. Production needs the same push before the deploy that depends on it.

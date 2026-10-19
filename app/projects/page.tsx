@@ -1,147 +1,95 @@
-import Link from "next/link";
-import { neon, ORG_ID } from "@/lib/neon";
-import { listOrgProjectIds, requireTenant } from "@/lib/tenancy";
-import { TopBar } from "@/components/topbar";
+import { Info } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
 import { OrgSidebar } from "@/components/org-sidebar";
-import { ProjectsTable } from "@/components/projects-table";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, Info, TrendingUp, HardDrive, History, ArrowLeftRight } from "lucide-react";
+import { PageBody } from "@/components/page-header";
+import { ProjectsList } from "@/components/projects-table";
+import { neon } from "@/lib/neon";
+import { loadOrgProjects } from "@/lib/project-context";
+import { APP_BACKEND_REGIONS, regionLabel } from "@/lib/region-catalog";
+import { DEFAULT_REGION_ID, listRegions, PG_VERSIONS } from "@/lib/regions";
+import { requireTenant } from "@/lib/tenancy";
+import { formatBytes, formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsIndex() {
+export default async function ProjectsPage() {
   const tenant = await requireTenant("/projects");
-  const ownedIds = await listOrgProjectIds(tenant.activeOrg.id);
-
-  // We could pass `project_ids` to the list endpoint, but it's
-  // limited to 100 and is filtering done server-side. Pulling the
-  // full list and intersecting in memory is simpler and ~free.
-  const projectsRes = await neon.listProjects({ org_id: ORG_ID, limit: 400 });
-  const ownedSet = new Set(ownedIds);
-  const projects = projectsRes.data.projects.filter((p) => ownedSet.has(p.id));
-
-  const branchCounts = await Promise.all(
-    projects.map(async (p) => {
-      try {
-        const b = await neon.listProjectBranches({ projectId: p.id });
-        return { id: p.id, count: b.data.branches.length };
-      } catch {
-        return { id: p.id, count: 0 };
-      }
+  const [listed, regions] = await Promise.all([loadOrgProjects(tenant.activeOrg.id), listRegions()]);
+  const details = await Promise.all(
+    listed.map(async (p) => {
+      const [{ data: project }, { data: branchData }] = await Promise.all([
+        neon.getProject(p.id),
+        neon.listProjectBranches({ projectId: p.id }),
+      ]);
+      return { project: project.project, branches: branchData.branches };
     })
   );
-  const branchCountById = new Map(branchCounts.map((b) => [b.id, b.count]));
 
-  const totals = projects.reduce(
-    (acc, p) => {
-      acc.computeHrs += (p.active_time ?? 0) / 3600;
-      acc.storageMb += (p.synthetic_storage_size ?? 0) / 1024 / 1024;
-      return acc;
-    },
-    { computeHrs: 0, storageMb: 0 }
+  const totals = details.reduce(
+    (acc, { project, branches }) => ({
+      computeSeconds: acc.computeSeconds + project.compute_time_seconds,
+      storageBytes: acc.storageBytes + branches.reduce((s, b) => s + (b.logical_size ?? 0), 0),
+      transferBytes: acc.transferBytes + project.data_transfer_bytes,
+    }),
+    { computeSeconds: 0, storageBytes: 0, transferBytes: 0 }
+  );
+  const since = details
+    .map((d) => d.project.consumption_period_start)
+    .sort()[0];
+
+  const rows = details
+    .map(({ project, branches }) => ({
+      id: project.id,
+      name: project.name,
+      region: regionLabel(project.region_id),
+      createdAt: project.created_at,
+      storage: formatBytes(branches.reduce((s, b) => s + (b.logical_size ?? 0), 0)),
+      lastActive: project.compute_last_active_at ?? null,
+      branches: branches.length,
+      defaultBranchId: (branches.find((b) => b.default) ?? branches[0])?.id ?? "",
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const usage = (
+    <div className="rounded-[3px] border border-panel-border p-4">
+      <div className="grid grid-cols-2 gap-y-3 rounded-[3px] border border-panel-border px-4 py-3 md:grid-cols-4">
+        <Metric label="Compute" value={`${+(totals.computeSeconds / 3600).toFixed(2)} CU-hrs`} />
+        <Metric label="Storage" value={formatBytes(totals.storageBytes)} />
+        <Metric label="History" value="—" hint="History size isn't reported by the public API." />
+        <Metric label="Network transfer" value={formatBytes(totals.transferBytes)} />
+      </div>
+      <p className="mt-3 text-muted-foreground text-xs">
+        {since ? `Usage since ${formatDate(since)}. ` : ""}Metrics may be delayed by an
+        hour and are not updated for inactive projects.
+      </p>
+    </div>
   );
 
-  const earliestCreatedAt =
-    projects.length === 0
-      ? new Date()
-      : new Date(
-          projects.reduce(
-            (min, p) =>
-              new Date(p.created_at).getTime() < min
-                ? new Date(p.created_at).getTime()
-                : min,
-            Date.now()
-          )
-        );
-
-  const projectRows = projects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    region_id: p.region_id,
-    pg_version: p.pg_version,
-    created_at: p.created_at,
-    storageMb: (p.synthetic_storage_size ?? 0) / 1024 / 1024,
-    branches: branchCountById.get(p.id) ?? 0,
-  }));
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <TopBar tenant={tenant} />
-      <div className="flex flex-1">
-        <OrgSidebar />
-        <main className="flex-1 min-w-0 px-8 py-6 max-w-[1200px]">
-          <div className="flex items-center justify-between mb-5">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {tenant.activeOrg.name}
-            </h1>
-            <Button
-              nativeButton={false}
-              render={<Link href="/projects/new" />}
-            >
-              <Plus className="size-4" />
-              New project
-            </Button>
-          </div>
-
-          <Card className="mb-6">
-            <div className="grid grid-cols-4 divide-x">
-              <Metric
-                label="Compute"
-                value={`${totals.computeHrs.toFixed(2)} CU-hrs`}
-                icon={TrendingUp}
-              />
-              <Metric
-                label="Storage"
-                value={
-                  totals.storageMb >= 1024
-                    ? `${(totals.storageMb / 1024).toFixed(2)} GB`
-                    : `${totals.storageMb.toFixed(2)} MB`
-                }
-                icon={HardDrive}
-              />
-              <Metric label="History" value="—" icon={History} />
-              <Metric
-                label="Network transfer"
-                value="—"
-                icon={ArrowLeftRight}
-              />
-            </div>
-            <div className="px-5 py-3 border-t text-xs text-muted-foreground">
-              Usage since{" "}
-              {earliestCreatedAt.toLocaleDateString(undefined, {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-              . Metrics may be delayed by an hour and are not updated for inactive projects.
-            </div>
-          </Card>
-
-          <ProjectsTable projects={projectRows} />
-        </main>
-      </div>
-    </div>
+    <AppShell tenant={tenant} sidebar={<OrgSidebar />}>
+      <PageBody>
+        <ProjectsList
+          orgName={tenant.activeOrg.name}
+          projects={rows}
+          usage={usage}
+          regions={regions}
+          defaultRegionId={regions.find((r) => r.id === DEFAULT_REGION_ID)?.id ?? regions[0]?.id ?? DEFAULT_REGION_ID}
+          pgVersions={PG_VERSIONS}
+          backendRegions={[...APP_BACKEND_REGIONS]}
+        />
+      </PageBody>
+    </AppShell>
   );
 }
 
-function Metric({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="p-5">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5">
-        <Icon className="h-3.5 w-3.5" />
+    <div>
+      <div className="flex items-center gap-1 text-sm" title={hint}>
         {label}
-        <Info className="h-3 w-3 opacity-50" />
+        <Info className="size-3 text-muted-foreground" />
       </div>
-      <div className="text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
+      <div className="mt-1 text-xl">{value}</div>
     </div>
   );
 }

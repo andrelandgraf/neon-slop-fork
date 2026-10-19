@@ -1,9 +1,7 @@
-import { notFound } from "next/navigation";
-import { TopBar } from "@/components/topbar";
+import { AppShell } from "@/components/app-shell";
 import { Sidebar } from "@/components/sidebar";
 import { getProjectCapabilities } from "@/lib/capabilities";
-import { neon } from "@/lib/neon";
-import { requireTenant, requireProjectAccess } from "@/lib/tenancy";
+import { loadOrgProjects, loadProject } from "@/lib/project-context";
 
 export const dynamic = "force-dynamic";
 
@@ -15,44 +13,32 @@ export default async function ProjectLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tenant = await requireTenant(`/projects/${id}`);
-  await requireProjectAccess(tenant, id);
-
-  let project;
-  let branches: { id: string; name: string; default: boolean }[] = [];
-  let defaultBranchId = "";
-  try {
-    const [pRes, bRes] = await Promise.all([
-      neon.getProject(id),
-      neon.listProjectBranches({ projectId: id }),
-    ]);
-    project = pRes.data.project;
-    branches = bRes.data.branches.map((b) => ({
-      id: b.id,
-      name: b.name,
-      default: b.default,
-    }));
-    const def = bRes.data.branches.find((b) => b.default) ?? bRes.data.branches[0];
-    defaultBranchId = def?.id ?? "";
-  } catch {
-    notFound();
-  }
-
-  const capabilities = await getProjectCapabilities(id, defaultBranchId);
+  const { tenant, project, branches, defaultBranch } = await loadProject(id);
+  const [capabilities, orgProjects] = await Promise.all([
+    getProjectCapabilities(id, defaultBranch.id),
+    loadOrgProjects(tenant.activeOrg.id),
+  ]);
+  const sidebarBranches = branches.map((b) => ({
+    id: b.id,
+    name: b.name,
+    default: b.default,
+  }));
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <TopBar tenant={tenant} context={project.name} />
-      <div className="flex flex-1">
+    <AppShell
+      tenant={tenant}
+      project={{ id, name: project.name, branches: sidebarBranches, capabilities }}
+      sidebar={
         <Sidebar
           projectId={id}
           projectName={project.name}
-          branches={branches}
+          branches={sidebarBranches}
           capabilities={capabilities}
-          defaultBranchId={defaultBranchId}
+          orgProjects={orgProjects.map((p) => ({ id: p.id, name: p.name }))}
         />
-        <main className="flex-1 min-w-0">{children}</main>
-      </div>
-    </div>
+      }
+    >
+      {children}
+    </AppShell>
   );
 }

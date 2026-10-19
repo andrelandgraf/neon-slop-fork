@@ -1,10 +1,10 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { auth, type Session } from "@/lib/auth";
 import { db } from "@/lib/db/client";
-import { appOrg, appOrgMember, appProject } from "@/lib/db/schema";
+import { appOrg, appOrgMember, appProject, user } from "@/lib/db/schema";
 
 /**
  * Cookie that stores the user's *active* virtual org. The session
@@ -75,21 +75,28 @@ async function provisionPersonalOrg(
 ): Promise<{ id: string; slug: string; name: string }> {
   const shortId = userId.slice(0, 8);
   const slug = `personal-${shortId}`;
-  const orgRow = await db
+  // A new user's first page load can run several server renders at once,
+  // each finding no org; the slug makes the insert idempotent.
+  await db
     .insert(appOrg)
     .values({
       slug,
-      name: `${userName.split(" ")[0] || "Personal"}'s projects`,
+      name: personalOrgName(userName),
       createdBy: userId,
     })
-    .returning({ id: appOrg.id, slug: appOrg.slug, name: appOrg.name });
-  const org = orgRow[0]!;
-  await db.insert(appOrgMember).values({
-    orgId: org.id,
-    userId,
-    role: "owner",
-  });
-  return org;
+    .onConflictDoNothing({ target: appOrg.slug });
+  const [org] = await db
+    .select({ id: appOrg.id, slug: appOrg.slug, name: appOrg.name, createdBy: appOrg.createdBy })
+    .from(appOrg)
+    .where(eq(appOrg.slug, slug));
+  if (!org || org.createdBy !== userId) {
+    throw new Error(`Personal org slug ${slug} belongs to another user.`);
+  }
+  await db
+    .insert(appOrgMember)
+    .values({ orgId: org.id, userId, role: "owner" })
+    .onConflictDoNothing();
+  return { id: org.id, slug: org.slug, name: org.name };
 }
 
 /**
@@ -230,6 +237,136 @@ export async function listOrgs(orgIds: string[]) {
     .select({ id: appOrg.id, name: appOrg.name, slug: appOrg.slug })
     .from(appOrg)
     .where(inArray(appOrg.id, orgIds));
+}
+
+/**
+ * Personal orgs are named after the user, like the Console's ("Testing" →
+ * "Testing's projects" in the page header).
+ */
+export function personalOrgName(userName: string): string {
+  return userName.trim().split(/\s+/)[0] || "Personal";
+}
+
+export async function listOrgMembers(orgId: string) {
+  return db
+    .select({
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      role: appOrgMember.role,
+      joinedAt: appOrgMember.createdAt,
+    })
+    .from(appOrgMember)
+    .innerJoin(user, eq(user.id, appOrgMember.userId))
+    .where(eq(appOrgMember.orgId, orgId))
+    .orderBy(appOrgMember.createdAt);
+}
+
+export async function getMemberRole(
+  orgId: string,
+  userId: string
+): Promise<string | null> {
+  const rows = await db
+    .select({ role: appOrgMember.role })
+    .from(appOrgMember)
+    .where(and(eq(appOrgMember.orgId, orgId), eq(appOrgMember.userId, userId)))
+    .limit(1);
+  return rows[0]?.role ?? null;
+}
+
+export async function renameAppOrg(orgId: string, name: string): Promise<void> {
+  await db.update(appOrg).set({ name }).where(eq(appOrg.id, orgId));
+}
+
+export type VirtualTransferResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "claim_link_active"; until?: Date };
+
+/**
+ * Moves a project to another virtual org in one conditional statement, so a
+ * concurrent claim-link reservation or a second transfer can't interleave.
+ * Callers have already checked the user's membership in both orgs.
+ */
+export async function transferProjectToAppOrg(
+  projectId: string,
+  sourceOrgId: string,
+  destinationOrgId: string
+): Promise<VirtualTransferResult> {
+  const moved = await db
+    .update(appProject)
+    .set({ orgId: destinationOrgId })
+    .where(
+      and(
+        eq(appProject.projectId, projectId),
+        eq(appProject.orgId, sourceOrgId),
+        or(
+          isNull(appProject.claimLinkExpiresAt),
+          lt(appProject.claimLinkExpiresAt, sql`now()`)
+        )
+      )
+    )
+    .returning({ projectId: appProject.projectId });
+  if (moved.length > 0) return { ok: true };
+
+  const row = await db
+    .select({
+      orgId: appProject.orgId,
+      claimLinkExpiresAt: appProject.claimLinkExpiresAt,
+    })
+    .from(appProject)
+    .where(eq(appProject.projectId, projectId))
+    .limit(1);
+  const current = row[0];
+  if (current?.orgId === sourceOrgId && current.claimLinkExpiresAt) {
+    return {
+      ok: false,
+      reason: "claim_link_active",
+      until: current.claimLinkExpiresAt,
+    };
+  }
+  return { ok: false, reason: "not_found" };
+}
+
+/**
+ * Claim links are reserved before Neon issues them: the conditional update
+ * fails if the project already moved to another virtual org, and while the
+ * reservation stands a virtual transfer is refused.
+ */
+export async function reserveClaimLink(
+  projectId: string,
+  orgId: string
+): Promise<boolean> {
+  const reserved = await db
+    .update(appProject)
+    .set({
+      claimLinkExpiresAt: sql`greatest(coalesce(${appProject.claimLinkExpiresAt}, now()), now() + interval '24 hours')`,
+    })
+    .where(and(eq(appProject.projectId, projectId), eq(appProject.orgId, orgId)))
+    .returning({ projectId: appProject.projectId });
+  return reserved.length > 0;
+}
+
+export async function recordClaimLinkExpiry(
+  projectId: string,
+  expiresAt: Date
+): Promise<void> {
+  await db
+    .update(appProject)
+    .set({
+      claimLinkExpiresAt: sql`greatest(coalesce(${appProject.claimLinkExpiresAt}, now()), ${expiresAt.toISOString()}::timestamptz)`,
+    })
+    .where(eq(appProject.projectId, projectId));
+}
+
+export async function getClaimLinkExpiry(projectId: string): Promise<Date | null> {
+  const rows = await db
+    .select({ claimLinkExpiresAt: appProject.claimLinkExpiresAt })
+    .from(appProject)
+    .where(eq(appProject.projectId, projectId))
+    .limit(1);
+  const expiresAt = rows[0]?.claimLinkExpiresAt ?? null;
+  return expiresAt && expiresAt.getTime() > Date.now() ? expiresAt : null;
 }
 
 export { ACTIVE_ORG_COOKIE };

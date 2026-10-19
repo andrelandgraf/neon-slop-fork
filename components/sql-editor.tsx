@@ -1,413 +1,353 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { CheckCircle2, CircleAlert, Loader2, Play, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { NativeSelect } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Play,
-  AlertTriangle,
-  CheckCircle2,
-  Clock3,
-  FilePlus2,
-  History,
-  Loader2,
-  Save,
-  SearchCheck,
-} from "lucide-react";
+  runSqlScriptAction,
+  type RunScriptResult,
+} from "@/lib/sql-editor/actions";
 
-type RunResult =
-  | {
-      ok: true;
-      columns: string[];
-      rows: Record<string, unknown>[];
-      rowCount: number;
-      durationMs: number;
-    }
-  | { ok: false; error: string };
+const DEFAULT_SQL = `/*
+In Neon, databases are stored on branches. By default, a project has one branch and one database.
+You can select the branch and database to use from the drop-down menus above.
 
-interface Props {
-  branchId: string;
+Try generating sample data and querying it by running the example statements below, or click
+New Query to clear the editor.
+*/
+CREATE TABLE IF NOT EXISTS playing_with_neon(id SERIAL PRIMARY KEY, name TEXT NOT NULL, value REAL);
+INSERT INTO playing_with_neon(name, value)
+  SELECT LEFT(md5(i::TEXT), 10), random() FROM generate_series(1, 10) s(i);
+SELECT * FROM playing_with_neon;`;
+
+interface StoredQuery {
+  id: string;
+  sql: string;
+  at: number;
+  name?: string;
+}
+
+/** Reads the lists written by earlier versions of this editor, same keys. */
+function readList(key: string): StoredQuery[] {
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return [];
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((entry: unknown): StoredQuery[] => {
+    if (typeof entry !== "object" || entry === null) return [];
+    if (!("id" in entry) || !("sql" in entry)) return [];
+    const { id, sql } = entry;
+    if (typeof id !== "string" || typeof sql !== "string") return [];
+    const at =
+      "ranAt" in entry && typeof entry.ranAt === "number"
+        ? entry.ranAt
+        : "savedAt" in entry && typeof entry.savedAt === "number"
+          ? entry.savedAt
+          : null;
+    if (at === null) return [];
+    const name = "name" in entry && typeof entry.name === "string" ? entry.name : undefined;
+    return [{ id, sql, at, name }];
+  });
+}
+
+function writeHistory(key: string, list: StoredQuery[]) {
+  window.localStorage.setItem(
+    key,
+    JSON.stringify(list.map((q) => ({ id: q.id, sql: q.sql, ranAt: q.at })))
+  );
+}
+
+function writeSaved(key: string, list: StoredQuery[]) {
+  window.localStorage.setItem(
+    key,
+    JSON.stringify(
+      list.map((q) => ({ id: q.id, sql: q.sql, savedAt: q.at, name: q.name ?? "Untitled" }))
+    )
+  );
+}
+
+export function SqlEditor({
+  projectId,
+  projectName,
+  branchId,
+  branchName,
+  isDefault,
+  databases,
+}: {
   projectId: string;
-  runAction: (sql: string) => Promise<RunResult>;
-}
-
-const DEFAULT_SQL = `-- Create a sample table and seed some rows.
--- After running, open the Tables tab to inspect it.
-CREATE TABLE IF NOT EXISTS playing_with_neon (
-  id         SERIAL PRIMARY KEY,
-  name       TEXT NOT NULL,
-  value      REAL NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-INSERT INTO playing_with_neon (name, value)
-SELECT LEFT(md5(i::TEXT), 10), random()
-FROM generate_series(1, 10) AS s(i);
-
-SELECT * FROM playing_with_neon ORDER BY id;`;
-
-type SavedQuery = {
-  id: string;
-  name: string;
-  savedAt: number;
-  sql: string;
-};
-
-type QueryHistory = {
-  id: string;
-  ranAt: number;
-  sql: string;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isSavedQuery(value: unknown): value is SavedQuery {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.name === "string" &&
-    typeof value.savedAt === "number" &&
-    typeof value.sql === "string"
-  );
-}
-
-function isHistoryEntry(value: unknown): value is QueryHistory {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.ranAt === "number" &&
-    typeof value.sql === "string"
-  );
-}
-
-function readList<T>(
-  key: string,
-  guard: (value: unknown) => value is T
-): T[] {
-  try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(guard) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeList<T>(key: string, value: T[]) {
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-export function SqlEditor({ branchId, projectId, runAction }: Props) {
+  projectName: string;
+  branchId: string;
+  branchName: string;
+  isDefault: boolean;
+  databases: string[];
+}) {
   const [sql, setSql] = useState(DEFAULT_SQL);
-  const [result, setResult] = useState<RunResult | null>(null);
+  const [database, setDatabase] = useState(databases[0] ?? "");
+  const [result, setResult] = useState<RunScriptResult | null>(null);
+  const [activeResult, setActiveResult] = useState(0);
   const [pending, startTransition] = useTransition();
-  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
-  const [history, setHistory] = useState<QueryHistory[]>([]);
-  const [saveName, setSaveName] = useState("");
+  const [list, setList] = useState<"saved" | "history">("history");
+  const [saved, setSaved] = useState<StoredQuery[]>([]);
+  const [history, setHistory] = useState<StoredQuery[]>([]);
 
-  const savedKey = useMemo(
-    () => `neon-slop-fork:saved-queries:${projectId}:${branchId}`,
-    [branchId, projectId]
-  );
-  const historyKey = useMemo(
-    () => `neon-slop-fork:query-history:${projectId}:${branchId}`,
-    [branchId, projectId]
-  );
+  const savedKey = `neon-slop-fork:saved-queries:${projectId}:${branchId}`;
+  const historyKey = `neon-slop-fork:query-history:${projectId}:${branchId}`;
 
+  // Saved queries and history live in this browser's localStorage.
   useEffect(() => {
-    setSavedQueries(readList(savedKey, isSavedQuery));
-    setHistory(readList(historyKey, isHistoryEntry));
-  }, [historyKey, savedKey]);
+    setSaved(readList(savedKey));
+    setHistory(readList(historyKey));
+  }, [savedKey, historyKey]);
 
-  function onRun(query = sql) {
-    setResult(null);
+  function run(script: string) {
     startTransition(async () => {
-      const res = await runAction(query);
+      const res = await runSqlScriptAction(projectId, branchId, database, script);
       setResult(res);
+      setActiveResult(res.ok ? res.statements.length - 1 : 0);
       const next = [
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          ranAt: Date.now(),
-          sql: query,
-        },
-        ...history.filter((entry) => entry.sql !== query),
+        { id: crypto.randomUUID(), sql: script, at: Date.now() },
+        ...history.filter((q) => q.sql !== script),
       ].slice(0, 30);
       setHistory(next);
-      writeList(historyKey, next);
+      writeHistory(historyKey, next);
     });
   }
 
-  function saveQuery() {
-    const name = saveName.trim() || "Untitled query";
-    const next = [
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        name,
-        savedAt: Date.now(),
-        sql,
-      },
-      ...savedQueries,
-    ].slice(0, 50);
-    setSavedQueries(next);
-    writeList(savedKey, next);
-    setSaveName("");
+  function save() {
+    const firstLine = sql.trim().split("\n")[0]?.slice(0, 60) || "Untitled";
+    const next = [{ id: crypto.randomUUID(), sql, at: Date.now(), name: firstLine }, ...saved].slice(0, 50);
+    setSaved(next);
+    writeSaved(savedKey, next);
+    setList("saved");
   }
 
+  const items = list === "saved" ? saved : history;
+  const statements = result?.ok ? result.statements : [];
+  const shown = statements[activeResult];
+
   return (
-    <div className="space-y-4">
-      <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
-          <div className="text-xs text-muted-foreground font-mono">
-            query.sql
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setSql("");
-                setResult(null);
-              }}
-              disabled={pending}
-            >
-              <FilePlus2 className="h-3.5 w-3.5" />
-              New Query
-            </Button>
-            <QueryPicker
-              icon={History}
-              items={history.map((entry) => ({
-                id: entry.id,
-                label: new Date(entry.ranAt).toLocaleString(),
-                sql: entry.sql,
-              }))}
-              label="History"
-              onSelect={setSql}
-            />
-            <QueryPicker
-              icon={Save}
-              items={savedQueries.map((entry) => ({
-                id: entry.id,
-                label: entry.name,
-                sql: entry.sql,
-              }))}
-              label="Saved"
-              onSelect={setSql}
-            />
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="ghost" disabled={pending}>
-                  <Save className="h-3.5 w-3.5" />
-                  Save
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Save query locally</DialogTitle>
-                </DialogHeader>
-                <p className="text-sm text-muted-foreground">
-                  Saved queries are stored in this browser for the selected
-                  project and branch. The public Neon API does not expose the
-                  Console’s server-side saved-query store.
-                </p>
-                <Input
-                  value={saveName}
-                  onChange={(event) => setSaveName(event.target.value)}
-                  placeholder="e.g. Find active users"
-                  autoFocus
-                />
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button onClick={saveQuery}>Save query</Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onRun(`EXPLAIN ${sql}`)}
-              disabled={pending || !sql.trim()}
-              title="Run EXPLAIN for the current query"
-            >
-              <SearchCheck className="h-3.5 w-3.5" />
-              Explain
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onRun(`EXPLAIN ANALYZE ${sql}`)}
-              disabled={pending || !sql.trim()}
-              title="EXPLAIN ANALYZE executes the current query"
-            >
-              Analyze
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => onRun()}
-              disabled={pending || !sql.trim()}
-            >
-              {pending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Play className="size-3.5" />
+    <div className="flex h-full min-h-[640px] flex-col md:flex-row">
+      <div className="flex shrink-0 flex-col border-panel-border border-b px-4 py-5 md:w-[180px] md:border-r md:border-b-0">
+        <h1 className="font-semibold text-2xl">SQL Editor</h1>
+        <div className="mt-1 flex items-center gap-1 truncate text-xs">
+          <Link href="/projects" className="text-link">
+            All …
+          </Link>
+          <span className="truncate text-muted-foreground">/ {projectName}</span>
+          {isDefault && <Badge variant="secondary">Default</Badge>}
+        </div>
+        <span className="sr-only">{branchName}</span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="mt-3"
+          aria-label="New query"
+          onClick={() => {
+            setSql("");
+            setResult(null);
+          }}
+        >
+          <Plus className="size-4" />
+        </Button>
+        <div className="mt-4 grid grid-cols-2 rounded-[3px] bg-muted p-0.5 text-xs">
+          {(["saved", "history"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setList(key)}
+              className={cn(
+                "rounded-[2px] py-1 capitalize",
+                list === key && "bg-panel font-semibold shadow-sm"
               )}
-              Run
-            </Button>
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto max-md:max-h-40">
+          {items.length === 0 && (
+            <p className="text-muted-foreground text-xs">
+              {list === "saved" ? "No saved queries yet." : "Run a query to see it here."}
+            </p>
+          )}
+          {items.map((q) => (
+            <button
+              key={q.id}
+              type="button"
+              onClick={() => setSql(q.sql)}
+              className="block w-full text-left"
+            >
+              <span className="line-clamp-2 font-semibold text-xs">{q.name ?? q.sql}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {new Date(q.at).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 border-panel-border border-b px-3 py-2.5">
+          <span className="font-semibold text-sm">Untitled</span>
+          <Button variant="outline" size="sm" onClick={save} disabled={!sql.trim()}>
+            <Save className="size-3.5" />
+            Save
+          </Button>
+          <div className="ml-3 flex items-center gap-1.5 rounded-[3px] border border-panel-border px-2 py-1 text-xs">
+            Primary
+            <Badge className="bg-primary/15 text-foreground">Active</Badge>
           </div>
+          <NativeSelect
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
+            wrapperClassName="w-44"
+            aria-label="Database"
+          >
+            {databases.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
         <textarea
           value={sql}
           onChange={(e) => setSql(e.target.value)}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
-              onRun();
+              run(sql);
             }
           }}
           spellCheck={false}
-          rows={10}
-          className="min-h-[180px] w-full resize-y bg-background p-4 font-mono text-[13px] leading-relaxed outline-hidden"
+          aria-label="SQL"
+          className="h-[260px] w-full resize-y border-panel-border border-b bg-panel px-4 py-2 font-mono text-[12.5px] leading-5 outline-none"
         />
-        <div className="px-3 py-1.5 border-t bg-muted/20 text-[11px] text-muted-foreground">
-          ⌘+Enter to run
-        </div>
-      </Card>
-
-      {result && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b">
-            <div className="flex items-center gap-2 text-sm">
-              {result.ok ? (
-                <>
-                  <CheckCircle2 className="size-4 text-primary" />
-                  <span className="font-medium">{result.rowCount} rows</span>
-                  <span className="text-muted-foreground">
-                    in {result.durationMs} ms
-                  </span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  <span className="font-medium text-destructive">Query failed</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {result.ok ? (
-            result.rows.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground">
-                No rows returned.
-              </div>
-            ) : (
-              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-background">
-                    <tr className="border-b">
-                      {result.columns.map((c) => (
-                        <th
-                          key={c}
-                          className="px-3 py-2 text-left text-[11px] font-semibold font-mono uppercase tracking-[0.14em] text-muted-foreground bg-muted/30"
-                        >
-                          {c}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.rows.map((row, i) => (
-                      <tr key={i} className="border-b last:border-b-0 hover:bg-muted/30">
-                        {result.columns.map((c) => (
-                          <td
-                            key={c}
-                            className="px-3 py-1.5 font-mono text-[12px] align-top max-w-[280px] truncate"
-                            title={formatCell(row[c])}
-                          >
-                            {formatCell(row[c])}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
+        <div className="flex items-center gap-2 border-panel-border border-b px-3 py-1.5 text-xs">
+          {pending ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" /> Running…
+            </>
+          ) : result?.ok ? (
+            <>
+              <CheckCircle2 className="size-3.5 text-primary" />
+              Connected ({statements.length} {statements.length === 1 ? "query" : "queries"})
+            </>
+          ) : result ? (
+            <>
+              <CircleAlert className="size-3.5 text-destructive" />
+              Error
+            </>
           ) : (
-            <pre className="p-4 text-[13px] font-mono whitespace-pre-wrap text-destructive">
-              {result.error}
-            </pre>
+            <span className="text-muted-foreground">Ready</span>
           )}
-        </Card>
-      )}
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <Button onClick={() => run(sql)} disabled={pending || !sql.trim()}>
+            <Play className="size-3.5" />
+            Run
+          </Button>
+          <span className="mx-1 h-5 border-panel-border border-l" />
+          <Button variant="outline" onClick={() => run(`EXPLAIN ${sql.trim()}`)} disabled={pending || !sql.trim()}>
+            Explain
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => run(`EXPLAIN ANALYZE ${sql.trim()}`)}
+            disabled={pending || !sql.trim()}
+          >
+            Explain (Analyze)
+          </Button>
+          {result?.ok && (
+            <span className="ml-auto flex gap-6 text-muted-foreground text-xs">
+              <span>{result.durationMs}ms</span>
+              <span>{shown?.rowCount ?? 0} rows</span>
+            </span>
+          )}
+        </div>
+        {result && !result.ok && (
+          <pre className="mx-3 mb-3 whitespace-pre-wrap rounded-[3px] border border-destructive/30 bg-destructive/5 p-3 font-mono text-destructive text-xs">
+            {result.error}
+          </pre>
+        )}
+        {statements.length > 0 && (
+          <div className="min-h-0 flex-1 overflow-auto border-panel-border border-t">
+            <div className="flex gap-4 border-panel-border border-b px-3">
+              {statements.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveResult(i)}
+                  className={cn(
+                    "-mb-px border-b-2 py-2 font-semibold text-xs",
+                    i === activeResult ? "border-primary" : "border-transparent text-muted-foreground"
+                  )}
+                >
+                  {i + 1}: {s.command}
+                  {s.command === "SELECT" || s.command === "INSERT" ? ` ${s.rowCount}` : ""}
+                </button>
+              ))}
+            </div>
+            {shown && <ResultGrid result={shown} />}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function QueryPicker({
-  icon: Icon,
-  items,
-  label,
-  onSelect,
+function ResultGrid({
+  result,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
-  items: { id: string; label: string; sql: string }[];
-  label: string;
-  onSelect: (sql: string) => void;
+  result: { columns: string[]; rows: Record<string, unknown>[]; command: string; rowCount: number };
 }) {
+  const columns = useMemo(() => result.columns, [result.columns]);
+  if (columns.length === 0) {
+    return (
+      <p className="px-4 py-4 text-muted-foreground text-sm">
+        {result.command} completed, {result.rowCount} rows affected.
+      </p>
+    );
+  }
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost">
-          <Icon className="h-3.5 w-3.5" />
-          {label}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{label}</DialogTitle>
-        </DialogHeader>
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No {label.toLowerCase()} queries for this branch yet.
-          </p>
-        ) : (
-          <div className="max-h-72 space-y-1 overflow-y-auto">
-            {items.map((item) => (
-              <DialogClose asChild key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(item.sql)}
-                  className="w-full rounded-md border p-3 text-left hover:bg-muted"
-                >
-                  <div className="text-xs font-medium">{item.label}</div>
-                  <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-                    {item.sql}
-                  </div>
-                </button>
-              </DialogClose>
+    <table className="w-full text-sm">
+      <thead className="bg-table-head text-left">
+        <tr>
+          <th className="w-12 px-4 py-2 font-semibold">#</th>
+          {columns.map((c) => (
+            <th key={c} className="px-4 py-2 font-semibold">
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="font-mono text-xs">
+        {result.rows.map((row, i) => (
+          <tr key={i} className="border-panel-border border-t">
+            <td className="px-4 py-2 font-sans text-muted-foreground">{i + 1}</td>
+            {columns.map((c) => (
+              <td key={c} className="max-w-[320px] truncate px-4 py-2">
+                {formatCell(row[c])}
+              </td>
             ))}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
-function formatCell(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) return "NULL";
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
