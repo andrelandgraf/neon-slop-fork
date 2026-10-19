@@ -153,8 +153,7 @@ function SlopForkIntro() {
           </a>
           . Every project, branch and compute you manage here goes through the
           same endpoints you can call with an API key, from a script, an agent
-          or your own platform. The SQL editor asks the API for a connection
-          string and talks to your database like any other Postgres client.
+          or your own platform.
         </p>
 
         <a
