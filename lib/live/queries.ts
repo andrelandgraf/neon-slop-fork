@@ -1,12 +1,16 @@
 import "server-only";
-import { and, asc, eq, exists, getTableColumns, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, getTableColumns, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   appOrg,
   appOrgMember,
   appProject,
   neonBranch,
+  neonDatabase,
+  neonEndpoint,
+  neonOperation,
   neonProject,
+  neonRole,
   projectCreation,
   user,
 } from "@/lib/db/schema";
@@ -87,6 +91,63 @@ export const projectCreationsQuery = (userId: string, orgId: string) =>
     .from(projectCreation)
     .where(and(eq(projectCreation.org_id, orgId), isMember(userId, orgId)));
 
+/** The project belongs to the org and the requester is a member; the join keeps it live. */
+const ownsProject = (userId: string, orgId: string, projectId: string) =>
+  and(
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(appProject)
+        .where(and(eq(appProject.projectId, projectId), eq(appProject.orgId, orgId)))
+    ),
+    isMember(userId, orgId)
+  );
+
+export const projectBranchesQuery = (userId: string, orgId: string, projectId: string) =>
+  db
+    .select(getTableColumns(neonBranch))
+    .from(neonBranch)
+    .where(and(eq(neonBranch.project_id, projectId), ownsProject(userId, orgId, projectId)));
+
+export const endpointsQuery = (userId: string, orgId: string, projectId: string) =>
+  db
+    .select(getTableColumns(neonEndpoint))
+    .from(neonEndpoint)
+    .where(and(eq(neonEndpoint.project_id, projectId), ownsProject(userId, orgId, projectId)));
+
+export const operationsQuery = (userId: string, orgId: string, projectId: string) =>
+  db
+    .select(getTableColumns(neonOperation))
+    .from(neonOperation)
+    .where(and(eq(neonOperation.project_id, projectId), ownsProject(userId, orgId, projectId)))
+    .orderBy(desc(neonOperation.created_at))
+    .limit(50);
+
+export const databasesQuery = (userId: string, orgId: string, projectId: string, branchId: string) =>
+  db
+    .select(getTableColumns(neonDatabase))
+    .from(neonDatabase)
+    .where(
+      and(
+        eq(neonDatabase.project_id, projectId),
+        eq(neonDatabase.branch_id, branchId),
+        ownsProject(userId, orgId, projectId)
+      )
+    );
+
+export const rolesQuery = (userId: string, orgId: string, projectId: string, branchId: string) =>
+  db
+    .select(getTableColumns(neonRole))
+    .from(neonRole)
+    .where(
+      and(eq(neonRole.project_id, projectId), eq(neonRole.branch_id, branchId), ownsProject(userId, orgId, projectId))
+    );
+
+export type ProjectBranchRow = Awaited<ReturnType<typeof projectBranchesQuery>>[number];
+export type EndpointRow = Awaited<ReturnType<typeof endpointsQuery>>[number];
+export type OperationRow = Awaited<ReturnType<typeof operationsQuery>>[number];
+export type DatabaseRow = Awaited<ReturnType<typeof databasesQuery>>[number];
+export type RoleRow = Awaited<ReturnType<typeof rolesQuery>>[number];
 export type OrgRow = Awaited<ReturnType<typeof orgsQuery>>[number];
 export type OrgMemberRow = Awaited<ReturnType<typeof orgMembersQuery>>[number];
 export type ProjectRow = Awaited<ReturnType<typeof projectsQuery>>[number];

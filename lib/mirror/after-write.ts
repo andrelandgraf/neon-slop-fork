@@ -1,6 +1,6 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
-import { reconcileLater, syncProject, type ProjectSync } from "./sync";
+import { followOperations, reconcileLater, syncProject, type ProjectSync } from "./sync";
 
 /**
  * Mirrors a project after a server action changed it through the Neon API,
@@ -11,7 +11,9 @@ import { reconcileLater, syncProject, type ProjectSync } from "./sync";
  */
 export async function mirrorProject(projectId: string): Promise<ProjectSync | null> {
   try {
-    return await syncProject(projectId);
+    const synced = await syncProject(projectId);
+    if (synced.inFlight) followOperations(projectId);
+    return synced;
   } catch (cause) {
     console.error(`Mirror sync failed after a Neon write to project ${projectId}; reconciling later.`, cause);
     reconcileLater({ projectId });

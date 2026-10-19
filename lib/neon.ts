@@ -953,3 +953,16 @@ export type Project = Awaited<
 export type Branch = Awaited<
   ReturnType<typeof neon.listProjectBranches>
 >["data"]["branches"][number];
+
+export type Endpoint = Awaited<ReturnType<typeof neon.listProjectEndpoints>>["data"]["endpoints"][number];
+
+export type Database = Awaited<
+  ReturnType<typeof neon.listProjectBranchDatabases>
+>["data"]["databases"][number];
+
+export type Role = Awaited<ReturnType<typeof neon.listProjectBranchRoles>>["data"]["roles"][number];
+
+export type Operation = Extract<
+  Awaited<ReturnType<ReturnType<typeof neonSdk.operations.list>["page"]>>,
+  { items: unknown }
+>["items"][number];
