@@ -39,6 +39,8 @@ import {
 } from "@/components/project-nav";
 import { ConnectDialog } from "@/components/connect/connect-dialog";
 import { CreateBranchDialog } from "@/components/create-branch-dialog";
+import { useShellCollections } from "@/components/live/live-root";
+import { useLiveQuery } from "@tanstack/react-db";
 
 export interface SidebarBranch {
   id: string;
@@ -51,7 +53,6 @@ interface SidebarProps {
   projectName: string;
   branches: SidebarBranch[];
   capabilities: ProjectCapabilities;
-  orgProjects: { id: string; name: string }[];
 }
 
 /**
@@ -71,7 +72,6 @@ export function Sidebar({
   projectName,
   branches,
   capabilities,
-  orgProjects,
 }: SidebarProps) {
   const pathname = usePathname();
   const branchId = useCurrentBranchId(branches);
@@ -96,7 +96,6 @@ export function Sidebar({
         projectName={projectName}
         branches={branches}
         branchId={branchId}
-        orgProjects={orgProjects}
         onCreateBranch={() => setCreateOpen(true)}
       />
       <ConnectDialog
@@ -204,16 +203,19 @@ function ProjectSwitcher({
   projectName,
   branches,
   branchId,
-  orgProjects,
   onCreateBranch,
 }: {
   projectId: string;
   projectName: string;
   branches: SidebarBranch[];
   branchId: string;
-  orgProjects: { id: string; name: string }[];
   onCreateBranch: () => void;
 }) {
+  const shell = useShellCollections();
+  const { data: orgProjects } = useLiveQuery((q) =>
+    q.from({ project: shell.projects }).orderBy(({ project }) => project.created_at, "desc")
+  );
+  const liveName = orgProjects.find((p) => p.id === projectId)?.name ?? projectName;
   const collapsed = useSidebarCollapsed();
   const router = useRouter();
   const pathname = usePathname();
@@ -248,7 +250,7 @@ function ProjectSwitcher({
             <>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-muted-foreground text-xs">
-                  {projectName}
+                  {liveName}
                 </div>
                 <div className="flex items-center gap-1 font-semibold text-sm">
                   <CornerDownRight className="size-3 shrink-0 text-muted-foreground" />

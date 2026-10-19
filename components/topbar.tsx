@@ -41,8 +41,7 @@ export function TopBar({
             email: tenant.session.user.email,
             image: tenant.session.user.image ?? null,
           }}
-          orgs={tenant.orgs}
-          activeOrg={tenant.activeOrg}
+          activeOrgId={tenant.activeOrg.id}
         />
       </div>
     </header>

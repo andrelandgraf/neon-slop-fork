@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useLiveQuery } from "@tanstack/react-db";
 import {
   Building2,
   Check,
@@ -28,6 +28,7 @@ import { signOut } from "@/lib/auth-client";
 import { ThemeMenuItems } from "@/components/theme-menu-items";
 import { CreateOrgDialog } from "@/components/create-org-dialog";
 import { switchOrgAction } from "@/app/actions";
+import { useShellCollections } from "@/components/live/live-root";
 
 interface OrgItem {
   id: string;
@@ -43,14 +44,16 @@ const HELP_LINKS = [
 
 export function AccountMenu({
   user,
-  orgs,
-  activeOrg,
+  activeOrgId,
 }: {
   user: { name: string; email: string; image: string | null };
-  orgs: OrgItem[];
-  activeOrg: OrgItem;
+  activeOrgId: string;
 }) {
-  const router = useRouter();
+  const shell = useShellCollections();
+  const { data: orgs } = useLiveQuery((q) =>
+    q.from({ org: shell.orgs }).orderBy(({ org }) => org.created_at, "asc")
+  );
+  const activeOrg: OrgItem = orgs.find((o) => o.id === activeOrgId) ?? { id: activeOrgId, name: "" };
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -58,8 +61,7 @@ export function AccountMenu({
     startTransition(async () => {
       try {
         await signOut();
-        router.push("/");
-        router.refresh();
+        window.location.assign("/");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Sign-out failed.");
       }
@@ -71,7 +73,7 @@ export function AccountMenu({
     startTransition(async () => {
       try {
         await switchOrgAction(orgId);
-        router.push("/projects");
+        window.location.assign("/projects");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to switch org.");
       }

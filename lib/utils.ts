@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function relativeTime(iso: string): string {
+export function relativeTime(iso: string | Date): string {
   const now = Date.now();
   const then = new Date(iso).getTime();
   const diff = Math.max(0, now - then);

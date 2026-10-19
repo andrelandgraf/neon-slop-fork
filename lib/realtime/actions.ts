@@ -1,4 +1,5 @@
 "use server";
+import { projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import { neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
@@ -18,7 +19,7 @@ async function run(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? fallback };
   }
-  revalidatePath(`/projects/${projectId}`, "layout");
+  await projectChanged(projectId);
   return { ok: true };
 }
 

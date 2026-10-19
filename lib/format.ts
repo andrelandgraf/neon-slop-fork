@@ -6,7 +6,7 @@ export function formatBytes(bytes: number | undefined | null): string {
 }
 
 /** "2026-10-18 17:23:57" in the viewer's zone, as the Console prints. */
-export function formatDateTime(iso: string | undefined | null): string {
+export function formatDateTime(iso: string | Date | undefined | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -16,7 +16,7 @@ export function formatDateTime(iso: string | undefined | null): string {
 }
 
 /** "Oct 6, 2026" */
-export function formatDate(iso: string | undefined | null): string {
+export function formatDate(iso: string | Date | undefined | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",

@@ -1,4 +1,5 @@
 "use server";
+import { projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import { neonRaw, neonSdk } from "@/lib/neon";
 import { loadBranch, loadProject } from "@/lib/project-context";
@@ -21,10 +22,6 @@ export type CreateBranchResult =
   | { ok: true; branchId: string; elapsedMs: number }
   | { ok: false; error: string };
 
-function revalidateProject(projectId: string) {
-  revalidatePath(`/projects/${projectId}`, "layout");
-}
-
 export async function createBranchAction(
   input: CreateBranchInput
 ): Promise<CreateBranchResult> {
@@ -43,7 +40,7 @@ export async function createBranchAction(
       const created = await neonRaw.createAnonymizedBranch(input.projectId, {
         branch_create: { branch: fields, endpoints: [{ type: "read_write" }] },
       });
-      revalidateProject(input.projectId);
+      await projectChanged(input.projectId);
       return { ok: true, branchId: created.branch.id, elapsedMs: Date.now() - started };
     }
     const branch = await neonSdk.branches.create({
@@ -54,7 +51,7 @@ export async function createBranchAction(
         : {}),
       ...(input.dataMode === "schema_only" ? { init_source: "schema-only" } : {}),
     });
-    revalidateProject(input.projectId);
+    await projectChanged(input.projectId);
     return { ok: true, branchId: branch.id, elapsedMs: Date.now() - started };
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create branch." };
@@ -73,7 +70,7 @@ async function run(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? fallback };
   }
-  revalidateProject(projectId);
+  await projectChanged(projectId);
   return { ok: true };
 }
 
