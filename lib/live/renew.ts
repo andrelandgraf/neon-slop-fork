@@ -1,6 +1,5 @@
 import type { SealedLiveQuery } from "@neon/realtime/client";
-import type { PageIdentity } from "@/lib/tenancy";
-import type { LiveCollectionName } from "./load";
+import type { LiveCollectionName, LiveParams } from "./load";
 
 /** Set once the session changed under this page; a full page load resets it. */
 let leaving = false;
@@ -34,13 +33,13 @@ function isSealedQuery<Row>(value: unknown): value is SealedLiveQuery<Row> {
 
 export async function renewLiveQuery<Row>(
   name: LiveCollectionName,
-  identity: PageIdentity
+  params: LiveParams
 ): Promise<SealedLiveQuery<Row>> {
   if (leaving) throw new Error("The session changed. Reloading the page.");
   const response = await fetch(`/api/live/${name}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(identity),
+    body: JSON.stringify(params),
   });
   if (response.status === 401) leavePage();
   if (!response.ok) throw new Error(`Couldn't renew the ${name} live query (${response.status}).`);

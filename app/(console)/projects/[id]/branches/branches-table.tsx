@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BranchMenu } from "@/components/branch-menu";
 import { CreateBranchDialog } from "@/components/create-branch-dialog";
-import { cn } from "@/lib/utils";
+import { cn, relativeTime } from "@/lib/utils";
+import { formatBytes, formatCuRange } from "@/lib/format";
+import { useLiveQuery } from "@tanstack/react-db";
+import { useProjectLive } from "@/components/live/project-live";
 
-export interface BranchRow {
+interface BranchRow {
   id: string;
   name: string;
   default: boolean;
@@ -24,17 +27,52 @@ export interface BranchRow {
   lastActive: string;
 }
 
+/** The table's rows, computed from the live branches and computes. */
+function useBranchRows(): BranchRow[] {
+  const live = useProjectLive();
+  const { data: branches } = useLiveQuery((q) =>
+    q
+      .from({ branch: live.branches })
+      .orderBy(({ branch }) => branch.default, "desc")
+      .orderBy(({ branch }) => branch.created_at, "asc")
+  );
+  const { data: endpoints } = useLiveQuery((q) => q.from({ endpoint: live.endpoints }));
+  const nameById = new Map(branches.map((b) => [b.id, b.name]));
+  return branches.map((b) => {
+    const primary = endpoints.find((e) => e.branch_id === b.id && e.type === "read_write");
+    return {
+      id: b.id,
+      name: b.name,
+      default: b.default,
+      protected: b.protected,
+      parentId: b.parent_id ?? undefined,
+      parentName: b.parent_id ? (nameById.get(b.parent_id) ?? b.parent_id) : null,
+      expiresAt: b.expires_at?.toISOString(),
+      computeHours: `${+(b.compute_time_seconds / 3600).toFixed(2)} CU-hrs`,
+      primary: primary
+        ? {
+            range: formatCuRange(primary.autoscaling_limit_min_cu, primary.autoscaling_limit_max_cu),
+            active: primary.current_state === "active",
+          }
+        : null,
+      storage: b.logical_size ? formatBytes(b.logical_size) : "-",
+      createdBy: b.created_by?.name ?? "—",
+      lastActive:
+        primary?.current_state === "active" ? "now" : primary?.last_active ? relativeTime(primary.last_active) : "-",
+    };
+  });
+}
+
 export function BranchesTable({
   projectId,
   projectName,
   currentBranchId,
-  rows,
 }: {
   projectId: string;
   projectName: string;
   currentBranchId: string;
-  rows: BranchRow[];
 }) {
+  const rows = useBranchRows();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();

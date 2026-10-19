@@ -672,7 +672,7 @@ export async function createRoleAction(formData: FormData): Promise<void> {
   if (!projectId || !branchId || !name) throw new Error("Missing fields.");
   await requireProjectAccess(tenant, projectId);
   await neon.createProjectBranchRole(projectId, branchId, { role: { name } });
-  await projectChanged(projectId);
+  await projectChanged(projectId, branchId);
 }
 
 export async function deleteRoleAction(
@@ -683,7 +683,7 @@ export async function deleteRoleAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchRole(projectId, branchId, roleName);
-  await projectChanged(projectId);
+  await projectChanged(projectId, branchId);
 }
 
 export async function resetRolePasswordAction(
@@ -698,7 +698,7 @@ export async function resetRolePasswordAction(
     branchId,
     roleName
   );
-  await projectChanged(projectId);
+  await projectChanged(projectId, branchId);
   return { password: res.data.role.password ?? "" };
 }
 
@@ -714,7 +714,7 @@ export async function createDatabaseAction(formData: FormData): Promise<void> {
   await neon.createProjectBranchDatabase(projectId, branchId, {
     database: { name, owner_name: ownerName },
   });
-  await projectChanged(projectId);
+  await projectChanged(projectId, branchId);
 }
 
 export async function deleteDatabaseAction(
@@ -725,7 +725,7 @@ export async function deleteDatabaseAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchDatabase(projectId, branchId, databaseName);
-  await projectChanged(projectId);
+  await projectChanged(projectId, branchId);
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,8 @@ import { runProjectSql } from "@/lib/sql";
 import { formatCuRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { OperationsTable } from "./operations-live";
+
 export const dynamic = "force-dynamic";
 
 type Tab = "postgres" | "storage" | "functions" | "realtime";
@@ -267,9 +269,7 @@ async function Advisors({ projectId, branchId }: { projectId: string; branchId: 
   );
 }
 
-async function Operations({ projectId, branchId }: { projectId: string; branchId: string }) {
-  const page = await neonSdk.operations.list({ projectId }).page();
-  const operations = page.items.filter((op) => !op.branch_id || op.branch_id === branchId);
+function Operations({ branchId }: { projectId: string; branchId: string }) {
   return (
     <div className="space-y-3">
       <p className="text-sm">
@@ -285,24 +285,7 @@ async function Operations({ projectId, branchId }: { projectId: string; branchId
           Learn more
         </a>
       </p>
-      <SqlTable
-        columns={["Operation", "Compute", "Operation status", "Duration", "Date"]}
-        rows={operations.map((op) => [
-          op.action.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
-          op.endpoint_id ?? "",
-          op.status === "finished" ? "OK" : op.status,
-          op.total_duration_ms >= 1000
-            ? `${Math.round(op.total_duration_ms / 1000)} s`
-            : `${op.total_duration_ms} ms`,
-          new Date(op.created_at).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }),
-        ])}
-      />
+      <OperationsTable branchId={branchId} />
     </div>
   );
 }

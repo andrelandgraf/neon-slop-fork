@@ -4,8 +4,19 @@ import { collectionOptions } from "@tanstack/react-db";
 import { renameOrgAction } from "@/lib/orgs/actions";
 import { dismissCreationAction } from "@/lib/projects/create";
 import type { PageIdentity } from "@/lib/tenancy";
-import type { LiveCollectionName } from "./load";
-import type { OrgBranchRow, OrgMemberRow, OrgRow, ProjectCreationLiveRow, ProjectRow } from "./queries";
+import type { LiveCollectionName, LiveParams } from "./load";
+import type {
+  DatabaseRow,
+  EndpointRow,
+  OperationRow,
+  OrgBranchRow,
+  OrgMemberRow,
+  OrgRow,
+  ProjectBranchRow,
+  ProjectCreationLiveRow,
+  ProjectRow,
+  RoleRow,
+} from "./queries";
 import { leavePage, renewLiveQuery } from "./renew";
 import { ECHO_TIMEOUT_MS, NotSyncedYetError, type LiveWriteResult } from "./writes";
 
@@ -19,12 +30,12 @@ type Handlers<Row extends object> = Pick<RealtimeCollectionConfig<Row, string>, 
  */
 function liveCollection<Row extends object>(
   name: LiveCollectionName,
-  identity: PageIdentity,
+  params: LiveParams,
   query: SealedLiveQuery<Row>,
   getKey: (row: Row) => string,
   handlers: Handlers<Row> = {}
 ) {
-  const id = `${name}:${identity.userId}:${identity.orgId}`;
+  const id = [name, params.userId, params.orgId, params.projectId, params.branchId].filter(Boolean).join(":");
   return collectionOptions(id, (db) =>
     realtimeCollectionOptions<Row, string>({
       id,
@@ -34,7 +45,7 @@ function liveCollection<Row extends object>(
       // A collection rebuilt after collection would start from this sealed
       // query, long expired, so keep it for the life of the page.
       gcTime: 0,
-      refreshQuery: () => renewLiveQuery<Row>(name, identity),
+      refreshQuery: () => renewLiveQuery<Row>(name, params),
       ...handlers,
     })
   );
@@ -88,3 +99,18 @@ export const projectCreationsCollection = (
       }
     },
   });
+
+export const projectBranchesCollection = (params: LiveParams, query: SealedLiveQuery<ProjectBranchRow>) =>
+  liveCollection("project-branches", params, query, (branch) => branch.id);
+
+export const endpointsCollection = (params: LiveParams, query: SealedLiveQuery<EndpointRow>) =>
+  liveCollection("endpoints", params, query, (endpoint) => endpoint.id);
+
+export const operationsCollection = (params: LiveParams, query: SealedLiveQuery<OperationRow>) =>
+  liveCollection("operations", params, query, (operation) => operation.id);
+
+export const databasesCollection = (params: LiveParams, query: SealedLiveQuery<DatabaseRow>) =>
+  liveCollection("databases", params, query, (database) => `${database.branch_id}:${database.name}`);
+
+export const rolesCollection = (params: LiveParams, query: SealedLiveQuery<RoleRow>) =>
+  liveCollection("roles", params, query, (role) => `${role.branch_id}:${role.name}`);

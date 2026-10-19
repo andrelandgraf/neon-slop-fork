@@ -20,7 +20,10 @@ a project created, renamed, transferred or deleted in one tab shows up in
 every other open tab of the org without a reload, including the "Creating
 project" state while it's being set up. The org list, org name, members,
 projects list, project switcher and billing usage read TanStack DB
-collections synced from sealed live queries over the control database.
+collections synced from sealed live queries over the control database, and
+so do a project's branches, computes, databases, roles and operations: the
+sidebar and ⌘K branch lists, Branches, Branch overview, Computes, Databases,
+Roles, Monitoring → System operations and Settings → General.
 
 Organization:
 
@@ -112,7 +115,11 @@ BETTER_AUTH_URL=http://localhost:3030
 ### How live views work
 
 - Most console state lives in the Neon API, so the control database
-  mirrors what the live views render (`neon_project`, `neon_branch`).
+  mirrors what the live views render (`neon_project`, `neon_branch`,
+  `neon_endpoint`, `neon_operation`, `neon_database`, `neon_role`; role
+  passwords are never stored). While a Neon operation a write started is
+  still running, the project keeps re-syncing, so states like a starting
+  compute move on screen.
   Server actions update the mirror after each Neon API write, and every
   sealed-query renewal (about once a minute per open view) reconciles the
   org from the Neon API, at most once per 20 seconds.

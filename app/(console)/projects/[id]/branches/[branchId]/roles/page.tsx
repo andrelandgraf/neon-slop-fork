@@ -1,8 +1,9 @@
 import { PageBody, PageHeader } from "@/components/page-header";
-import { neon } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
-import { relativeTime } from "@/lib/utils";
-import { AddRoleButton, ObjectRow, RoleActions } from "@/components/postgres-objects";
+import { AddRoleButton } from "@/components/postgres-objects";
+import { RolesList } from "@/components/branch-objects-live";
+import { loadLive } from "@/lib/live/load";
+import { ensureBranchMirrored } from "@/lib/mirror/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,11 @@ export default async function RolesPage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch } = await loadBranch(projectId, branchId);
-  const [roles, databases] = await Promise.all([
-    neon.listProjectBranchRoles(projectId, branchId).then((r) => r.data.roles),
-    neon.listProjectBranchDatabases(projectId, branchId).then((r) => r.data.databases),
-  ]);
+  const { tenant, project, branch } = await loadBranch(projectId, branchId);
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
+  await ensureBranchMirrored(projectId, branchId);
+  const [roles, databases] = await Promise.all([loadLive("roles", live), loadLive("databases", live)]);
+  const seeds = { projectId, branchId, roles, databases };
 
   return (
     <PageBody>
@@ -32,29 +33,7 @@ export default async function RolesPage({
           Manage roles.
         </a>
       </p>
-      <div className="space-y-2">
-        {roles
-          .filter((role) => !role.protected)
-          .map((role) => (
-            <ObjectRow
-              key={role.name}
-              name={role.name}
-              columns={[
-                {
-                  label: "Owns",
-                  value:
-                    databases
-                      .filter((d) => d.owner_name === role.name)
-                      .map((d) => d.name)
-                      .join(", ") || "—",
-                },
-                { label: "Created", value: relativeTime(role.created_at) },
-                { label: "Last updated", value: relativeTime(role.updated_at) },
-              ]}
-              actions={<RoleActions projectId={projectId} branchId={branchId} roleName={role.name} />}
-            />
-          ))}
-      </div>
+      <RolesList {...seeds} />
     </PageBody>
   );
 }

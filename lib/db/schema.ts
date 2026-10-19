@@ -11,6 +11,7 @@ import {
   jsonb,
   primaryKey,
 } from "drizzle-orm/pg-core";
+import type { Branch, Endpoint, Project } from "@/lib/neon";
 
 /**
  * Better Auth core tables. Names + columns follow Better Auth's
@@ -180,8 +181,8 @@ export const neonProject = pgTable("neon_project", {
   store_passwords: boolean("store_passwords").notNull(),
   proxy_host: text("proxy_host").notNull(),
   creation_source: text("creation_source").notNull(),
-  settings: jsonb("settings"),
-  default_endpoint_settings: jsonb("default_endpoint_settings"),
+  settings: jsonb("settings").$type<Project["settings"]>(),
+  default_endpoint_settings: jsonb("default_endpoint_settings").$type<Project["default_endpoint_settings"]>(),
   branch_logical_size_limit_bytes: doublePrecision("branch_logical_size_limit_bytes").notNull(),
   maintenance_starts_at: tz("maintenance_starts_at"),
   hipaa_enabled_at: tz("hipaa_enabled_at"),
@@ -226,7 +227,7 @@ export const neonBranch = pgTable(
     ttl_interval_seconds: integer("ttl_interval_seconds"),
     expires_at: tz("expires_at"),
     last_reset_at: tz("last_reset_at"),
-    created_by: jsonb("created_by"),
+    created_by: jsonb("created_by").$type<Branch["created_by"]>(),
     init_source: text("init_source"),
     restore_status: text("restore_status"),
     restored_from: text("restored_from"),
@@ -257,7 +258,7 @@ export const neonEndpoint = pgTable(
     pooler_mode: text("pooler_mode").notNull(),
     disabled: boolean("disabled").notNull(),
     passwordless_access: boolean("passwordless_access").notNull(),
-    settings: jsonb("settings"),
+    settings: jsonb("settings").$type<Endpoint["settings"]>(),
     proxy_host: text("proxy_host").notNull(),
     creation_source: text("creation_source").notNull(),
     last_active: tz("last_active"),

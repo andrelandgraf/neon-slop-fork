@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ChevronDown,
   Database,
   Folder,
   LineChart,
@@ -15,16 +14,11 @@ import { PageBody, PageHeader } from "@/components/page-header";
 import { getProjectCapabilities } from "@/lib/capabilities";
 import { ifFound, neon, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
-import { regionLabel } from "@/lib/region-catalog";
-import {
-  formatBytes,
-  formatCuRange,
-  formatDate,
-  formatDateTime,
-  formatHistoryRetention,
-} from "@/lib/format";
+import { loadLive } from "@/lib/live/load";
+import { ensureBranchMirrored } from "@/lib/mirror/sync";
 import { BranchHeaderActions } from "./branch-header-actions";
 import { NewBranchDialog } from "./new-branch-dialog";
+import { BranchDetailsAside, PostgresServiceDetail } from "./overview-live";
 
 export const dynamic = "force-dynamic";
 
@@ -34,15 +28,13 @@ export default async function BranchOverviewPage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch, branches, defaultBranch } = await loadBranch(
-    projectId,
-    branchId
-  );
+  const { tenant, project, branch, defaultBranch } = await loadBranch(projectId, branchId);
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
+  await ensureBranchMirrored(projectId, branchId);
   const capabilities = await getProjectCapabilities(projectId, defaultBranch.id);
-  const [endpoints, databases, auth, buckets, functions, realtime] =
+  const [databases, auth, buckets, functions, realtime] =
     await Promise.all([
-      neon.listProjectBranchEndpoints(projectId, branchId).then((r) => r.data.endpoints),
-      neon.listProjectBranchDatabases(projectId, branchId).then((r) => r.data.databases),
+      loadLive("databases", live),
       ifFound(neonSdk.auth.get({ projectId, branchId })),
       capabilities.storage
         ? ifFound(neonSdk.storage.buckets.list({ projectId, branchId }))
@@ -54,9 +46,6 @@ export default async function BranchOverviewPage({
     ]);
 
   const base = `/projects/${projectId}/branches/${branchId}`;
-  const parent = branches.find((b) => b.id === branch.parent_id);
-  const defaults = project.default_endpoint_settings;
-  const storageBytes = branches.reduce((sum, b) => sum + (b.logical_size ?? 0), 0);
 
   const services: {
     icon: LucideIcon;
@@ -69,7 +58,7 @@ export default async function BranchOverviewPage({
       icon: Database,
       label: "Postgres database",
       href: `${base}/databases`,
-      detail: `${plural(databases.length, "database")}, ${plural(endpoints.length, "compute")}`,
+      detail: <PostgresServiceDetail branchId={branchId} databases={databases} />,
       show: true,
     },
     {
@@ -138,21 +127,7 @@ export default async function BranchOverviewPage({
         title="Branch overview"
         project={project}
         branch={branch}
-        actions={
-            <BranchHeaderActions
-              key={branch.id}
-              projectId={projectId}
-              branch={{
-                id: branch.id,
-                name: branch.name,
-                default: branch.default,
-                protected: branch.protected,
-                parentId: branch.parent_id,
-                expiresAt: branch.expires_at,
-              }}
-              branches={branches.map((b) => ({ id: b.id, name: b.name, default: b.default }))}
-            />
-        }
+        actions={<BranchHeaderActions key={branch.id} projectId={projectId} branchId={branchId} />}
       />
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="min-w-0 flex-1">
@@ -198,117 +173,7 @@ export default async function BranchOverviewPage({
             </div>
           </div>
         </div>
-        <aside className="w-full shrink-0 lg:w-[288px]">
-          <DetailSection title="Branch">
-            <Detail label="Name" value={branch.name} />
-            <Detail label="ID" value={branch.id} mono />
-            <Detail
-              label="Expires"
-              value={branch.expires_at ? formatDateTime(branch.expires_at) : "Never"}
-              link
-            />
-            <Detail label="Created" value={formatDateTime(branch.created_at)} />
-            <Detail label="Created by" value={branch.created_by?.name ?? "—"} />
-            {parent && (
-              <>
-                <Detail
-                  label="Parent branch"
-                  value={
-                    <Link href={`/projects/${projectId}/branches/${parent.id}`} className="text-link">
-                      {parent.name}
-                    </Link>
-                  }
-                />
-                <Detail
-                  label="Branched from"
-                  value={branch.parent_lsn ? `LSN ${branch.parent_lsn}` : formatDateTime(branch.parent_timestamp)}
-                  mono
-                />
-                <Detail label="Last updated" value={formatDateTime(branch.updated_at)} />
-              </>
-            )}
-          </DetailSection>
-          <DetailSection
-            title="Project"
-            action={
-              <Link href={`/projects/${projectId}/branches?branch=${branchId}`} className="text-link text-xs">
-                Manage branches
-              </Link>
-            }
-          >
-            <Detail label="Name" value={project.name} />
-            <Detail label="ID" value={project.id} mono />
-            <Detail label="Region" value={regionLabel(project.region_id)} />
-            <Detail label="Plan" value="Free plan" />
-            <Detail label="Branches" value={String(branches.length)} />
-            <Detail
-              label="Default branch"
-              value={
-                <Link href={`/projects/${projectId}/branches/${defaultBranch.id}`} className="text-link">
-                  {defaultBranch.name}
-                </Link>
-              }
-            />
-            <Detail
-              label="IP restrictions"
-              value={
-                <Link
-                  href={`/projects/${projectId}/settings/networking?branch=${branchId}`}
-                  className="text-link"
-                >
-                  {project.settings?.allowed_ips?.ips?.length ? "Enabled" : "None set"}
-                </Link>
-              }
-            />
-          </DetailSection>
-          <DetailSection
-            title="Usage"
-            action={
-              <Link href="/org/billing" className="text-link text-xs">
-                View billing
-              </Link>
-            }
-          >
-            <p className="pb-1 text-muted-foreground text-xs">
-              Since {formatDate(project.consumption_period_start)}
-            </p>
-            <Detail
-              label="Compute"
-              value={`${(project.compute_time_seconds / 3600).toFixed(2)} CU-hrs`}
-            />
-            <Detail label="Storage" value={formatBytes(storageBytes)} />
-            <Detail label="Written data" value={formatBytes(project.written_data_bytes)} />
-            <Detail label="Network transfer" value={formatBytes(project.data_transfer_bytes)} />
-          </DetailSection>
-          <DetailSection title="Postgres">
-            <Detail
-              label="Default compute"
-              value={
-                <Link
-                  href={`/projects/${projectId}/settings/postgres?branch=${branchId}`}
-                  className="text-link"
-                >
-                  {formatCuRange(
-                    defaults?.autoscaling_limit_min_cu ?? 0.25,
-                    defaults?.autoscaling_limit_max_cu ?? 2
-                  )}
-                </Link>
-              }
-            />
-            <Detail
-              label="History retention"
-              value={
-                <Link
-                  href={`/projects/${projectId}/settings/postgres?branch=${branchId}`}
-                  className="text-link"
-                >
-                  {formatHistoryRetention(project.history_retention_seconds)}
-                </Link>
-              }
-            />
-            <Detail label="Version" value={String(project.pg_version)} />
-          </DetailSection>
-        </aside>
+        <BranchDetailsAside projectId={projectId} branchId={branchId} />
       </div>
     </PageBody>
   );
@@ -316,47 +181,4 @@ export default async function BranchOverviewPage({
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-
-function DetailSection({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <details open className="group border-panel-border border-t py-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between pb-2 font-semibold text-sm">
-        <span className="flex items-center gap-1">
-          {title}
-          <ChevronDown className="size-3.5 text-muted-foreground -rotate-90 transition-transform group-open:rotate-0" />
-        </span>
-        {action}
-      </summary>
-      <dl className="space-y-1.5">{children}</dl>
-    </details>
-  );
-}
-
-function Detail({
-  label,
-  value,
-  mono,
-  link,
-}: {
-  label: string;
-  value: React.ReactNode;
-  mono?: boolean;
-  link?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[96px_1fr] gap-2 text-xs">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={`truncate ${mono ? "font-mono" : ""} ${link ? "text-link" : ""}`}>{value}</dd>
-    </div>
-  );
 }
