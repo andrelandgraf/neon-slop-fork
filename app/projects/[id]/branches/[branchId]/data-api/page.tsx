@@ -1,161 +1,62 @@
-import Link from "next/link";
-import { Database, ExternalLink } from "lucide-react";
-import { neon } from "@/lib/neon";
-import { Badge } from "@/components/ui/badge";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { ifFound, neon, neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { runProjectSql } from "@/lib/sql";
 import { EnableDataApiCard } from "./enable-card";
 import { DataApiOverview } from "./overview";
-import { DataApiSettings } from "./settings";
-import { DisableDataApiCard } from "./disable-card";
 
 export const dynamic = "force-dynamic";
 
-type Tab = "api" | "settings";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "api", label: "API" },
-  { id: "settings", label: "Settings" },
-];
-
-/**
- * `/projects/[id]/data-api`
- *
- * Mirrors console.neon.tech's per-branch Data API screen. The Data API is
- * a PostgREST-compatible HTTP endpoint provisioned by Neon on a specific
- * branch + database; we use the same default the upstream console picks
- * (the branch's `neondb` database) and surface the same controls:
- *
- *   - Enable / Disable
- *   - Refresh schema cache (a no-op PATCH whose side-effect is the cache reload)
- *   - Advanced settings (exposed schemas, anon role, row caps, CORS,
- *     OpenAPI mode, server-timing headers)
- *
- * We pass the branch through `?branch=<id>` so the BranchSwitcher in the
- * sidebar keeps working — same convention as the SQL Editor / Tables pages.
- */
 export default async function DataApiPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ branch?: string; tab?: string }>;
+  params: Promise<{ id: string; branchId: string }>;
 }) {
-  const { id: projectId } = await params;
-  const { branch: branchParam, tab } = await searchParams;
-  const activeTab: Tab = tab === "settings" ? "settings" : "api";
+  const { id: projectId, branchId } = await params;
+  const { project, branch } = await loadBranch(projectId, branchId);
+  const { data } = await neon.listProjectBranchDatabases(projectId, branchId);
+  const databaseName = data.databases[0]?.name;
+  if (!databaseName) {
+    return (
+      <PageBody>
+        <PageHeader title="Data API" project={project} branch={branch} />
+        <p className="text-sm">Create a database on this branch to use the Data API.</p>
+      </PageBody>
+    );
+  }
 
-  const branchesRes = await neon.listProjectBranches({ projectId });
-  const branches = branchesRes.data.branches;
-  const defaultBranch =
-    branches.find((b) => b.default) ?? branches[0];
-  const activeBranch =
-    branches.find((b) => b.id === branchParam) ?? defaultBranch;
-
-  // Pick the branch's default database. The Neon UI uses `neondb` by
-  // convention (the project's auto-created database); we list databases
-  // and prefer the first one Neon returns when `neondb` is missing
-  // (renamed / custom installs).
-  const dbsRes = await neon.listProjectBranchDatabases(
-    projectId,
-    activeBranch.id
+  const dataApi = await ifFound(
+    neonSdk.postgres.dataApi.get({ projectId, branchId, databaseName })
   );
-  const databases = dbsRes.data.databases;
-  const database =
-    databases.find((d) => d.name === "neondb") ?? databases[0];
-  const databaseName = database?.name ?? "neondb";
+  if (!dataApi) {
+    return (
+      <EnableDataApiCard projectId={projectId} branchId={branchId} databaseName={databaseName} />
+    );
+  }
 
-  // Neon Auth status on this branch — the Data API "Use Neon Auth"
-  // toggle requires it to be enabled. We surface that as a status badge.
-  const authIntegration = await neon
-    .getNeonAuth(projectId, activeBranch.id)
-    .then((r) => r.data)
-    .catch(() => null);
-
-  // Data API may or may not exist for this branch. The Neon API returns
-  // a 404 on missing, so a `.catch` is the cleanest signal.
-  const dataApi = await neon
-    .getProjectBranchDataApi(projectId, activeBranch.id, databaseName)
-    .then((r) => r.data)
-    .catch(() => null);
-
-  const branchQuery = branchParam ? `&branch=${branchParam}` : "";
+  const [auth, tableStats] = await Promise.all([
+    ifFound(neonSdk.auth.get({ projectId, branchId })),
+    runProjectSql(
+      projectId,
+      `SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT c.relrowsecurity)::int AS without_rls
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE c.relkind = 'r' AND n.nspname = 'public'`,
+      { branchId, databaseName }
+    ),
+  ]);
+  const row = tableStats.rows[0];
 
   return (
-    <div className="px-8 py-6 max-w-3xl">
-      <div className="flex items-center gap-2 mb-1">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Database className="h-4 w-4 text-muted-foreground" />
-          Data API
-        </h1>
-        <Badge variant="secondary">{activeBranch.name}</Badge>
-      </div>
-      <p className="text-sm text-muted-foreground mb-5">
-        Access your database through auto-generated REST API endpoints.{" "}
-        <a
-          href="https://neon.tech/docs/data-api/get-started"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-0.5 text-primary hover:underline"
-        >
-          Learn more <ExternalLink className="h-3 w-3" />
-        </a>
-      </p>
-
-      {!dataApi ? (
-        <EnableDataApiCard
-          projectId={projectId}
-          branchId={activeBranch.id}
-          databaseName={databaseName}
-        />
-      ) : (
-        <>
-          <div className="border-b mb-5">
-            <nav className="flex items-center gap-6 -mb-px">
-              {TABS.map((t) => {
-                const href = `/projects/${projectId}/data-api?tab=${t.id}${branchQuery}`;
-                const active = t.id === activeTab;
-                return (
-                  <Link
-                    key={t.id}
-                    href={href}
-                    className={`pb-3 text-sm border-b-2 ${
-                      active
-                        ? "border-foreground font-medium"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          {activeTab === "api" && (
-            <DataApiOverview
-              projectId={projectId}
-              branchId={activeBranch.id}
-              databaseName={databaseName}
-              dataApi={dataApi}
-              authIntegration={authIntegration}
-            />
-          )}
-          {activeTab === "settings" && (
-            <div className="space-y-6">
-              <DataApiSettings
-                projectId={projectId}
-                branchId={activeBranch.id}
-                databaseName={databaseName}
-                settings={dataApi.settings ?? null}
-                availableSchemas={dataApi.available_schemas ?? null}
-              />
-              <DisableDataApiCard
-                projectId={projectId}
-                branchId={activeBranch.id}
-                databaseName={databaseName}
-              />
-            </div>
-          )}
-        </>
-      )}
-    </div>
+    <PageBody>
+      <PageHeader title="Data API" project={project} branch={branch} />
+      <DataApiOverview
+        projectId={projectId}
+        branchId={branchId}
+        databaseName={databaseName}
+        url={dataApi.url}
+        authEnabled={auth !== null}
+        tables={{ total: Number(row?.total ?? 0), withoutRls: Number(row?.without_rls ?? 0) }}
+      />
+    </PageBody>
   );
 }

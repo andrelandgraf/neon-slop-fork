@@ -1,137 +1,134 @@
-import Link from "next/link";
-import { Lock, ExternalLink, AlertTriangle } from "lucide-react";
-import { neon } from "@/lib/neon";
-import { Badge } from "@/components/ui/badge";
-import { Callout } from "@/components/ui/callout";
-import { EnableAuthCard } from "./enable-card";
-import { AuthUsersTab } from "./users-tab";
-import { AuthConfigurationTab } from "./configuration-tab";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { ifFound, neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { runProjectSql } from "@/lib/sql";
+import { formatDateTime } from "@/lib/format";
+import { AuthLinks, EnableAuth, NoUsers, SignupBanner } from "./auth-panels";
+import { CreateUserDialog } from "./create-user-dialog";
+import { DeleteUserButton } from "./delete-user-button";
 
 export const dynamic = "force-dynamic";
 
-type Tab = "users" | "configuration";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "users", label: "Users" },
-  { id: "configuration", label: "Configuration" },
-];
+interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  role: string | null;
+  createdAt: string;
+}
 
-/**
- * `/projects/[id]/auth`
- *
- * Mirrors console.neon.tech's per-branch Neon Auth screen. Neon Auth
- * provisions a managed Better Auth (v2) project tied to the branch and adds a
- * `neon_auth.users_sync` table that the app's own SQL can join against.
- *
- * Tabs:
- *
- *   - Users (managed via the auth admin SDK; we list users by SELECTing
- *     directly from `neon_auth.users_sync` because the REST API doesn't
- *     expose a list endpoint — only create/delete/role).
- *   - Configuration (allow localhost, domains, email/password,
- *     OAuth providers, webhooks, disable).
- *
- * The third tab (Plugins) on the upstream is in Beta and the API
- * `/auth/plugins` endpoint requires extra setup that isn't always
- * provisioned — we surface that as a notice rather than a broken tab.
- */
+function toAuthUser(row: Record<string, unknown>): AuthUser {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    email: String(row.email ?? ""),
+    emailVerified: row.emailVerified === true,
+    role: typeof row.role === "string" ? row.role : null,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+  };
+}
+
 export default async function AuthPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ branch?: string; tab?: string }>;
+  params: Promise<{ id: string; branchId: string }>;
 }) {
-  const { id: projectId } = await params;
-  const { branch: branchParam, tab } = await searchParams;
-  const activeTab: Tab = tab === "configuration" ? "configuration" : "users";
+  const { id: projectId, branchId } = await params;
+  const { project, branch } = await loadBranch(projectId, branchId);
+  const auth = await ifFound(neonSdk.auth.get({ projectId, branchId }));
+  if (!auth) return <EnableAuth projectId={projectId} branchId={branchId} />;
 
-  const branchesRes = await neon.listProjectBranches({ projectId });
-  const branches = branchesRes.data.branches;
-  const defaultBranch =
-    branches.find((b) => b.default) ?? branches[0];
-  const activeBranch =
-    branches.find((b) => b.id === branchParam) ?? defaultBranch;
-
-  const integration = await neon
-    .getNeonAuth(projectId, activeBranch.id)
-    .then((r) => r.data)
-    .catch(() => null);
-
-  const branchQuery = branchParam ? `&branch=${branchParam}` : "";
+  // Managed Better Auth keeps users in the `neon_auth` schema of the
+  // database it was enabled on.
+  const { rows } = await runProjectSql(
+    projectId,
+    `SELECT id, name, email, "emailVerified", role, "createdAt"
+       FROM neon_auth."user" ORDER BY "createdAt" DESC LIMIT 100`,
+    { branchId, databaseName: auth.db_name }
+  );
+  const users = rows.map(toAuthUser);
+  const configureHref = `/projects/${projectId}/settings/auth?branch=${branchId}`;
+  const createUser = <CreateUserDialog projectId={projectId} branchId={branchId} />;
 
   return (
-    <div className="px-8 py-6 max-w-3xl">
-      <div className="flex items-center gap-2 mb-1">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Lock className="h-4 w-4 text-muted-foreground" />
-          Auth
-        </h1>
-        <Badge variant="secondary">{activeBranch.name}</Badge>
-        <Badge variant="secondary">Beta</Badge>
+    <PageBody>
+      <PageHeader
+        title="Better Auth"
+        project={project}
+        branch={branch}
+        description={
+          <>
+            Serverless authentication that branches with your database. Powered by{" "}
+            <a className="font-semibold text-link" href="https://www.better-auth.com" target="_blank" rel="noreferrer">
+              Better Auth
+            </a>
+          </>
+        }
+      />
+      <SignupBanner />
+      <div className="mb-5 border-panel-border border-b">
+        <span className="-mb-px inline-block border-primary border-b-2 pb-2 font-semibold text-sm">Users</span>
       </div>
-      <p className="text-sm text-muted-foreground mb-5">
-        Serverless authentication that branches with your database. Powered by{" "}
-        <a
-          href="https://www.better-auth.com"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-0.5 text-primary hover:underline"
-        >
-          Better Auth <ExternalLink className="h-3 w-3" />
-        </a>
-      </p>
-
-      {!integration ? (
-        <EnableAuthCard projectId={projectId} branchId={activeBranch.id} />
-      ) : (
-        <>
-          <Callout
-            tone="warning"
-            icon={<AlertTriangle />}
-            className="mb-5 text-xs"
-          >
-            Anyone on the web can sign up for your app. Support for restricted
-            signups is coming soon.
-          </Callout>
-
-          <div className="border-b mb-5">
-            <nav className="flex items-center gap-6 -mb-px">
-              {TABS.map((t) => {
-                const href = `/projects/${projectId}/auth?tab=${t.id}${branchQuery}`;
-                const active = t.id === activeTab;
-                return (
-                  <Link
-                    key={t.id}
-                    href={href}
-                    className={`pb-3 text-sm border-b-2 ${
-                      active
-                        ? "border-foreground font-medium"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t.label}
-                  </Link>
-                );
-              })}
-            </nav>
+      {users.length === 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 rounded-[3px] border border-panel-border px-5 py-4">
+            <span className="size-1.5 rounded-full bg-primary" />
+            <div className="flex-1 text-sm">
+              <div>Waiting for users to sign up to your app.</div>
+              <div className="text-muted-foreground text-xs">
+                Your users&apos; data will be added to the{" "}
+                <code className="font-mono">neon_auth</code> schema on your database.
+              </div>
+            </div>
+            <AuthLinks configureHref={configureHref} />
           </div>
-
-          {activeTab === "users" && (
-            <AuthUsersTab
-              projectId={projectId}
-              branchId={activeBranch.id}
-              defaultBranchId={defaultBranch.id}
-            />
-          )}
-          {activeTab === "configuration" && (
-            <AuthConfigurationTab
-              projectId={projectId}
-              branchId={activeBranch.id}
-              integration={integration}
-            />
-          )}
-        </>
+          <NoUsers configureHref={configureHref} createUser={createUser} />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex justify-end gap-2">
+            {createUser}
+            <AuthLinks configureHref={configureHref} />
+          </div>
+          <div className="overflow-hidden rounded-[3px] border border-panel-border">
+            <table className="w-full text-sm">
+              <thead className="bg-table-head text-left">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">Name</th>
+                  <th className="px-4 py-2.5 font-semibold">Email</th>
+                  <th className="px-4 py-2.5 font-semibold">Role</th>
+                  <th className="px-4 py-2.5 font-semibold">Created</th>
+                  <th className="w-12" />
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-panel-border border-t">
+                    <td className="px-4 py-2">{user.name || "—"}</td>
+                    <td className="px-4 py-2">
+                      {user.email}
+                      {!user.emailVerified && (
+                        <span className="ml-2 text-muted-foreground text-xs">unverified</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">{user.role ?? "user"}</td>
+                    <td className="px-4 py-2">{formatDateTime(user.createdAt)}</td>
+                    <td className="px-2 py-2">
+                      <DeleteUserButton
+                        projectId={projectId}
+                        branchId={branchId}
+                        userId={user.id}
+                        userLabel={user.email}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </div>
+    </PageBody>
   );
 }

@@ -1,209 +1,189 @@
 "use client";
-import { useState } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
-import {
-  Copy,
-  Check,
-  RefreshCw,
-  ShieldCheck,
-  ShieldAlert,
-  AlertCircle,
-  ExternalLink,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { CircleCheck, CircleDashed, Loader2, ShieldAlert, UserRoundCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Callout } from "@/components/ui/callout";
-import { Badge } from "@/components/ui/badge";
-import type { DataApiReponse, NeonAuthIntegration } from "@neon/sdk";
+import { CopyAction } from "@/components/code-panel";
 import { refreshDataApiSchemaCacheAction } from "@/app/actions";
 
-/**
- * Read-only "API" tab. Shows the API URL with a copy button, the
- * Neon Auth status, and a "Refresh schema cache" trigger. We don't
- * surface a connection-test affordance because PostgREST requires a
- * JWT to do anything useful — calling it unauth'd just returns a
- * "no authorization header" 401 that would scare new users.
- */
 export function DataApiOverview({
   projectId,
   branchId,
   databaseName,
-  dataApi,
-  authIntegration,
+  url,
+  authEnabled,
+  tables,
 }: {
   projectId: string;
   branchId: string;
   databaseName: string;
-  dataApi: DataApiReponse;
-  authIntegration: NeonAuthIntegration | null;
+  url: string;
+  authEnabled: boolean;
+  tables: { total: number; withoutRls: number };
 }) {
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  async function onCopy() {
-    if (!navigator.clipboard) return;
-    try {
-      await navigator.clipboard.writeText(dataApi.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard can fail silently in some sandboxed iframes
-      // (Next dev preview, embed contexts). We don't fall back to
-      // an alert because the URL is already visible in the input.
-    }
-  }
-
-  async function onRefresh() {
-    setRefreshing(true);
-    setError(null);
-    const result = await refreshDataApiSchemaCacheAction(
-      projectId,
-      branchId,
-      databaseName
-    );
-    if (!result.ok) setError(result.error);
-    setRefreshing(false);
-  }
+  const [refreshing, startRefresh] = useTransition();
+  const base = `/projects/${projectId}/branches/${branchId}`;
 
   return (
-    <div className="space-y-5">
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold">API</h3>
-        <p className="text-xs text-muted-foreground mt-1 mb-4">
-          Access your database through auto-generated REST API endpoints.
-        </p>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground font-medium">
-            API URL
-          </label>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2 rounded-md border bg-muted/30 text-xs font-mono truncate">
-              {dataApi.url}
-            </code>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={onCopy}
-              aria-label="Copy API URL"
-            >
-              {copied ? (
-                <Check className="size-3.5 text-primary" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-            <Badge variant="secondary">{dataApi.status ?? "unknown"}</Badge>
-            <span>·</span>
-            <span>
-              Database <code className="font-mono">{databaseName}</code>
-            </span>
+    <div className="space-y-10">
+      <Section
+        title="API"
+        description="Access your database through auto-generated REST API endpoints."
+      >
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm">API URL</h3>
+          <p className="text-muted-foreground text-xs">
+            Provides read-write access to tables without Row Level Security enabled.
+          </p>
+          <div className="flex items-start justify-between gap-3 rounded-[3px] border border-panel-border bg-muted px-3 py-2.5">
+            <code className="break-all font-mono text-xs">{url}</code>
+            <CopyAction text={url} label="Copy API URL" iconOnly />
           </div>
         </div>
-
-        <div className="mt-4 text-xs text-muted-foreground">
-          To read and write data with the Data API, set up{" "}
-          <Link
-            href={`/projects/${projectId}/auth?branch=${branchId}`}
-            className="text-primary hover:underline"
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            nativeButton={false}
+            render={<Link href={`/projects/${projectId}/settings/postgres?branch=${branchId}#data-api`} />}
           >
+            Configure Data API
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={
+              <a href="https://neon.com/docs/data-api/get-started" target="_blank" rel="noreferrer" />
+            }
+          >
+            Open quickstart
+          </Button>
+          <span className="text-muted-foreground text-xs">
+            Connect the Data API to your app with a step-by-step guide.
+          </span>
+        </div>
+        <p className="mt-3 text-muted-foreground text-xs">
+          To read and write data with the Data API, set up{" "}
+          <Link href={`${base}/auth`} className="text-link">
             authentication
           </Link>{" "}
           and RLS policies.{" "}
           <a
-            href="https://neon.tech/docs/data-api/get-started"
+            className="text-link"
+            href="https://neon.com/docs/data-api/get-started"
             target="_blank"
             rel="noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-0.5"
           >
-            Learn more <ExternalLink className="h-3 w-3" />
+            Learn more
           </a>
-        </div>
-
-        <div className="mt-5 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
-            />
-            {refreshing ? "Refreshing…" : "Refresh schema cache"}
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            If you have made changes to the database schema, you can refresh
-            the schema cache to apply them immediately.
-          </p>
-          {error && (
-            <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <div className="font-mono">{error}</div>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold">Security</h3>
-        <p className="text-xs text-muted-foreground mt-1 mb-4">
-          To build apps that use the Data API, configure authentication for your
-          users and{" "}
-          <a
-            href="https://neon.tech/docs/guides/neon-rls"
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary hover:underline"
-          >
-            Row-Level Security in Postgres
-          </a>
-          .
         </p>
-
-        <Callout
-          tone={authIntegration ? "success" : "warning"}
-          icon={authIntegration ? <ShieldCheck /> : <ShieldAlert />}
-          className="text-xs"
-        >
-          {authIntegration ? (
-            <>
-              <div className="mb-0.5 font-semibold">Neon Auth is ready</div>
-              <p className="text-muted-foreground">
-                Go to the{" "}
-                <Link
-                  href={`/projects/${projectId}/auth?branch=${branchId}`}
-                  className="text-primary hover:underline"
-                >
-                  Neon Auth
-                </Link>{" "}
-                page for instructions on configuring authentication for your
-                application.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="mb-0.5 font-semibold">
-                Neon Auth is not enabled
+        <div className="mt-5 space-y-2">
+          <Button
+            variant="outline"
+            disabled={refreshing}
+            onClick={() =>
+              startRefresh(async () => {
+                const result = await refreshDataApiSchemaCacheAction(projectId, branchId, databaseName);
+                if (result.ok) toast.success("Schema cache refreshed");
+                else toast.error(result.error);
+              })
+            }
+          >
+            {refreshing && <Loader2 className="size-3.5 animate-spin" />}
+            Refresh schema cache
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            If you have made changes to the database schema, you can refresh the
+            schema cache to apply them immediately.
+          </p>
+        </div>
+      </Section>
+      <Section
+        title="Security"
+        description={
+          <>
+            To build apps that use the Data API, configure authentication for
+            your users and{" "}
+            <a
+              className="text-link"
+              href="https://neon.com/postgresql/postgresql-administration/postgresql-row-level-security"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Row-Level Security in Postgres
+            </a>
+            .
+          </>
+        }
+      >
+        <div className="divide-y divide-panel-border rounded-[3px] border border-panel-border">
+          <div className="flex items-start gap-3 px-4 py-3">
+            {authEnabled ? (
+              <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+            ) : (
+              <CircleDashed className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            )}
+            <div className="flex-1 text-sm">
+              <div className="font-semibold">
+                {authEnabled ? "Neon Auth is ready" : "Neon Auth is not enabled"}
               </div>
-              <p className="text-muted-foreground">
-                Enable Neon Auth on this branch to issue JWTs the Data API can
-                verify.{" "}
-                <Link
-                  href={`/projects/${projectId}/auth?branch=${branchId}`}
-                  className="text-primary hover:underline"
-                >
-                  Go to Neon Auth →
-                </Link>
+              <p>
+                Go to the Neon Auth page for instructions on configuring
+                authentication for your application.
               </p>
-            </>
-          )}
-        </Callout>
-      </Card>
+            </div>
+            <Button variant="outline" nativeButton={false} render={<Link href={`${base}/auth`} />}>
+              <UserRoundCheck className="size-3.5" />
+              Neon Auth
+            </Button>
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            {tables.total > 0 && tables.withoutRls > 0 ? (
+              <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            ) : (
+              <CircleDashed className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            )}
+            <div className="text-sm">
+              <div className="font-semibold">Protect your data</div>
+              <p>
+                {tables.total === 0
+                  ? "There are no tables in your project yet. When you create tables, be sure to enable "
+                  : tables.withoutRls > 0
+                    ? `${tables.withoutRls} of ${tables.total} tables don't have `
+                    : "All tables have "}
+                <a
+                  className="text-link"
+                  href="https://neon.com/docs/guides/row-level-security"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Row-Level Security
+                </a>
+                {tables.total === 0 ? " to protect your data." : tables.withoutRls > 0 ? " enabled." : " enabled."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
     </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="grid grid-cols-[minmax(0,320px)_minmax(0,1fr)] gap-10">
+      <div>
+        <h2 className="font-semibold text-lg">{title}</h2>
+        <p className="mt-1 text-muted-foreground text-xs">{description}</p>
+      </div>
+      <div>{children}</div>
+    </section>
   );
 }

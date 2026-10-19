@@ -1,19 +1,11 @@
 "use client";
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { Switch } from "@/components/ui/switch";
-import { Database, AlertCircle } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Info, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { enableDataApiAction } from "@/app/actions";
 
-/**
- * "Enable Data API" empty state. Mirrors the upstream console: two
- * opt-in toggles (default both on) and a single primary button. The
- * Switch component fires onChange callbacks for the UI; we mirror the
- * value into a hidden `<input>` so the value rides along with the form
- * submit. The form is a `use client` boundary so we can render the
- * action's result inline as an error.
- */
+/** The Console's Data API empty state with its two opt-in checkboxes. */
 export function EnableDataApiCard({
   projectId,
   branchId,
@@ -25,91 +17,122 @@ export function EnableDataApiCard({
 }) {
   const [useNeonAuth, setUseNeonAuth] = useState(true);
   const [grantPublic, setGrantPublic] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function enable() {
+    const fd = new FormData();
+    fd.set("projectId", projectId);
+    fd.set("branchId", branchId);
+    fd.set("databaseName", databaseName);
+    fd.set("useNeonAuth", useNeonAuth ? "on" : "off");
+    fd.set("grantPublicSchemaAccess", grantPublic ? "on" : "off");
+    startTransition(async () => {
+      const result = await enableDataApiAction(fd);
+      if (result.ok) toast.success("Data API has been enabled");
+      else toast.error(result.error);
+    });
+  }
 
   return (
-    <Card className="p-6">
-      <div className="flex items-start gap-3 mb-5">
-        <div className="h-9 w-9 rounded-md bg-muted grid place-items-center shrink-0">
-          <Database className="h-4 w-4" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold">Enable Neon Data API</h2>
-          <p className="text-sm text-muted-foreground">
-            Auto-generated PostgREST endpoints for{" "}
-            <code className="text-xs">{databaseName}</code>.
-          </p>
-        </div>
-      </div>
-
-      <form
-        action={async (formData: FormData) => {
-          const result = await enableDataApiAction(formData);
-          if (!result.ok) setError(result.error);
-        }}
-        className="space-y-4"
-      >
-        <input type="hidden" name="projectId" value={projectId} />
-        <input type="hidden" name="branchId" value={branchId} />
-        <input type="hidden" name="databaseName" value={databaseName} />
-        <input
-          type="hidden"
-          name="useNeonAuth"
-          value={useNeonAuth ? "on" : "off"}
+    <div className="mx-auto flex min-h-full max-w-[430px] flex-col items-center justify-center py-10">
+      <HttpsIllustration />
+      <h1 className="mt-6 text-xl">Data API</h1>
+      <p className="mt-2 text-center text-sm">
+        Instantly generate a REST API on top of your database. Query tables,
+        views, and functions via standard HTTP requests, with zero backend code
+        required.{" "}
+        <a
+          className="text-link"
+          href="https://neon.com/docs/data-api/get-started"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Learn more
+        </a>
+      </p>
+      <div className="mt-5 w-full space-y-3">
+        <Check
+          checked={useNeonAuth}
+          onChange={setUseNeonAuth}
+          label="Use Neon Auth"
+          description="Manages sign-up, login and account access for the Data API. It issues the JWTs required for API requests."
         />
-        <input
-          type="hidden"
-          name="grantPublicSchemaAccess"
-          value={grantPublic ? "on" : "off"}
-        />
-
-        <label className="flex items-start gap-3 cursor-pointer">
-          <Switch
-            checked={useNeonAuth}
-            onCheckedChange={setUseNeonAuth}
-            aria-label="Use Neon Auth"
-            className="mt-0.5"
-          />
-          <div className="text-sm">
-            <div className="font-medium">Use Neon Auth</div>
-            <p className="text-muted-foreground">
-              Manages sign-up, login, and account access for the Data API. It
-              issues the JWTs required for API requests.
-            </p>
-          </div>
-        </label>
-
-        <label className="flex items-start gap-3 cursor-pointer">
-          <Switch
-            checked={grantPublic}
-            onCheckedChange={setGrantPublic}
-            aria-label="Grant public schema access"
-            className="mt-0.5"
-          />
-          <div className="text-sm">
-            <div className="font-medium">Grant public schema access</div>
-            <p className="text-muted-foreground">
-              Applies grants so authenticated users can read and write to tables
-              in the public schema. Once enabled, add Row-Level Security (RLS)
-              policies to define which rows they can access.
-            </p>
-          </div>
-        </label>
-
-        {error && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <div className="font-mono">{error}</div>
+        {useNeonAuth && (
+          <div className="flex gap-2 rounded-[3px] border border-link/30 bg-link/5 px-3 py-2.5 text-sm">
+            <Info className="mt-0.5 size-4 shrink-0 text-link" />
+            Anyone on the web can sign up for your app. Support for restricted
+            signups is coming soon.
           </div>
         )}
+        <Check
+          checked={grantPublic}
+          onChange={setGrantPublic}
+          label="Grant public schema access"
+          description="Applies grants so authenticated users can read and write to tables in the public schema. Once enabled, add Row-Level Security (RLS) policies to define which rows they can access."
+        />
+      </div>
+      <Button className="mt-5" onClick={enable} disabled={pending}>
+        {pending && <Loader2 className="size-3.5 animate-spin" />}
+        Enable Data API
+      </Button>
+    </div>
+  );
+}
 
-        <div className="pt-2">
-          <SubmitButton pendingLabel="Enabling…">
-            <Database className="h-3.5 w-3.5" />
-            Enable Data API
-          </SubmitButton>
+function Check({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  description: string;
+}) {
+  return (
+    <label className="flex cursor-pointer gap-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 size-4 accent-foreground"
+      />
+      <span>
+        <span className="block font-semibold text-sm">{label}</span>
+        <span className="block text-muted-foreground text-xs">{description}</span>
+      </span>
+    </label>
+  );
+}
+
+function HttpsIllustration() {
+  return (
+    <div className="grid w-full max-w-[430px] grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[6px] bg-muted p-4">
+      <div>
+        <div className="mb-1.5 text-[11px] text-muted-foreground">Browser</div>
+        <div className="h-28 rounded-[6px] border border-panel-border bg-panel p-2">
+          <div className="h-3.5 rounded-full bg-muted" />
         </div>
-      </form>
-    </Card>
+      </div>
+      <div className="text-center text-[10px] text-muted-foreground">
+        HTTPS
+        <div className="mt-0.5 h-px w-12 bg-muted-foreground/50" />
+      </div>
+      <div>
+        <div className="mb-1.5 text-[11px] text-muted-foreground">Neon database</div>
+        <div className="space-y-2 rounded-[6px] border border-panel-border bg-panel p-2">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`flex gap-2 rounded px-1 py-1 ${i === 1 ? "border border-dashed border-link" : ""}`}
+            >
+              <div className="h-2.5 w-8 rounded bg-muted" />
+              <div className="h-2.5 flex-1 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

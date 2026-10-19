@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,17 +38,14 @@ export function CreateUserDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">
-          <UserPlus className="h-3.5 w-3.5" />
-          Create user
-        </Button>
+        <Button variant="outline">Create user</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create auth user</DialogTitle>
           <DialogDescription>
-            Adds a user to Neon Auth and syncs them into{" "}
-            <code className="text-xs">neon_auth.users_sync</code>.
+            Adds a user to Neon Auth. Their data lives in the{" "}
+            <code className="text-xs">neon_auth</code> schema on your database.
           </DialogDescription>
         </DialogHeader>
         <form

@@ -75,7 +75,7 @@ async function enableAuthOnDefaultBranch(projectId: string): Promise<void> {
     await neon.createNeonAuth(projectId, branch.id, {
       auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
     });
-    revalidatePath(`/projects/${projectId}/auth`);
+    revalidatePath(`/projects/${projectId}`, "layout");
   } catch {
     /* Surfaced on the Auth page, where enabling can be retried. */
   }
@@ -97,7 +97,7 @@ export async function renameProjectAction(formData: FormData): Promise<void> {
   if (!projectId || !name) throw new Error("projectId and name are required.");
   await requireProjectAccess(tenant, projectId);
   await neon.updateProject(projectId, { project: { name } });
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath("/projects");
 }
 
@@ -150,7 +150,7 @@ export async function updateComputeDefaultsAction(
       error: apiErrorMessage(err) ?? "Failed to update compute defaults.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -181,7 +181,7 @@ export async function updateHistoryWindowAction(
       error: apiErrorMessage(err) ?? "Failed to update history window.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -216,7 +216,7 @@ export async function updateNetworkingAction(
       error: apiErrorMessage(err) ?? "Failed to update networking.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -242,7 +242,7 @@ export async function setHipaaAction(
       error: apiErrorMessage(err) ?? "Failed to update HIPAA setting.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -266,7 +266,7 @@ export async function enableLogicalReplicationAction(
       error: apiErrorMessage(err) ?? "Failed to enable logical replication.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -309,7 +309,7 @@ export async function updateMaintenanceWindowAction(
       error: apiErrorMessage(err) ?? "Failed to update maintenance window.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -336,7 +336,7 @@ export async function grantProjectAccessAction(
       error: apiErrorMessage(err) ?? "Failed to grant project access.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -354,7 +354,7 @@ export async function revokeProjectAccessAction(
       error: apiErrorMessage(err) ?? "Failed to revoke project access.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -460,8 +460,7 @@ export async function createBranchAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create branch." };
   }
-  revalidatePath(`/projects/${projectId}/branches`);
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -476,8 +475,7 @@ export async function deleteBranchAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete branch." };
   }
-  revalidatePath(`/projects/${projectId}/branches`);
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -503,8 +501,7 @@ export async function setDefaultBranchAction(
       error: apiErrorMessage(err) ?? "Failed to set the default branch.",
     };
   }
-  revalidatePath(`/projects/${projectId}/branches`);
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -521,7 +518,7 @@ export async function restoreToTimestampAction(
     source_timestamp: timestamp,
     ...(preserveName ? { preserve_under_name: preserveName } : {}),
   });
-  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 // ---------------------------------------------------------------------------
@@ -554,7 +551,7 @@ export async function createSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create snapshot." };
   }
-  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -569,7 +566,7 @@ export async function deleteSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete snapshot." };
   }
-  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -589,7 +586,7 @@ export async function renameSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to rename snapshot." };
   }
-  revalidatePath(`/projects/${projectId}/backup`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -623,8 +620,7 @@ export async function restoreSnapshotPreviewAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
-  revalidatePath(`/projects/${projectId}/backup`);
-  revalidatePath(`/projects/${projectId}/branches`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -659,9 +655,7 @@ export async function restoreSnapshotInPlaceAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
-  revalidatePath(`/projects/${projectId}/backup`);
-  revalidatePath(`/projects/${projectId}/branches`);
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -677,7 +671,7 @@ export async function createRoleAction(formData: FormData): Promise<void> {
   if (!projectId || !branchId || !name) throw new Error("Missing fields.");
   await requireProjectAccess(tenant, projectId);
   await neon.createProjectBranchRole(projectId, branchId, { role: { name } });
-  revalidatePath(`/projects/${projectId}/roles`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 export async function deleteRoleAction(
@@ -688,7 +682,7 @@ export async function deleteRoleAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchRole(projectId, branchId, roleName);
-  revalidatePath(`/projects/${projectId}/roles`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 export async function resetRolePasswordAction(
@@ -703,7 +697,7 @@ export async function resetRolePasswordAction(
     branchId,
     roleName
   );
-  revalidatePath(`/projects/${projectId}/roles`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { password: res.data.role.password ?? "" };
 }
 
@@ -719,7 +713,7 @@ export async function createDatabaseAction(formData: FormData): Promise<void> {
   await neon.createProjectBranchDatabase(projectId, branchId, {
     database: { name, owner_name: ownerName },
   });
-  revalidatePath(`/projects/${projectId}/databases`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 export async function deleteDatabaseAction(
@@ -730,7 +724,7 @@ export async function deleteDatabaseAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchDatabase(projectId, branchId, databaseName);
-  revalidatePath(`/projects/${projectId}/databases`);
+  revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 // ---------------------------------------------------------------------------
@@ -748,7 +742,7 @@ export async function startEndpointAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to start endpoint." };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -763,7 +757,7 @@ export async function suspendEndpointAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to suspend endpoint." };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -809,7 +803,7 @@ export async function updateEndpointAutoscalingAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update endpoint." };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -866,7 +860,7 @@ export async function createReadReplicaAction(
       error: apiErrorMessage(err) ?? "Failed to create read replica.",
     };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -884,7 +878,7 @@ export async function deleteEndpointAction(
       error: apiErrorMessage(err) ?? "Failed to delete endpoint.",
     };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -902,7 +896,7 @@ export async function restartEndpointAction(
       error: apiErrorMessage(err) ?? "Failed to restart endpoint.",
     };
   }
-  revalidatePath(`/projects/${projectId}/compute`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -953,7 +947,7 @@ export async function updateIpAllowlistAction(
       error: upstream ?? "Failed to update IP allowlist.",
     };
   }
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1034,7 +1028,7 @@ export async function enableDataApiAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Data API." };
   }
-  revalidatePath(`/projects/${projectId}/data-api`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1091,7 +1085,7 @@ export async function updateDataApiSettingsAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update Data API." };
   }
-  revalidatePath(`/projects/${projectId}/data-api`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1119,7 +1113,7 @@ export async function refreshDataApiSchemaCacheAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to refresh schema cache." };
   }
-  revalidatePath(`/projects/${projectId}/data-api`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1135,7 +1129,7 @@ export async function disableDataApiAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Data API." };
   }
-  revalidatePath(`/projects/${projectId}/data-api`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1176,7 +1170,7 @@ export async function enableAuthAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Neon Auth." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1194,7 +1188,7 @@ export async function disableAuthAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Neon Auth." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1217,7 +1211,7 @@ export async function addAuthTrustedDomainAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to add domain." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1236,7 +1230,7 @@ export async function removeAuthTrustedDomainAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to remove domain." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1254,7 +1248,7 @@ export async function setAuthAllowLocalhostAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update allow localhost." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1282,7 +1276,7 @@ export async function updateAuthEmailPasswordConfigAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update email/password config." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1323,7 +1317,7 @@ export async function addAuthOauthProviderAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to add provider." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1350,7 +1344,7 @@ export async function removeAuthOauthProviderAction(
       error: apiErrorMessage(err) ?? "Failed to remove provider.",
     };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1397,7 +1391,7 @@ export async function updateAuthWebhookConfigAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update webhook config." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1421,7 +1415,7 @@ export async function createAuthUserAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create user." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1437,7 +1431,7 @@ export async function deleteAuthUserAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete user." };
   }
-  revalidatePath(`/projects/${projectId}/auth`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1490,7 +1484,7 @@ export async function createBucketAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create bucket." };
   }
-  revalidatePath(`/projects/${projectId}/storage`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1506,7 +1500,7 @@ export async function deleteBucketAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete bucket." };
   }
-  revalidatePath(`/projects/${projectId}/storage`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1552,7 +1546,7 @@ export async function createFolderAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create folder." };
   }
-  revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1569,7 +1563,7 @@ export async function deleteObjectAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete object." };
   }
-  revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
 
@@ -1645,7 +1639,7 @@ export async function revalidateBucketAction(
   projectId: string,
   bucketName: string
 ): Promise<void> {
-  await revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
+  await revalidatePath(`/projects/${projectId}`, "layout");
 }
 
 // ---------------------------------------------------------------------------
@@ -1715,6 +1709,6 @@ export async function revokeCredentialAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to revoke credential." };
   }
-  revalidatePath(`/projects/${projectId}/credentials`);
+  revalidatePath(`/projects/${projectId}`, "layout");
   return { ok: true };
 }
