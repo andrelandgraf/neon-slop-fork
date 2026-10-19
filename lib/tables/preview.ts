@@ -73,11 +73,13 @@ async function primaryKeyOf(client: PoolClient, schema: string, table: string): 
     [schema, table]
   );
   if (relation.rows.length === 0) throw new TablePreviewNotFoundError(`Table ${schema}.${table} doesn't exist.`);
+  // The first indnkeyatts entries are the key; the rest are INCLUDE columns.
   const key = await client.query<{ attname: string }>(
     `SELECT a.attname FROM pg_index i
-     JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-     WHERE i.indrelid = $1 AND i.indisprimary
-     ORDER BY array_position(i.indkey::int2[], a.attnum)`,
+     CROSS JOIN LATERAL unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, position)
+     JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
+     WHERE i.indrelid = $1 AND i.indisprimary AND k.position <= i.indnkeyatts
+     ORDER BY k.position`,
     [relation.rows[0].oid]
   );
   return key.rows.map((row) => row.attname);

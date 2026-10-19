@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { createRealtimeClient, type RealtimeClient } from "@neon/realtime/client";
-import { RealtimeProvider, useLiveQuery } from "@neon/realtime-react";
+import { RealtimeProvider, useLiveQuery, type UseLiveQueryUtils } from "@neon/realtime-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/neon-ui/empty-state";
 import { PAGE_SIZES, rowKey, type PageSize, type TableRow } from "@/lib/tables/preview-sql";
@@ -86,30 +86,39 @@ function LivePreview(props: TablePreviewProps & { live: ReadyLive }) {
   );
 }
 
+// The hook retries a rejected renewal every second; a promise that never
+// settles ends renewals, and the rows stay as they were last synced.
+const endRenewals = () => new Promise<never>(() => {});
+
 function SubscribedPreview(props: TablePreviewProps & { live: ReadyLive }) {
   const { renewal } = props;
   const [stopped, setStopped] = useState<string | null>(null);
+  const utils = useRef<UseLiveQueryUtils<TableRow> | null>(null);
   const refreshQuery = useCallback(async () => {
+    // A subscription in `error` stays there, so renewing it can't help.
+    if (utils.current?.getState().status === "error") return endRenewals();
     const result = await renewTableRows(renewal);
     if (result.kind === "renewed") return result.sealedQuery;
     setStopped(result.message);
-    // The hook retries a rejected renewal every second; a promise that never
-    // settles ends renewals, and the rows stay as they were last synced.
-    return new Promise<never>(() => {});
+    return endRenewals();
   }, [renewal]);
-  const { data, status } = useLiveQuery(props.live.sealedQuery, { refreshQuery, initialData: props.rows });
+  const query = useLiveQuery(props.live.sealedQuery, { refreshQuery, initialData: props.rows });
+  useEffect(() => {
+    utils.current = query.utils;
+  }, [query.utils]);
+  const failure = stopped ?? (query.status === "error" ? query.error.message : null);
   return (
     <PreviewBody
       {...props}
-      rows={data ?? props.rows}
-      isLive={status === "live" && !stopped}
-      indicator={stopped || status === "error" ? null : <LiveState status={status} />}
-      notice={stopped || status === "error" ? <Stopped message={stopped ?? undefined} /> : null}
+      rows={query.data ?? props.rows}
+      isLive={query.status === "live" && !stopped}
+      indicator={failure === null ? <LiveState status={query.status} /> : null}
+      notice={failure === null ? null : <Stopped message={failure} />}
     />
   );
 }
 
-function LiveState({ status }: { status: "connecting" | "live" | "stale" | "closed" }) {
+function LiveState({ status }: { status: "connecting" | "live" | "stale" | "closed" | "error" }) {
   if (status === "live") {
     return (
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -118,14 +127,14 @@ function LiveState({ status }: { status: "connecting" | "live" | "stale" | "clos
       </span>
     );
   }
-  if (status === "closed") return null;
+  if (status === "closed" || status === "error") return null;
   return <span className="text-xs text-muted-foreground">{status === "stale" ? "Reconnecting…" : "Connecting…"}</span>;
 }
 
-function Stopped({ message }: { message?: string }) {
+function Stopped({ message }: { message: string }) {
   return (
     <span role="alert" className="flex items-center gap-2 text-destructive text-xs">
-      {message ? `Live updates stopped: ${message}` : "Live updates stopped."}
+      Live updates stopped: {message}
       <button type="button" onClick={() => window.location.reload()} className="flex items-center gap-1 font-semibold underline">
         <RotateCw className="size-3" />
         Reload
