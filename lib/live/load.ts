@@ -4,10 +4,22 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { appProject } from "@/lib/db/schema";
 import { reconcileLater } from "@/lib/mirror/sync";
+import { reconcileServicesLater } from "@/lib/mirror/services";
 import { failInterruptedCreationsLater } from "@/lib/projects/creation";
 import type { PageIdentity } from "@/lib/tenancy";
 import { realtime } from "./realtime";
 import {
+  branchServicesQuery,
+  bucketsQuery,
+  collaboratorsQuery,
+  credentialsQuery,
+  customDomainsQuery,
+  dataApisQuery,
+  functionsQuery,
+  maskingStatusQuery,
+  snapshotSchedulesQuery,
+  snapshotsQuery,
+  triggersQuery,
   databasesQuery,
   endpointsQuery,
   operationsQuery,
@@ -79,7 +91,56 @@ const definitions = {
     query: (p: LiveParams) => rolesQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
     reconcile: (p: LiveParams) => reconcileLater({ projectId: projectOf(p), branchId: branchOf(p) }),
   },
+  "branch-services": {
+    query: (p: LiveParams) => branchServicesQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  "data-apis": {
+    query: (p: LiveParams) => dataApisQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  buckets: {
+    query: (p: LiveParams) => bucketsQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  functions: {
+    query: (p: LiveParams) => functionsQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  triggers: {
+    query: (p: LiveParams) => triggersQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  "custom-domains": {
+    query: (p: LiveParams) => customDomainsQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  credentials: {
+    query: (p: LiveParams) => credentialsQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) => reconcileServices(p),
+  },
+  "masking-status": {
+    query: (p: LiveParams) => maskingStatusQuery(p.userId, p.orgId, projectOf(p), branchOf(p)),
+    reconcile: (p: LiveParams) =>
+      reconcileServicesLater({ kind: "masking", projectId: projectOf(p), branchId: branchOf(p) }),
+  },
+  snapshots: {
+    query: (p: LiveParams) => snapshotsQuery(p.userId, p.orgId, projectOf(p)),
+    reconcile: (p: LiveParams) => reconcileServicesLater({ kind: "extras", projectId: projectOf(p) }),
+  },
+  "snapshot-schedules": {
+    query: (p: LiveParams) => snapshotSchedulesQuery(p.userId, p.orgId, projectOf(p)),
+    reconcile: (p: LiveParams) => reconcileServicesLater({ kind: "extras", projectId: projectOf(p) }),
+  },
+  collaborators: {
+    query: (p: LiveParams) => collaboratorsQuery(p.userId, p.orgId, projectOf(p)),
+    reconcile: (p: LiveParams) => reconcileServicesLater({ kind: "extras", projectId: projectOf(p) }),
+  },
 } as const;
+
+function reconcileServices(p: LiveParams): void {
+  reconcileServicesLater({ kind: "services", projectId: projectOf(p), branchId: branchOf(p) });
+}
 
 export type LiveCollectionName = keyof typeof definitions;
 

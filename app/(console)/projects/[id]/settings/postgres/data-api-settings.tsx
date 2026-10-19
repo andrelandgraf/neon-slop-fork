@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,9 +31,7 @@ export function DataApiSettings({
   settings: DataApiSettings | null;
   availableSchemas: string[] | null;
 }) {
-  const [feedback, setFeedback] = useState<
-    { ok: true } | { ok: false; error: string } | null
-  >(null);
+  const [error, setError] = useState<string | null>(null);
   const [serverTiming, setServerTiming] = useState(
     settings?.server_timing_enabled ?? false
   );
@@ -47,7 +46,8 @@ export function DataApiSettings({
       <form
         action={async (formData) => {
           const result = await updateDataApiSettingsAction(formData);
-          setFeedback(result);
+          setError(result.ok ? null : result.error);
+          if (result.ok) toast.success("Data API settings saved.");
         }}
         className="space-y-5"
       >
@@ -151,16 +151,10 @@ export function DataApiSettings({
           />
         </div>
 
-        {feedback && !feedback.ok && (
+        {error && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
             <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <div className="font-mono">{feedback.error}</div>
-          </div>
-        )}
-        {feedback && feedback.ok && (
-          <div className="flex items-center gap-2 text-primary text-xs">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Settings saved.
+            <div className="font-mono">{error}</div>
           </div>
         )}
 

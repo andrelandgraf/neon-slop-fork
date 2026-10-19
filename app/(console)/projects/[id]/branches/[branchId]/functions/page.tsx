@@ -1,11 +1,12 @@
 import { Database, ExternalLink, Folder, SquareFunction } from "lucide-react";
 import { CodePanel } from "@/components/code-panel";
 import { CliAccessCallout } from "@/components/claim-link-button";
-import { PageBody, PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { requireCapability } from "@/lib/capabilities";
-import { neonSdk } from "@/lib/neon";
+import { loadLive } from "@/lib/live/load";
+import { ensureMirrored } from "@/lib/mirror/services";
 import { loadBranch } from "@/lib/project-context";
-import { FunctionCard, type FunctionSummary } from "./function-card";
+import { LiveFunctions } from "./live-functions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,19 +22,19 @@ export default async function FunctionsPage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch, defaultBranch } = await loadBranch(projectId, branchId);
+  const { tenant, project, branch, defaultBranch } = await loadBranch(projectId, branchId);
   await requireCapability(projectId, defaultBranch.id, "functions");
-
+  await ensureMirrored({ kind: "services", projectId, branchId });
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
   const [functions, triggers, domains] = await Promise.all([
-    neonSdk.functions.list({ projectId, branchId }).all(),
-    neonSdk.triggers.list({ projectId, branchId }),
-    neonSdk.functions.customDomains.list({ projectId, branchId }).all(),
+    loadLive("functions", live),
+    loadLive("triggers", live),
+    loadLive("custom-domains", live),
   ]);
   const linkCommand = `neon link --project-id ${projectId} --branch-id ${branchId}`;
 
-  if (functions.length === 0) {
-    return (
-      <div className="mx-auto max-w-[640px] px-6 py-10">
+  const empty = (
+      <div key="empty" className="mx-auto max-w-[640px] px-6 py-10">
         <FunctionDiagram />
         <h1 className="mt-8 text-center font-semibold text-2xl">
           Deploy functions next to your database
@@ -66,50 +67,10 @@ export default async function FunctionsPage({
           </a>
         </div>
       </div>
-    );
-  }
+  );
 
-  const summaries: FunctionSummary[] = functions.map((fn) => {
-    const deployment = fn.active_deployment ?? fn.current_deployment;
-    return {
-      slug: fn.slug,
-      status: deployment?.status ?? "pending",
-      lastDeployed: deployment?.created_at ?? null,
-      invocationUrl: fn.invocation_url,
-      triggers: triggers
-        .filter((t) => t.function_slug === fn.slug)
-        .map((t) =>
-          t.type === "schedule"
-            ? {
-                id: t.trigger_id,
-                name: t.name,
-                type: t.type,
-                functionPath: t.function_path,
-                cron: t.schedule.cron,
-                enabled: t.enabled,
-                inherited: t.inherited,
-                nextRunAt: t.next_run_at,
-              }
-            : {
-                id: t.trigger_id,
-                name: t.name,
-                type: t.type,
-                functionPath: t.function_path,
-                bucketName: t.storage_object_created.bucket_name,
-                prefix: t.storage_object_created.prefix ?? "",
-                enabled: t.enabled,
-                inherited: t.inherited,
-                nextRunAt: null,
-              }
-        ),
-      domains: domains
-        .filter((d) => d.entity_type === "function" && d.entity_id === fn.slug)
-        .map((d) => ({ domain: d.domain, status: d.status })),
-    };
-  });
-
-  return (
-    <PageBody>
+  const header = (
+    <div key="header">
       <PageHeader
         title="Functions"
         project={project}
@@ -130,11 +91,19 @@ export default async function FunctionsPage({
             ]}
           />
         </div>
-        {summaries.map((fn) => (
-          <FunctionCard key={fn.slug} projectId={projectId} branchId={branchId} fn={fn} />
-        ))}
       </div>
-    </PageBody>
+    </div>
+  );
+  return (
+    <LiveFunctions
+      projectId={projectId}
+      branchId={branchId}
+      functions={functions}
+      triggers={triggers}
+      domains={domains}
+      empty={empty}
+      header={header}
+    />
   );
 }
 

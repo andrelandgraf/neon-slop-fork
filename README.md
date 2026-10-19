@@ -23,7 +23,16 @@ projects list, project switcher and billing usage read TanStack DB
 collections synced from sealed live queries over the control database, and
 so do a project's branches, computes, databases, roles and operations: the
 sidebar and ⌘K branch lists, Branches, Branch overview, Computes, Databases,
-Roles, Monitoring → System operations and Settings → General.
+Roles, Monitoring → System operations and Settings → General, Postgres,
+Credentials, Better Auth, Functions and Project permissions. App-backend
+state is live too: Realtime, Auth and Data API on/off, buckets, functions
+with their triggers and domains, credentials, snapshots and their schedule,
+collaborators, and Data Masking progress.
+
+Not live, by design: object listings inside a bucket (uploads go from the
+browser straight to S3), Auth users, Tables, SQL Editor and active queries
+(they read the tenant's own database), logs (they have "Go live"), and the
+AI Gateway model catalog.
 
 Organization:
 
@@ -116,8 +125,13 @@ BETTER_AUTH_URL=http://localhost:3030
 
 - Most console state lives in the Neon API, so the control database
   mirrors what the live views render (`neon_project`, `neon_branch`,
-  `neon_endpoint`, `neon_operation`, `neon_database`, `neon_role`; role
-  passwords are never stored). While a Neon operation a write started is
+  `neon_endpoint`, `neon_operation`, `neon_database`, `neon_role`, and the
+  app-backend tables `neon_branch_service`, `neon_data_api`, `neon_bucket`,
+  `neon_function`, `neon_trigger`, `neon_custom_domain`, `neon_credential`,
+  `neon_snapshot`, `neon_snapshot_schedule`, `neon_project_permission`,
+  `neon_masking_status`). Secrets are never stored: role passwords,
+  credential secrets and Realtime secrets only appear in one-time responses,
+  and function deployments are stored without their environment. While a Neon operation a write started is
   still running, the project keeps re-syncing, so states like a starting
   compute move on screen.
   Server actions update the mirror after each Neon API write, and every

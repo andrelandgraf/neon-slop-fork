@@ -36,6 +36,14 @@ export function NetworkingCard({
   const [blockPublic, setBlockPublic] = useState(initialBlockPublic);
   const [blockVpc, setBlockVpc] = useState(initialBlockVpc);
   const [pending, startTransition] = useTransition();
+  // A save from another tab arrives as new initial values; the switches
+  // follow them without remounting the allowlist and its unsaved edits.
+  const [shown, setShown] = useState({ initialBlockPublic, initialBlockVpc });
+  if (shown.initialBlockPublic !== initialBlockPublic || shown.initialBlockVpc !== initialBlockVpc) {
+    setShown({ initialBlockPublic, initialBlockVpc });
+    setBlockPublic(initialBlockPublic);
+    setBlockVpc(initialBlockVpc);
+  }
 
   function togglePublic(next: boolean) {
     const prev = blockPublic;
@@ -121,6 +129,7 @@ export function NetworkingCard({
       </div>
 
       <IpAllowlistSubsection
+        key={JSON.stringify([initialIps, initialProtectedOnly])}
         projectId={projectId}
         initialIps={initialIps}
         initialProtectedOnly={initialProtectedOnly}

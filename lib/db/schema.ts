@@ -11,7 +11,24 @@ import {
   jsonb,
   primaryKey,
 } from "drizzle-orm/pg-core";
-import type { Branch, Endpoint, Project } from "@/lib/neon";
+import type {
+  AnonymizedBranchStatus,
+  BackupScheduleItem,
+  Branch,
+  BranchAiGateway,
+  BranchStorage,
+  CredentialMeta,
+  CustomDomain,
+  DataApi,
+  Endpoint,
+  FunctionTrigger,
+  NeonAuthIntegration,
+  NeonFunction,
+  Project,
+  ProjectPermission,
+  Realtime,
+  Snapshot,
+} from "@/lib/neon";
 
 /**
  * Better Auth core tables. Names + columns follow Better Auth's
@@ -329,6 +346,149 @@ export const neonRole = pgTable(
   },
   (t) => [primaryKey({ columns: [t.branch_id, t.name] })]
 );
+
+/*
+ * App-backend state per branch. Each table keeps its key columns and the
+ * Neon API object as `data`, typed with the SDK's own type, minus anything
+ * secret: credential secrets, Realtime secrets and role passwords only ever
+ * come back in one-time responses, and function environments aren't stored.
+ */
+
+/** One row per branch: which app-backend services are on, and their endpoints. */
+export const neonBranchService = pgTable("neon_branch_service", {
+  branch_id: text("branch_id")
+    .primaryKey()
+    .references(() => neonBranch.id, { onDelete: "cascade" }),
+  project_id: text("project_id").notNull(),
+  realtime: jsonb("realtime").$type<Realtime | null>(),
+  auth: jsonb("auth").$type<NeonAuthIntegration | null>(),
+  storage: jsonb("storage").$type<BranchStorage | null>(),
+  ai_gateway: jsonb("ai_gateway").$type<BranchAiGateway | null>(),
+  mirrored_at: tz("mirrored_at").notNull(),
+});
+
+export const neonDataApi = pgTable(
+  "neon_data_api",
+  {
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    database_name: text("database_name").notNull(),
+    data: jsonb("data").$type<DataApi>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.database_name] })]
+);
+
+export const neonBucket = pgTable(
+  "neon_bucket",
+  {
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    access_level: text("access_level").notNull(),
+    created_at: tz("created_at").notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.name] })]
+);
+
+export const neonFunction = pgTable(
+  "neon_function",
+  {
+    id: text("id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<NeonFunction>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.id] })]
+);
+
+export const neonTrigger = pgTable(
+  "neon_trigger",
+  {
+    trigger_id: text("trigger_id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<FunctionTrigger>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.trigger_id] })]
+);
+
+export const neonCustomDomain = pgTable(
+  "neon_custom_domain",
+  {
+    domain: text("domain").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<CustomDomain>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.domain] })]
+);
+
+/** Credential metadata; the secret is only ever in the create response. */
+export const neonCredential = pgTable(
+  "neon_credential",
+  {
+    token_id: text("token_id").notNull(),
+    project_id: text("project_id").notNull(),
+    branch_id: text("branch_id")
+      .notNull()
+      .references(() => neonBranch.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<CredentialMeta>().notNull(),
+    mirrored_at: tz("mirrored_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branch_id, t.token_id] })]
+);
+
+export const neonSnapshot = pgTable("neon_snapshot", {
+  id: text("id").primaryKey(),
+  project_id: text("project_id")
+    .notNull()
+    .references(() => neonProject.id, { onDelete: "cascade" }),
+  data: jsonb("data").$type<Snapshot>().notNull(),
+  mirrored_at: tz("mirrored_at").notNull(),
+});
+
+/** A root branch's snapshot schedule; empty means none. */
+export const neonSnapshotSchedule = pgTable("neon_snapshot_schedule", {
+  branch_id: text("branch_id")
+    .primaryKey()
+    .references(() => neonBranch.id, { onDelete: "cascade" }),
+  project_id: text("project_id").notNull(),
+  data: jsonb("data").$type<BackupScheduleItem[]>().notNull(),
+  mirrored_at: tz("mirrored_at").notNull(),
+});
+
+export const neonProjectPermission = pgTable("neon_project_permission", {
+  id: text("id").primaryKey(),
+  project_id: text("project_id")
+    .notNull()
+    .references(() => neonProject.id, { onDelete: "cascade" }),
+  data: jsonb("data").$type<ProjectPermission>().notNull(),
+  mirrored_at: tz("mirrored_at").notNull(),
+});
+
+export const neonMaskingStatus = pgTable("neon_masking_status", {
+  branch_id: text("branch_id")
+    .primaryKey()
+    .references(() => neonBranch.id, { onDelete: "cascade" }),
+  project_id: text("project_id").notNull(),
+  data: jsonb("data").$type<AnonymizedBranchStatus>().notNull(),
+  mirrored_at: tz("mirrored_at").notNull(),
+});
 
 /**
  * One row per "Create project" submission, keyed by an id the browser picks,

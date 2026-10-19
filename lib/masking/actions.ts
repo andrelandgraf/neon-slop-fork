@@ -25,6 +25,6 @@ export async function applyMaskingRulesAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to apply masking rules." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { masking: branchId });
   return { ok: true };
 }

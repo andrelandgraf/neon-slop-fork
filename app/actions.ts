@@ -1,5 +1,5 @@
 "use server";
-import { projectChanged } from "@/lib/mirror/after-write";
+import { mirrorServices, projectChanged } from "@/lib/mirror/after-write";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
@@ -337,7 +337,7 @@ export async function grantProjectAccessAction(
       error: apiErrorMessage(err) ?? "Failed to grant project access.",
     };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -355,7 +355,7 @@ export async function revokeProjectAccessAction(
       error: apiErrorMessage(err) ?? "Failed to revoke project access.",
     };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -552,7 +552,7 @@ export async function createSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -567,7 +567,7 @@ export async function deleteSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -587,7 +587,7 @@ export async function renameSnapshotAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to rename snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -621,7 +621,7 @@ export async function restoreSnapshotPreviewAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -656,7 +656,7 @@ export async function restoreSnapshotInPlaceAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -672,7 +672,7 @@ export async function createRoleAction(formData: FormData): Promise<void> {
   if (!projectId || !branchId || !name) throw new Error("Missing fields.");
   await requireProjectAccess(tenant, projectId);
   await neon.createProjectBranchRole(projectId, branchId, { role: { name } });
-  await projectChanged(projectId, branchId);
+  await projectChanged(projectId, { branch: branchId });
 }
 
 export async function deleteRoleAction(
@@ -683,7 +683,7 @@ export async function deleteRoleAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchRole(projectId, branchId, roleName);
-  await projectChanged(projectId, branchId);
+  await projectChanged(projectId, { branch: branchId });
 }
 
 export async function resetRolePasswordAction(
@@ -698,7 +698,7 @@ export async function resetRolePasswordAction(
     branchId,
     roleName
   );
-  await projectChanged(projectId, branchId);
+  await projectChanged(projectId, { branch: branchId });
   return { password: res.data.role.password ?? "" };
 }
 
@@ -714,7 +714,7 @@ export async function createDatabaseAction(formData: FormData): Promise<void> {
   await neon.createProjectBranchDatabase(projectId, branchId, {
     database: { name, owner_name: ownerName },
   });
-  await projectChanged(projectId, branchId);
+  await projectChanged(projectId, { branch: branchId });
 }
 
 export async function deleteDatabaseAction(
@@ -725,7 +725,7 @@ export async function deleteDatabaseAction(
   const tenant = await requireTenant();
   await requireProjectAccess(tenant, projectId);
   await neon.deleteProjectBranchDatabase(projectId, branchId, databaseName);
-  await projectChanged(projectId, branchId);
+  await projectChanged(projectId, { branch: branchId });
 }
 
 // ---------------------------------------------------------------------------
@@ -1019,7 +1019,7 @@ export async function enableDataApiAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Data API." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1076,7 +1076,7 @@ export async function updateDataApiSettingsAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update Data API." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1104,7 +1104,7 @@ export async function refreshDataApiSchemaCacheAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to refresh schema cache." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1120,7 +1120,7 @@ export async function disableDataApiAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Data API." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1161,7 +1161,7 @@ export async function enableAuthAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Neon Auth." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1179,7 +1179,7 @@ export async function disableAuthAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Neon Auth." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1475,7 +1475,7 @@ export async function createBucketAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create bucket." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1491,7 +1491,7 @@ export async function deleteBucketAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete bucket." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 
@@ -1683,7 +1683,8 @@ export async function createCredentialAction(
     // Do not revalidate before returning: a credential secret is returned only
     // once, and refreshing this route here can remount the dialog before the
     // client renders its one-time reveal. The dialog refreshes after the user
-    // acknowledges that they copied the secret.
+    // acknowledges that they copied the secret; the live list updates now.
+    await mirrorServices(projectId, branchId);
     return { ok: true, credential: data };
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create credential." };
@@ -1702,6 +1703,6 @@ export async function revokeCredentialAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to revoke credential." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }

@@ -3,6 +3,8 @@ import { PageBody, PageHeader } from "@/components/page-header";
 import { getProjectCapabilities, requireCapability } from "@/lib/capabilities";
 import { neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
+import { loadLive } from "@/lib/live/load";
+import { ensureMirrored } from "@/lib/mirror/services";
 import { BucketTable } from "./bucket-table";
 import { CreateBucketDialog } from "./create-bucket-dialog";
 
@@ -14,10 +16,12 @@ export default async function StoragePage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch, defaultBranch } = await loadBranch(projectId, branchId);
+  const { tenant, project, branch, defaultBranch } = await loadBranch(projectId, branchId);
   await requireCapability(projectId, defaultBranch.id, "storage");
+  await ensureMirrored({ kind: "services", projectId, branchId });
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
   const [buckets, storage, capabilities] = await Promise.all([
-    neonSdk.storage.buckets.list({ projectId, branchId }),
+    loadLive("buckets", live),
     neonSdk.storage.get({ projectId, branchId }),
     getProjectCapabilities(projectId, defaultBranch.id),
   ]);
@@ -33,11 +37,7 @@ export default async function StoragePage({
       <BucketTable
         projectId={projectId}
         branchId={branchId}
-        buckets={buckets.map((b) => ({
-          name: b.name,
-          public: b.access_level === "public_read",
-          createdAt: b.created_at,
-        }))}
+        buckets={buckets}
         actions={
           <>
             <ConnectDialog

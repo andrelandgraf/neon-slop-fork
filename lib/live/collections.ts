@@ -6,6 +6,17 @@ import { dismissCreationAction } from "@/lib/projects/create";
 import type { PageIdentity } from "@/lib/tenancy";
 import type { LiveCollectionName, LiveParams } from "./load";
 import type {
+  BranchServiceRow,
+  BucketRow,
+  CollaboratorRow,
+  CredentialRow,
+  CustomDomainRow,
+  DataApiRow,
+  FunctionRow,
+  MaskingStatusRow,
+  SnapshotRow,
+  SnapshotScheduleRow,
+  TriggerRow,
   DatabaseRow,
   EndpointRow,
   OperationRow,
@@ -114,3 +125,36 @@ export const databasesCollection = (params: LiveParams, query: SealedLiveQuery<D
 
 export const rolesCollection = (params: LiveParams, query: SealedLiveQuery<RoleRow>) =>
   liveCollection("roles", params, query, (role) => `${role.branch_id}:${role.name}`);
+
+export const branchServicesCollection = (params: LiveParams, query: SealedLiveQuery<BranchServiceRow>) =>
+  liveCollection("branch-services", params, query, (row) => row.branch_id);
+
+export const dataApisCollection = (params: LiveParams, query: SealedLiveQuery<DataApiRow>) =>
+  liveCollection("data-apis", params, query, (row) => `${row.branch_id}:${row.database_name}`);
+
+export const bucketsCollection = (params: LiveParams, query: SealedLiveQuery<BucketRow>) =>
+  liveCollection("buckets", params, query, (row) => `${row.branch_id}:${row.name}`);
+
+export const functionsCollection = (params: LiveParams, query: SealedLiveQuery<FunctionRow>) =>
+  liveCollection("functions", params, query, (row) => row.id);
+
+export const triggersCollection = (params: LiveParams, query: SealedLiveQuery<TriggerRow>) =>
+  liveCollection("triggers", params, query, (row) => row.trigger_id);
+
+export const customDomainsCollection = (params: LiveParams, query: SealedLiveQuery<CustomDomainRow>) =>
+  liveCollection("custom-domains", params, query, (row) => row.domain);
+
+export const credentialsCollection = (params: LiveParams, query: SealedLiveQuery<CredentialRow>) =>
+  liveCollection("credentials", params, query, (row) => row.token_id);
+
+export const maskingStatusCollection = (params: LiveParams, query: SealedLiveQuery<MaskingStatusRow>) =>
+  liveCollection("masking-status", params, query, (row) => row.branch_id);
+
+export const snapshotsCollection = (params: LiveParams, query: SealedLiveQuery<SnapshotRow>) =>
+  liveCollection("snapshots", params, query, (row) => row.id);
+
+export const snapshotSchedulesCollection = (params: LiveParams, query: SealedLiveQuery<SnapshotScheduleRow>) =>
+  liveCollection("snapshot-schedules", params, query, (row) => row.branch_id);
+
+export const collaboratorsCollection = (params: LiveParams, query: SealedLiveQuery<CollaboratorRow>) =>
+  liveCollection("collaborators", params, query, (row) => row.id);

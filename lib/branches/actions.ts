@@ -40,7 +40,7 @@ export async function createBranchAction(
       const created = await neonRaw.createAnonymizedBranch(input.projectId, {
         branch_create: { branch: fields, endpoints: [{ type: "read_write" }] },
       });
-      await projectChanged(input.projectId);
+      await projectChanged(input.projectId, { masking: created.branch.id });
       return { ok: true, branchId: created.branch.id, elapsedMs: Date.now() - started };
     }
     const branch = await neonSdk.branches.create({
