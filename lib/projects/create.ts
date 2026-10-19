@@ -22,7 +22,6 @@ export interface CreatedProject {
   projectId: string;
   branchId: string;
   branchName: string;
-  orgId: string;
   elapsedMs: number;
   /** Service steps that failed after the project itself was created. */
   failures: { service: string; error: string }[];
@@ -130,7 +129,6 @@ export async function createProjectWithServicesAction(
       projectId,
       branchId,
       branchName: branch.name,
-      orgId: ORG_ID,
       elapsedMs,
       failures,
       databaseUrl,

@@ -826,6 +826,15 @@ export const neon = {
  * Resolves to `null` when Neon answers 404 (the feature isn't enabled on
  * this branch, or the resource is gone); every other failure propagates.
  */
+/**
+ * The database the Data API pages and Connect dialog read: `neondb`, which
+ * Neon creates by default, or the first database when a branch has none
+ * by that name.
+ */
+export function dataApiDatabase(databases: { name: string }[]): string | undefined {
+  return (databases.find((d) => d.name === "neondb") ?? databases[0])?.name;
+}
+
 export async function ifFound<T>(request: Promise<T>): Promise<T | null> {
   try {
     return await request;

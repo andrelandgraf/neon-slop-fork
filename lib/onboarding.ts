@@ -16,13 +16,16 @@ function shellArg(value: string): string {
     : `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
+/**
+ * The Console passes `--org-id`. Here the project starts in the clone's
+ * shared org and moves to the user's own org when they claim it, and the
+ * CLI rejects an `--org-id` the project no longer belongs to.
+ */
 export function initCommand({
-  orgId,
   projectId,
   branchName,
   services,
 }: {
-  orgId: string;
   projectId: string;
   branchName: string;
   services: ServiceId[];
@@ -30,7 +33,6 @@ export function initCommand({
   const ordered = SERVICE_ORDER.filter((s) => services.includes(s));
   return [
     "neon init -y",
-    `--org-id ${shellArg(orgId)}`,
     `--project-id ${shellArg(projectId)}`,
     `${branchName.startsWith("-") ? "--branch=" : "--branch "}${shellArg(branchName)}`,
     `--services ${ordered.length ? ordered.join(",") : "postgres"}`,

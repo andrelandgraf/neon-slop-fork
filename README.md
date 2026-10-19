@@ -48,7 +48,7 @@ branch: **Branches** (create from current data, a past time, schema only, or
 anonymized), **Integrations**, and **Settings** (general, Postgres, networking,
 credentials, Auth, Functions, HIPAA, permissions).
 
-Old routes such as `/projects/<id>/sql-editor?branch=<branchId>` redirect to
+Old routes such as `/projects/<id>/sql?branch=<branchId>` redirect to
 their new location.
 
 Regions without the app backend (Storage, Functions, AI Gateway, Realtime)

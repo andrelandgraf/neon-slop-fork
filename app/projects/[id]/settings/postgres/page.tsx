@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ifFound, neon, neonSdk } from "@/lib/neon";
+import { dataApiDatabase, ifFound, neon, neonSdk } from "@/lib/neon";
 import { loadProjectBranch } from "@/lib/project-context";
 import { ComputeDefaultsCard } from "../compute-defaults-card";
 import { HistoryWindowCard } from "../history-window-card";
@@ -29,7 +29,7 @@ export default async function PostgresSettingsPage({
   const { project, branch, branches } = context;
   const parent = branches.find((b) => b.id === branch.parent_id);
   const { data } = await neon.listProjectBranchDatabases(projectId, branch.id);
-  const databaseName = data.databases[0]?.name;
+  const databaseName = dataApiDatabase(data.databases);
   const dataApi = databaseName
     ? await ifFound(neonSdk.postgres.dataApi.get({ projectId, branchId: branch.id, databaseName }))
     : null;

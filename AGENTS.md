@@ -11,7 +11,7 @@ This repo's Neon project is maintained through `neon.ts`, `.neon`, and the `neon
 
 - Every project page loads through `loadProject` / `loadBranch` / `loadProjectBranch` in `lib/project-context.ts`. They check the session and that the project belongs to the active org; a page or server action that skips them is a tenancy hole.
 - Branch-scoped pages live under `app/projects/[id]/branches/[branchId]/`. Build links with `branchPath`. Project-level pages read `?branch=`. When moving a route, add the old path to `lib/legacy-routes.ts`.
-- Console copy, connection templates, and agent prompts are copied verbatim from console.neon.tech. Keep them verbatim when editing.
+- Console copy, connection templates, and agent prompts are copied verbatim from console.neon.tech. Keep them verbatim when editing; a deviation that fixes broken Console output gets a comment saying so.
 - Styling uses the Console tokens in `app/globals.css` (`canvas`, `panel`, `panel-border`, `nav-active`, `link`). Use the tokens, not raw hex values.
 - Schema changes: there are no migration files. Run `bunx drizzle-kit push` against the dev meta branch, and against the production meta database before deploying.
 - Tests: `bun test lib/`, plus `bun run typecheck` and `bun run build`.

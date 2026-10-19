@@ -1,6 +1,6 @@
 "use server";
 import { getProjectCapabilities } from "@/lib/capabilities";
-import { ifFound, neon, neonSdk } from "@/lib/neon";
+import { dataApiDatabase, ifFound, neon, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
 import { parseConnectionUri, type ConnectionParts } from "@/lib/connect-snippets";
 
@@ -42,7 +42,7 @@ export async function loadConnectDetailsAction(
   ]);
   const endpoints = endpointsRes.data.endpoints;
   const databases = databasesRes.data.databases;
-  const firstDatabase = databases[0]?.name;
+  const firstDatabase = dataApiDatabase(databases);
 
   const [storage, aiGateway, dataApi, auth] = await Promise.all([
     capabilities.storage

@@ -81,6 +81,35 @@ export function CreateBranchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined} className="max-w-[480px] gap-0 p-0">
+        <CreateBranchForm
+          projectId={projectId}
+          branches={branches}
+          defaultParentId={defaultParentId}
+          defaultMode={defaultMode}
+          onClose={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Mounted fresh on every open, so it always starts from the current parent. */
+function CreateBranchForm({
+  projectId,
+  branches,
+  defaultParentId,
+  defaultMode,
+  onClose,
+}: {
+  projectId: string;
+  branches: { id: string; name: string; default: boolean }[];
+  defaultParentId?: string;
+  defaultMode: BranchDataMode;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const fallbackParent =
     defaultParentId ?? branches.find((b) => b.default)?.id ?? branches[0]?.id ?? "";
@@ -95,16 +124,6 @@ export function CreateBranchDialog({
     toLocalInput(new Date(Date.now() - HOUR))
   );
   const [pending, startTransition] = useTransition();
-
-  function handleOpenChange(next: boolean) {
-    if (next) {
-      setName("");
-      setAutoDelete("1d");
-      setParentId(fallbackParent);
-      setMode(defaultMode);
-    }
-    onOpenChange(next);
-  }
 
   function expiresAt(): string | undefined {
     if (autoDelete === "custom") return new Date(customExpiry).toISOString();
@@ -128,7 +147,7 @@ export function CreateBranchDialog({
         toast.error(result.error);
         return;
       }
-      onOpenChange(false);
+      onClose();
       const page = mode === "anonymized" ? "/data-masking" : "";
       router.push(
         `/projects/${projectId}/branches/${result.branchId}${page}?created=${result.elapsedMs}`
@@ -137,120 +156,116 @@ export function CreateBranchDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent aria-describedby={undefined} className="max-w-[480px] gap-0 p-0">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader className="border-panel-border border-b px-5 py-4">
-            <DialogTitle>Create new branch</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 px-5 py-4">
-            <p className="text-sm">
-              Any new branch is created instantly and only uses storage when you
-              make changes.
-            </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="branch-name">Name</Label>
-              <Input
-                id="branch-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="git branch, feature name, etc"
-                maxLength={256}
+    <form onSubmit={handleSubmit}>
+      <DialogHeader className="border-panel-border border-b px-5 py-4">
+        <DialogTitle>Create new branch</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 px-5 py-4">
+        <p className="text-sm">
+          Any new branch is created instantly and only uses storage when you
+          make changes.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="branch-name">Name</Label>
+          <Input
+            id="branch-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="git branch, feature name, etc"
+            maxLength={256}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="branch-auto-delete">Auto-delete</Label>
+          <NativeSelect
+            id="branch-auto-delete"
+            value={autoDelete}
+            onChange={(e) => {
+              const next = AUTO_DELETE.find((o) => o.value === e.target.value);
+              if (next) setAutoDelete(next.value);
+            }}
+          >
+            {AUTO_DELETE.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </NativeSelect>
+          {autoDelete === "custom" && (
+            <Input
+              type="datetime-local"
+              value={customExpiry}
+              min={toLocalInput(new Date())}
+              max={toLocalInput(new Date(Date.now() + 30 * 24 * HOUR))}
+              onChange={(e) => setCustomExpiry(e.target.value)}
+              required
+            />
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="branch-parent">Parent branch</Label>
+          <NativeSelect
+            id="branch-parent"
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+          >
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <fieldset className="space-y-3 pt-1">
+          {DATA_MODES.map((option) => (
+            <label key={option.value} className="flex cursor-pointer gap-2.5">
+              <input
+                type="radio"
+                name="data-mode"
+                value={option.value}
+                checked={mode === option.value}
+                onChange={() => setMode(option.value)}
+                className="mt-0.5 size-4 accent-foreground"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="branch-auto-delete">Auto-delete</Label>
-              <NativeSelect
-                id="branch-auto-delete"
-                value={autoDelete}
-                onChange={(e) => {
-                  const next = AUTO_DELETE.find((o) => o.value === e.target.value);
-                  if (next) setAutoDelete(next.value);
-                }}
-              >
-                {AUTO_DELETE.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </NativeSelect>
-              {autoDelete === "custom" && (
-                <Input
-                  type="datetime-local"
-                  value={customExpiry}
-                  min={toLocalInput(new Date())}
-                  max={toLocalInput(new Date(Date.now() + 30 * 24 * HOUR))}
-                  onChange={(e) => setCustomExpiry(e.target.value)}
-                  required
-                />
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="branch-parent">Parent branch</Label>
-              <NativeSelect
-                id="branch-parent"
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-              >
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <fieldset className="space-y-3 pt-1">
-              {DATA_MODES.map((option) => (
-                <label key={option.value} className="flex cursor-pointer gap-2.5">
-                  <input
-                    type="radio"
-                    name="data-mode"
-                    value={option.value}
-                    checked={mode === option.value}
-                    onChange={() => setMode(option.value)}
-                    className="mt-0.5 size-4 accent-foreground"
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 font-semibold text-sm">
+                  {option.label}
+                  {option.beta && (
+                    <Badge className="bg-primary/20 text-foreground">Beta</Badge>
+                  )}
+                </span>
+                <span className="block text-muted-foreground text-xs">
+                  {option.description}
+                </span>
+                {option.value === "past" && mode === "past" && (
+                  <Input
+                    type="datetime-local"
+                    value={pastTime}
+                    max={toLocalInput(new Date())}
+                    onChange={(e) => setPastTime(e.target.value)}
+                    className="mt-2"
+                    required
                   />
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 font-semibold text-sm">
-                      {option.label}
-                      {option.beta && (
-                        <Badge className="bg-primary/20 text-foreground">Beta</Badge>
-                      )}
-                    </span>
-                    <span className="block text-muted-foreground text-xs">
-                      {option.description}
-                    </span>
-                    {option.value === "past" && mode === "past" && (
-                      <Input
-                        type="datetime-local"
-                        value={pastTime}
-                        max={toLocalInput(new Date())}
-                        onChange={(e) => setPastTime(e.target.value)}
-                        className="mt-2"
-                        required
-                      />
-                    )}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          </div>
-          <DialogFooter className="px-5 pb-5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending || !parentId}>
-              {pending && <Loader2 className="size-3.5 animate-spin" />}
-              Create
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+                )}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      <DialogFooter className="px-5 pb-5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={pending}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={pending || !parentId}>
+          {pending && <Loader2 className="size-3.5 animate-spin" />}
+          Create
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

@@ -35,6 +35,27 @@ describe("renderSnippet", () => {
     );
   });
 
+  test("HTTP snippet queries with a tagged template", () => {
+    const snippet = renderSnippet("serverless_http", parts, true);
+    expect(snippet).toContain("const posts = await sql`SELECT * FROM posts`;");
+    expect(snippet).not.toContain("sql('");
+  });
+
+  test("a role name can't break out of the shell parameters", () => {
+    const role = "app'; printf INJECTED; #";
+    const snippet = renderSnippet("parameters", { ...parts, role }, true);
+    const run = Bun.spawnSync(["sh", "-c", `${snippet}\nprintf %s "$PGUSER"`]);
+    expect(run.stdout.toString()).toBe(role);
+  });
+
+  test("a role name can't break out of a JavaScript string", () => {
+    const role = "app'-console.log('JS_INJECTED')-'";
+    const snippet = renderSnippet("serverless_http", { ...parts, role }, true);
+    const uri = snippet.match(/neon\('([^']*)'\)/)?.[1];
+    if (!uri) throw new Error(`No single-quoted URI in:\n${snippet}`);
+    expect(decodeURIComponent(new URL(uri).username)).toBe(role);
+  });
+
   test(".NET partial renders inside quotes", () => {
     expect(renderSnippet("dotnet_ssl", parts, false)).toBe(
       '"Host=ep-cool-paper-b5x598eh.us-east-2.aws.neon.tech; Database=neondb; Username=neondb_owner; Password=p%40ss; SSL Mode=VerifyFull; Channel Binding=Require;"'

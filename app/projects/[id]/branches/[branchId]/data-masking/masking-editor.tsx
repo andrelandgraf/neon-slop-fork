@@ -39,8 +39,10 @@ const STATE_MESSAGE: Record<string, string> = {
   error: "Anonymization failed.",
 };
 
+// Identifiers may contain dots, so a joined string could map two columns
+// to one rule.
 const key = (c: { database: string; schema: string; table: string; name: string }) =>
-  `${c.database}.${c.schema}.${c.table}.${c.name}`;
+  JSON.stringify([c.database, c.schema, c.table, c.name]);
 
 export function MaskingEditor({
   projectId,

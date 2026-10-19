@@ -1,7 +1,7 @@
 /**
  * Connection snippets from the Neon Console's Connect dialog. The templates
  * are the Console's own (mustache), copied verbatim so the output matches
- * what users see on console.neon.tech.
+ * what users see on console.neon.tech, except where a comment marks a fix.
  */
 
 export interface ConnectionParts {
@@ -47,7 +47,9 @@ export const TEMPLATES = {
   "symfony": "# cat .env | grep DATABASE_URL\nDATABASE_URL=\"{{> connstring}}&charset=utf8\"",
   "go": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/jackc/pgx/v5\"\n\t\"github.com/joho/godotenv\"\n)\n\nfunc main() {\n\terr := godotenv.Load()\n\tif err != nil {\n\t\tlog.Fatal(\"Error loading .env file\")\n\t}\n\tconnStr := os.Getenv(\"DATABASE_URL\")\n\tconn, err := pgx.Connect(context.Background(), connStr)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tdefer conn.Close(context.Background())\n\t_, err = conn.Exec(context.Background(), \"CREATE TABLE IF NOT EXISTS playing_with_neon(id SERIAL PRIMARY KEY, name TEXT NOT NULL, value REAL);\")\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\t_, err = conn.Exec(context.Background(), \"INSERT INTO playing_with_neon(name, value) SELECT LEFT(md5(i::TEXT), 10), random() FROM generate_series(1, 10) s(i);\")\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\trows, err := conn.Query(context.Background(), \"SELECT * FROM playing_with_neon\")\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\tdefer rows.Close()\n\tfor rows.Next() {\n\t\tvar id int32\n\t\tvar name string\n\t\tvar value float32\n\t\tif err := rows.Scan(&id, &name, &value); err != nil {\n\t\t\tpanic(err)\n\t\t}\n\t\tfmt.Printf(\"%d | %s | %f\\n\", id, name, value)\n\t}\n}",
   "go_env": "DATABASE_URL='{{> connstring}}'",
-  "serverless_http": "import { neon } from '@neondatabase/serverless';\n\nconst sql = neon('{{> connstring}}');\n\nconst posts = await sql('SELECT * FROM posts');\n\n// See https://neon.com/docs/serverless/serverless-driver\n// for more information",
+  // The Console calls `sql('SELECT …')`, which @neondatabase/serverless 1.x
+  // rejects; it only accepts tagged templates.
+  "serverless_http": "import { neon } from '@neondatabase/serverless';\n\nconst sql = neon('{{> connstring}}');\n\nconst posts = await sql`SELECT * FROM posts`;\n\n// See https://neon.com/docs/serverless/serverless-driver\n// for more information",
   "serverless_web_sockets": "import { Pool } from '@neondatabase/serverless';\n\nconst pool = new Pool({ connectionString: '{{> connstring}}' });\n\nconst { rows: [post] } = await pool.query('SELECT * FROM posts');\n\npool.end();",
   "nestjs": "// database.service.ts\nimport { neon } from '@neondatabase/serverless';\nimport { Injectable } from '@nestjs/common';\nimport { ConfigService } from '@nestjs/config';\n\n@Injectable()\nexport class DatabaseService {\n    private readonly sql;\n\n    constructor(private configService: ConfigService) {\n        const databaseUrl = this.configService.get('DATABASE_URL');\n        this.sql = neon(databaseUrl);\n    }\n        async getData() {\n        const data = await this.sql`...`;\n        return data;\n    }\n}",
   "nestjs_env": "# keep Neon credentials secure: do not expose them to client-side code\n\nDATABASE_URL='{{> connstring}}'",
@@ -166,15 +168,32 @@ export const PASSWORD_MASK = "********";
 
 type View = Record<string, string | boolean>;
 
+/**
+ * Role and database names are user-chosen and land inside single-quoted
+ * shell and JavaScript strings, so `'` must not survive encoding.
+ * `encodeURIComponent` leaves `!'()*` alone; RFC 3986 allows encoding them.
+ */
+function encodeUriPart(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
+/** Raw values only appear inside `'…'` in the shell `parameters` snippet. */
+function shellQuoted(value: string): string {
+  return value.replace(/'/g, `'\\''`);
+}
+
 function view(parts: ConnectionParts, pooled: boolean): View {
   const password = parts.password ?? PASSWORD_MASK;
   return {
-    pgEncodedRole: encodeURIComponent(parts.role),
-    pgRole: parts.role,
+    pgEncodedRole: encodeUriPart(parts.role),
+    pgRole: shellQuoted(parts.role),
     pgEncodedPasswordOrPlaceholder:
-      parts.password === null ? password : encodeURIComponent(password),
-    pgPasswordOrPlaceholder: password,
-    pgEncodedDatabase: encodeURIComponent(parts.database),
+      parts.password === null ? password : encodeUriPart(password),
+    pgPasswordOrPlaceholder: shellQuoted(password),
+    pgEncodedDatabase: encodeUriPart(parts.database),
     host: parts.host,
     poolerHost: parts.poolerHost,
     preferPooled: pooled,

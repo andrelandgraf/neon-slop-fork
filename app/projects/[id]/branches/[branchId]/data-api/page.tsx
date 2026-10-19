@@ -1,5 +1,5 @@
 import { PageBody, PageHeader } from "@/components/page-header";
-import { ifFound, neon, neonSdk } from "@/lib/neon";
+import { dataApiDatabase, ifFound, neon, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
 import { runProjectSql } from "@/lib/sql";
 import { EnableDataApiCard } from "./enable-card";
@@ -15,7 +15,7 @@ export default async function DataApiPage({
   const { id: projectId, branchId } = await params;
   const { project, branch } = await loadBranch(projectId, branchId);
   const { data } = await neon.listProjectBranchDatabases(projectId, branchId);
-  const databaseName = data.databases[0]?.name;
+  const databaseName = dataApiDatabase(data.databases);
   if (!databaseName) {
     return (
       <PageBody>

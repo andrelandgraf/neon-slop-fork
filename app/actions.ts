@@ -951,14 +951,6 @@ export async function updateIpAllowlistAction(
   return { ok: true };
 }
 
-/**
- * Neon appends the identifiers it was working on to an error message, as in
- * `…cannot be the default branch; project_id:"x", branch_id:"y"`. The prose is
- * the part worth showing; the trailing pairs just repeat what the user is
- * already looking at.
- */
-
-
 // ---------------------------------------------------------------------------
 // App-level tenancy
 // ---------------------------------------------------------------------------

@@ -30,7 +30,13 @@ export default async function RestorePage({
   ]);
   const branchName = new Map(branches.map((b) => [b.id, b.name]));
   const items = snapshots
-    .filter((s) => s.source_branch_id === branchId)
+    // Snapshots outlive their source branch; those land on the default branch
+    // so they stay restorable and deletable.
+    .filter(
+      (s) =>
+        s.source_branch_id === branchId ||
+        (branch.default && !branchName.has(s.source_branch_id ?? ""))
+    )
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map((s) => ({
       id: s.id,

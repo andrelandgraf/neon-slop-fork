@@ -68,6 +68,9 @@ export default async function DataMaskingPage({
 
   return (
     <MaskingEditor
+      // The editor's draft starts from `rules`; remount once real rules load
+      // so applying never replaces them with the placeholder empty list.
+      key={ready ? "ready" : "pending"}
       projectId={projectId}
       branchId={branchId}
       project={project}

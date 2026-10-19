@@ -70,20 +70,18 @@ export function CreateProjectModal({
   backendRegions: string[];
 }) {
   const [created, setCreated] = useState<{ project: CreatedProject; services: Toggle[] } | null>(null);
+  function handleOpenChange(next: boolean) {
+    onOpenChange(next);
+    if (!next) setCreated(null);
+  }
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) setCreated(null);
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent aria-describedby={undefined} className="max-w-[940px] gap-0 p-0">
         <div className="flex items-center justify-between border-panel-border border-b px-6 py-4">
           <DialogTitle className="font-semibold text-lg">Create project</DialogTitle>
         </div>
         {created ? (
-          <SetupStep created={created.project} services={created.services} onClose={() => onOpenChange(false)} />
+          <SetupStep created={created.project} services={created.services} onClose={() => handleOpenChange(false)} />
         ) : (
           <FormStep
             regions={regions}
@@ -91,7 +89,7 @@ export function CreateProjectModal({
             pgVersions={pgVersions}
             backendRegions={backendRegions}
             onCreated={(project, services) => setCreated({ project, services })}
-            onClose={() => onOpenChange(false)}
+            onClose={() => handleOpenChange(false)}
           />
         )}
       </DialogContent>
@@ -370,7 +368,6 @@ function SetupStep({
   const [keys, setKeys] = useState<{ accessKeyId?: string; secret?: string; token?: string; realtimeSecret?: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const prompt = agentPrompt({
-    orgId: created.orgId,
     projectId: created.projectId,
     branchName: created.branchName,
     services: ["postgres", ...services.map((s) => SERVICE_IDS[s])],
