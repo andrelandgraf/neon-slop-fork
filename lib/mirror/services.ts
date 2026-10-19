@@ -60,6 +60,10 @@ async function ensureBranchRow(projectId: string, branchId: string): Promise<voi
   if (!(await branchIsMirrored(projectId, branchId))) await syncProject(projectId);
 }
 
+async function ensureProjectRows(projectId: string): Promise<void> {
+  if (!(await syncedOnce(scope.project(projectId)))) await syncProject(projectId);
+}
+
 /**
  * Mirrors one branch's app-backend state: which services are on, its Data
  * APIs, buckets, functions, triggers, custom domains and credential metadata.
@@ -205,6 +209,7 @@ export async function syncExtras(projectId: string, version?: string): Promise<M
   const v = sql`${started}::timestamptz`;
   const scopeKey = scope.extras(projectId);
   const current: SQL = appliedIs(scopeKey, v);
+  await ensureProjectRows(projectId);
   const roots = await db
     .select({ id: neonBranch.id })
     .from(neonBranch)

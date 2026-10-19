@@ -32,6 +32,9 @@ export function LiveMasking({
   const status = query.data[0]?.data;
   const state = status?.state ?? serverState;
   const stale = readable(state) !== readable(serverState);
+  // Until the fresh render brings real rules and columns, show the state
+  // that keeps the editor locked rather than one that enables "Apply".
+  const shown = stale && readable(state) ? serverState : state;
   useEffect(() => {
     if (stale) router.refresh();
   }, [stale, router]);
@@ -43,7 +46,7 @@ export function LiveMasking({
         // so applying never replaces them with the placeholder empty list.
         key={readable(serverState) ? "ready" : "pending"}
         {...editor}
-        state={state}
+        state={shown}
         statusMessage={status?.status_message ?? editor.statusMessage}
       />
     </>
