@@ -1,39 +1,69 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  LayoutGrid,
-  GitBranch,
-  Settings,
+  Check,
+  ChevronDown,
   ChevronsUpDown,
-  Eye,
-  Activity,
-  Terminal,
-  TableProperties,
-  History,
-  ShieldCheck,
-  Database,
-  Lock,
-  PanelLeftClose,
-  Plug,
-  HardDrive,
-  KeyRound,
-  Sparkles,
-  SquareFunction,
-  ArrowLeft,
-  MessageSquare,
+  CornerDownRight,
+  GitBranch,
+  Plus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { ProjectCapabilities } from "@/lib/capabilities";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { BranchSwitcher } from "@/components/branch-switcher";
+import { cn } from "@/lib/utils";
+import {
+  NavLink,
+  SidebarFrame,
+  useSidebarCollapsed,
+} from "@/components/sidebar-frame";
+import {
+  POSTGRES_GROUP_ICON,
+  POSTGRES_NAV,
+  PROJECT_TOP_NAV,
+  SERVICE_NAV,
+  isAvailable,
+  navHref,
+} from "@/components/project-nav";
+import { ConnectDialog } from "@/components/connect/connect-dialog";
+import { CreateBranchDialog } from "@/components/create-branch-dialog";
+
+export interface SidebarBranch {
+  id: string;
+  name: string;
+  default: boolean;
+}
 
 interface SidebarProps {
   projectId: string;
   projectName: string;
-  branches: { id: string; name: string; default: boolean }[];
+  branches: SidebarBranch[];
   capabilities: ProjectCapabilities;
-  defaultBranchId: string;
+  orgProjects: { id: string; name: string }[];
+}
+
+/**
+ * The branch the sidebar is pointed at: the path segment on branch pages,
+ * `?branch=` on project-level pages, else the default branch.
+ */
+export function useCurrentBranchId(branches: SidebarBranch[]): string {
+  const params = useParams<{ branchId?: string }>();
+  const searchParams = useSearchParams();
+  const fromUrl = params.branchId ?? searchParams.get("branch");
+  const match = branches.find((b) => b.id === fromUrl);
+  return (match ?? branches.find((b) => b.default) ?? branches[0])?.id ?? "";
 }
 
 export function Sidebar({
@@ -41,234 +71,238 @@ export function Sidebar({
   projectName,
   branches,
   capabilities,
-  defaultBranchId,
+  orgProjects,
 }: SidebarProps) {
   const pathname = usePathname();
-  const base = `/projects/${projectId}`;
+  const branchId = useCurrentBranchId(branches);
+  const [postgresOpen, setPostgresOpen] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const branchBase = `/projects/${projectId}/branches/${branchId}`;
 
-  const project = [
-    { href: base, label: "Dashboard", icon: LayoutGrid },
-    { href: `${base}/branches`, label: "Branches", icon: GitBranch },
-    {
-      href: `${base}/integrations`,
-      label: "Integrations",
-      icon: Plug,
-    },
-    { href: `${base}/settings`, label: "Settings", icon: Settings },
-  ];
-
-  const branch = [
-    { href: `${base}/overview`, label: "Overview", icon: Eye },
-    { href: `${base}/monitoring`, label: "Monitoring", icon: Activity },
-    { href: `${base}/sql`, label: "SQL Editor", icon: Terminal },
-    { href: `${base}/tables`, label: "Tables", icon: TableProperties },
-    { href: `${base}/backup`, label: "Backup & Restore", icon: History },
-    {
-      href: `${base}/masking`,
-      label: "Data Masking",
-      icon: ShieldCheck,
-      beta: true,
-    },
-  ];
-
-  // Data API and Auth exist in every region, so they are always listed. The
-  // rest are per-region rollouts, and the Console omits the ones a project's
-  // region can't serve instead of linking to a dead screen.
-  const appBackend = [
-    {
-      href: `${base}/data-api`,
-      label: "Data API",
-      icon: Database,
-    },
-    {
-      href: `${base}/auth`,
-      label: "Auth",
-      icon: Lock,
-      beta: true,
-    },
-    {
-      href: `${base}/storage`,
-      label: "Storage",
-      icon: HardDrive,
-      beta: true,
-      available: capabilities.storage,
-    },
-    {
-      href: `${base}/credentials`,
-      label: "Credentials",
-      icon: KeyRound,
-      beta: true,
-      available: capabilities.credentials,
-    },
-    {
-      href: `${base}/ai-gateway`,
-      label: "AI Gateway",
-      icon: Sparkles,
-      beta: true,
-      available: capabilities.aiGateway,
-    },
-    {
-      href: `${base}/functions`,
-      label: "Functions",
-      icon: SquareFunction,
-      beta: true,
-      available: capabilities.functions,
-    },
-  ].filter(({ available }) => available !== false);
+  const isActive = (href: string) => {
+    const path = href.split("?")[0];
+    if (path === branchBase) return pathname === branchBase;
+    if (path.endsWith("/settings/general")) {
+      return pathname.startsWith(`/projects/${projectId}/settings`);
+    }
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
 
   return (
-    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-[240px] shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="border-b border-sidebar-border p-3">
-        <Link
-          href="/projects"
-          className="mb-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        >
-          <ArrowLeft className="size-3" />
-          All projects
-        </Link>
-        <SectionLabel>Project</SectionLabel>
-        <button
-          type="button"
-          disabled
-          title="Use the topbar org switcher to change orgs; this project label is informational."
-          className="flex w-full cursor-not-allowed items-center justify-between rounded-md px-2 py-1.5 text-sm"
-        >
-          <span className="truncate font-mono text-xs">{projectName}</span>
-          <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground" />
-        </button>
-        <nav className="mt-2 space-y-0.5">
-          {project.map((item) => (
-            <NavItem
+    <SidebarFrame>
+      <ProjectSwitcher
+        projectId={projectId}
+        projectName={projectName}
+        branches={branches}
+        branchId={branchId}
+        orgProjects={orgProjects}
+        onCreateBranch={() => setCreateOpen(true)}
+      />
+      <ConnectDialog
+        projectId={projectId}
+        branchId={branchId}
+        capabilities={capabilities}
+      />
+      <nav className="mt-3 space-y-0.5">
+        {PROJECT_TOP_NAV.map((item) => {
+          const href = navHref(item, projectId, branchId);
+          return (
+            <NavLink
               key={item.label}
-              {...item}
-              active={pathname === item.href}
+              href={href}
+              icon={item.icon}
+              label={item.label}
+              active={isActive(href)}
             />
-          ))}
-        </nav>
-      </div>
-
-      <div className="border-b border-sidebar-border p-3">
-        <SectionLabel>Branch</SectionLabel>
-        <BranchSwitcher
-          projectId={projectId}
-          branches={branches}
-          defaultBranchId={defaultBranchId}
+          );
+        })}
+      </nav>
+      <div className="my-3 border-panel-border border-t" />
+      <nav className="space-y-0.5">
+        <PostgresGroupToggle
+          open={postgresOpen}
+          onToggle={() => setPostgresOpen(!postgresOpen)}
         />
-        <nav className="mt-2 space-y-0.5">
-          {branch.map((item) => (
-            <NavItem
-              key={item.label}
-              {...item}
-              active={pathname === item.href}
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="p-3">
-        <SectionLabel>App Backend</SectionLabel>
-        <nav className="space-y-0.5">
-          {appBackend.map((item) => (
-            <NavItem
-              key={item.label}
-              {...item}
-              active={
-                pathname === item.href || pathname.startsWith(`${item.href}/`)
-              }
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto flex flex-col gap-1 border-t border-sidebar-border p-3">
-        <button
-          type="button"
-          disabled
-          title="Feedback is not collected by this clone — open an issue on the GitHub repo instead."
-          className="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground"
-        >
-          <MessageSquare className="size-4" />
-          Feedback
-        </button>
-        <button
-          type="button"
-          disabled
-          title="Sidebar collapse isn’t wired in this clone."
-          className="flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground"
-        >
-          <PanelLeftClose className="size-4" />
-          Collapse menu
-        </button>
-      </div>
-    </aside>
+        {postgresOpen &&
+          POSTGRES_NAV.filter((item) => isAvailable(item, capabilities)).map(
+            (item) => {
+              const href = navHref(item, projectId, branchId);
+              return (
+                <NavLink
+                  key={item.label}
+                  href={href}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActive(href)}
+                  indent
+                />
+              );
+            }
+          )}
+        {SERVICE_NAV.filter((item) => isAvailable(item, capabilities)).map(
+          (item) => {
+            const href = navHref(item, projectId, branchId);
+            return (
+              <NavLink
+                key={item.label}
+                href={href}
+                icon={item.icon}
+                label={item.label}
+                active={isActive(href)}
+              />
+            );
+          }
+        )}
+      </nav>
+      <CreateBranchDialog
+        projectId={projectId}
+        branches={branches}
+        defaultParentId={branchId}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      />
+    </SidebarFrame>
   );
 }
 
-/** Mono micro-label that opens each sidebar group, per the neon-ui type scale. */
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-1.5 px-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-      {children}
-    </div>
-  );
-}
-
-function NavItem({
-  href,
-  label,
-  icon: Icon,
-  active,
-  disabled,
-  beta,
-  disabledReason,
+function PostgresGroupToggle({
+  open,
+  onToggle,
 }: {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  active?: boolean;
-  disabled?: boolean;
-  beta?: boolean;
-  disabledReason?: string;
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const content = (
-    <>
-      <Icon className="size-4" />
-      <span className="flex-1">{label}</span>
-      {beta && (
-        <Badge
-          variant="outline"
-          className="h-4 border-primary/30 px-1.5 font-mono text-[9px] uppercase tracking-wide text-primary"
-        >
-          Beta
-        </Badge>
-      )}
-    </>
-  );
-
-  const className = cn(
-    "relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-    active &&
-      "bg-sidebar-accent font-medium text-sidebar-primary before:absolute before:top-1/2 before:left-0 before:h-4 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-sidebar-primary",
-    !active &&
-      !disabled &&
-      "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-    disabled && "cursor-not-allowed text-muted-foreground/45"
-  );
-
-  if (disabled) {
-    return (
-      <div
-        className={className}
-        title={disabledReason ?? "Not available in this clone."}
-        aria-disabled="true"
-      >
-        {content}
-      </div>
-    );
-  }
+  const collapsed = useSidebarCollapsed();
+  const Icon = POSTGRES_GROUP_ICON;
   return (
-    <Link href={href} className={className}>
-      {content}
-    </Link>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      title={collapsed ? "Postgres database" : undefined}
+      className={cn(
+        "flex h-7 w-full items-center gap-2.5 rounded-[3px] px-3.5 text-nav-foreground text-sm hover:bg-nav-active/60 hover:text-foreground",
+        collapsed && "justify-center px-0"
+      )}
+    >
+      <Icon className="size-4 shrink-0" />
+      {!collapsed && (
+        <>
+          <span>Postgres database</span>
+          <ChevronDown
+            className={cn("size-3.5 transition-transform", !open && "-rotate-90")}
+          />
+        </>
+      )}
+    </button>
   );
 }
+
+function ProjectSwitcher({
+  projectId,
+  projectName,
+  branches,
+  branchId,
+  orgProjects,
+  onCreateBranch,
+}: {
+  projectId: string;
+  projectName: string;
+  branches: SidebarBranch[];
+  branchId: string;
+  orgProjects: { id: string; name: string }[];
+  onCreateBranch: () => void;
+}) {
+  const collapsed = useSidebarCollapsed();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const branch = branches.find((b) => b.id === branchId);
+  const branchesPrefix = `/projects/${projectId}/branches/`;
+
+  function switchBranch(nextId: string) {
+    if (pathname.startsWith(branchesPrefix)) {
+      const rest = pathname.slice(branchesPrefix.length).split("/").slice(1);
+      router.push([`${branchesPrefix}${nextId}`, ...rest].join("/"));
+      return;
+    }
+    const params = new URLSearchParams(searchParams);
+    params.set("branch", nextId);
+    router.push(`${pathname}?${params}`);
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex w-full items-center gap-2 rounded-[3px] border border-panel-border bg-panel px-2.5 py-1.5 text-left hover:border-foreground/30",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          {collapsed ? (
+            <GitBranch className="size-4" />
+          ) : (
+            <>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-muted-foreground text-xs">
+                  {projectName}
+                </div>
+                <div className="flex items-center gap-1 font-semibold text-sm">
+                  <CornerDownRight className="size-3 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{branch?.name}</span>
+                </div>
+              </div>
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[260px]">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Projects</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-h-80 w-[240px] overflow-y-auto">
+            {orgProjects.map((p) => (
+              <DropdownMenuItem key={p.id} asChild>
+                <Link href={`/projects/${p.id}`}>
+                  <span className="flex-1 truncate">{p.name}</span>
+                  {p.id === projectId && <Check className="size-3.5" />}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/projects">All projects</Link>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
+          Branches
+        </DropdownMenuLabel>
+        <div className="max-h-64 overflow-y-auto">
+          {branches.map((b) => (
+            <DropdownMenuItem key={b.id} onSelect={() => switchBranch(b.id)}>
+              <GitBranch className="size-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate">{b.name}</span>
+              {b.default && <Badge variant="secondary">Default</Badge>}
+              {b.id === branchId && <Check className="size-3.5" />}
+            </DropdownMenuItem>
+          ))}
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href={`/projects/${projectId}/branches?branch=${branchId}`}>
+            Manage branches ({branches.length})
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onCreateBranch}>
+          <Plus className="size-3.5" />
+          Create branch
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+

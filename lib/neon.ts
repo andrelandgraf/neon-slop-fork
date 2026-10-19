@@ -1,6 +1,7 @@
 import "server-only";
 import {
   createNeonClient,
+  NeonApiError,
   raw,
   type ActiveRegionsResponse,
   type BranchAiGateway,
@@ -16,7 +17,9 @@ import {
   type CredentialScope,
   type PresignRequest,
   type PresignResponse,
+  type BranchAnonymizedCreateRequest,
   type BranchCreateRequest,
+  type MaskingRule,
   type ConsumptionHistoryGranularity as ConsumptionGranularity,
   type CreateSnapshotInput,
   type DataApiCreateRequest,
@@ -816,6 +819,87 @@ export const neon = {
     tokenId: string
   ) {
     await sdk.credentials.revoke({ projectId, branchId, tokenId });
+  },
+};
+
+/**
+ * Resolves to `null` when Neon answers 404 (the feature isn't enabled on
+ * this branch, or the resource is gone); every other failure propagates.
+ */
+export async function ifFound<T>(request: Promise<T>): Promise<T | null> {
+  try {
+    return await request;
+  } catch (error) {
+    if (error instanceof NeonApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/**
+ * The ergonomic SDK client, for features added after the `{ data }` wrapper
+ * above (Realtime, logs, operations, triggers, custom domains, snapshot
+ * schedules, branch updates). Same org-scoped key and readiness waiting.
+ */
+export const neonSdk = sdk;
+
+/**
+ * Endpoints the ergonomic client doesn't cover yet: data masking on
+ * anonymized branches and project transfer requests (claim links).
+ */
+export const neonRaw = {
+  getMaskingRules(projectId: string, branchId: string) {
+    return raw.getMaskingRules({
+      client: sdk.client,
+      path: { project_id: projectId, branch_id: branchId },
+      throwOnError: true,
+    });
+  },
+
+  updateMaskingRules(
+    projectId: string,
+    branchId: string,
+    maskingRules: MaskingRule[]
+  ) {
+    return raw.updateMaskingRules({
+      client: sdk.client,
+      path: { project_id: projectId, branch_id: branchId },
+      body: { masking_rules: maskingRules },
+      throwOnError: true,
+    });
+  },
+
+  getAnonymizedStatus(projectId: string, branchId: string) {
+    return raw.getAnonymizedBranchStatus({
+      client: sdk.client,
+      path: { project_id: projectId, branch_id: branchId },
+      throwOnError: true,
+    });
+  },
+
+  startAnonymization(projectId: string, branchId: string) {
+    return raw.startAnonymization({
+      client: sdk.client,
+      path: { project_id: projectId, branch_id: branchId },
+      throwOnError: true,
+    });
+  },
+
+  createAnonymizedBranch(projectId: string, body: BranchAnonymizedCreateRequest) {
+    return raw.createProjectBranchAnonymized({
+      client: sdk.client,
+      path: { project_id: projectId },
+      body,
+      throwOnError: true,
+    });
+  },
+
+  createTransferRequest(projectId: string) {
+    return raw.createProjectTransferRequest({
+      client: sdk.client,
+      path: { project_id: projectId },
+      body: {},
+      throwOnError: true,
+    });
   },
 };
 

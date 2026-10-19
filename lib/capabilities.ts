@@ -2,25 +2,27 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { NeonApiError } from "@neon/sdk";
 
-import { neon } from "./neon";
+import { neon, neonSdk } from "./neon";
 
 /**
  * Which of the App Backend features a project can actually use.
  *
- * Object storage, AI Gateway, and Functions are rolled out per region: a
- * project in `aws-us-east-2` gets all three, while one in `aws-us-east-1`
- * gets none of them. The Console hides the nav entries it can't serve rather
+ * Object storage, AI Gateway, Functions, Realtime, and branch logs are rolled
+ * out per region: a project in `aws-us-east-2` gets all of them, while one in
+ * `aws-us-west-2` gets none. The Console hides the nav entries it can't serve rather
  * than linking to dead screens, and this is how we reproduce that.
  *
  * There is no capability field on the project object, so availability has to
- * be probed. Storage and AI Gateway both answer with a documented,
- * machine-readable `reason`, which is what we key off; Functions only returns
- * a generic 404, so there we fall back to the status code.
+ * be probed. Storage, AI Gateway, and logs answer with a documented,
+ * machine-readable `reason`, which is what we key off; Functions and Realtime
+ * only return a generic 404, so there we fall back to the status code.
  */
 export interface ProjectCapabilities {
   storage: boolean;
   aiGateway: boolean;
   functions: boolean;
+  realtime: boolean;
+  logs: boolean;
   /**
    * Credentials are branch-scoped tokens whose every scope
    * (`storage:*`, `ai_gateway:invoke`, `functions:invoke`) targets one of the
@@ -34,6 +36,8 @@ const ALL_AVAILABLE: ProjectCapabilities = {
   aiGateway: true,
   credentials: true,
   functions: true,
+  logs: true,
+  realtime: true,
   storage: true,
 };
 
@@ -48,6 +52,7 @@ const STORAGE_UNAVAILABLE_REASONS = new Set([
   "org_not_entitled",
 ]);
 const AI_GATEWAY_UNAVAILABLE_REASONS = new Set(["ai_gateway_unavailable"]);
+const LOGS_UNAVAILABLE_REASONS = new Set(["telemetry_not_enabled"]);
 
 /**
  * Reads the `reason` discriminant off a Neon error body without asserting a
@@ -108,7 +113,7 @@ export async function getProjectCapabilities(
     return cached.value;
   }
 
-  const [storage, aiGateway, functions] = await Promise.all([
+  const [storage, aiGateway, functions, realtime, logs] = await Promise.all([
     probe(
       () => neon.getBranchStorage(projectId, branchId),
       (error) => {
@@ -129,12 +134,22 @@ export async function getProjectCapabilities(
       // just loaded, a 404 can only mean the platform isn't there.
       isNotFound
     ),
+    probe(() => neonSdk.realtime.get({ projectId, branchId }), isNotFound),
+    probe(
+      () => neonSdk.logs.fields({ projectId, branchId }),
+      (error) => {
+        const reason = unavailableReason(error);
+        return reason !== null && LOGS_UNAVAILABLE_REASONS.has(reason);
+      }
+    ),
   ]);
 
   const value: ProjectCapabilities = {
     aiGateway,
     credentials: storage || aiGateway || functions,
     functions,
+    logs,
+    realtime,
     storage,
   };
 

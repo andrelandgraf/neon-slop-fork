@@ -9,6 +9,7 @@ import type {
   NeonAuthWebhookConfig,
 } from "@neon/sdk";
 import { NeonApiError } from "@neon/sdk";
+import { apiErrorMessage } from "@/lib/errors";
 import {
   DEMO_STORAGE_LIMITS,
   EndpointType,
@@ -146,7 +147,7 @@ export async function updateComputeDefaultsAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to update compute defaults.",
+      error: apiErrorMessage(err) ?? "Failed to update compute defaults.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -177,7 +178,7 @@ export async function updateHistoryWindowAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to update history window.",
+      error: apiErrorMessage(err) ?? "Failed to update history window.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -212,7 +213,7 @@ export async function updateNetworkingAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to update networking.",
+      error: apiErrorMessage(err) ?? "Failed to update networking.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -238,7 +239,7 @@ export async function setHipaaAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to update HIPAA setting.",
+      error: apiErrorMessage(err) ?? "Failed to update HIPAA setting.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -262,7 +263,7 @@ export async function enableLogicalReplicationAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to enable logical replication.",
+      error: apiErrorMessage(err) ?? "Failed to enable logical replication.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -305,7 +306,7 @@ export async function updateMaintenanceWindowAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to update maintenance window.",
+      error: apiErrorMessage(err) ?? "Failed to update maintenance window.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -332,7 +333,7 @@ export async function grantProjectAccessAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to grant project access.",
+      error: apiErrorMessage(err) ?? "Failed to grant project access.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -350,7 +351,7 @@ export async function revokeProjectAccessAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to revoke project access.",
+      error: apiErrorMessage(err) ?? "Failed to revoke project access.",
     };
   }
   revalidatePath(`/projects/${projectId}/settings`);
@@ -388,7 +389,7 @@ export async function transferProjectAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to transfer project.",
+      error: apiErrorMessage(err) ?? "Failed to transfer project.",
     };
   }
   await detachProject(projectId);
@@ -457,7 +458,7 @@ export async function createBranchAction(
       endpoints: [{ type: EndpointType.ReadWrite }],
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create branch." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create branch." };
   }
   revalidatePath(`/projects/${projectId}/branches`);
   revalidatePath(`/projects/${projectId}`);
@@ -473,7 +474,7 @@ export async function deleteBranchAction(
   try {
     await neon.deleteProjectBranch(projectId, branchId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to delete branch." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete branch." };
   }
   revalidatePath(`/projects/${projectId}/branches`);
   revalidatePath(`/projects/${projectId}`);
@@ -499,7 +500,7 @@ export async function setDefaultBranchAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to set the default branch.",
+      error: apiErrorMessage(err) ?? "Failed to set the default branch.",
     };
   }
   revalidatePath(`/projects/${projectId}/branches`);
@@ -551,7 +552,7 @@ export async function createSnapshotAction(
       ...(expiresAtRaw ? { expires_at: new Date(expiresAtRaw).toISOString() } : {}),
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create snapshot." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create snapshot." };
   }
   revalidatePath(`/projects/${projectId}/backup`);
   return { ok: true };
@@ -566,7 +567,7 @@ export async function deleteSnapshotAction(
   try {
     await neon.deleteSnapshot(projectId, snapshotId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to delete snapshot." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete snapshot." };
   }
   revalidatePath(`/projects/${projectId}/backup`);
   return { ok: true };
@@ -586,7 +587,7 @@ export async function renameSnapshotAction(
       snapshot: { name: trimmed },
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to rename snapshot." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to rename snapshot." };
   }
   revalidatePath(`/projects/${projectId}/backup`);
   return { ok: true };
@@ -620,7 +621,7 @@ export async function restoreSnapshotPreviewAction(
       }
     );
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to restore snapshot." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
   revalidatePath(`/projects/${projectId}/backup`);
   revalidatePath(`/projects/${projectId}/branches`);
@@ -656,7 +657,7 @@ export async function restoreSnapshotInPlaceAction(
       }
     );
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to restore snapshot." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to restore snapshot." };
   }
   revalidatePath(`/projects/${projectId}/backup`);
   revalidatePath(`/projects/${projectId}/branches`);
@@ -745,7 +746,7 @@ export async function startEndpointAction(
   try {
     await neon.startProjectEndpoint(projectId, endpointId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to start endpoint." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to start endpoint." };
   }
   revalidatePath(`/projects/${projectId}/compute`);
   return { ok: true };
@@ -760,7 +761,7 @@ export async function suspendEndpointAction(
   try {
     await neon.suspendProjectEndpoint(projectId, endpointId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to suspend endpoint." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to suspend endpoint." };
   }
   revalidatePath(`/projects/${projectId}/compute`);
   return { ok: true };
@@ -804,7 +805,7 @@ export async function updateEndpointAutoscalingAction(
       },
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to update endpoint." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to update endpoint." };
   }
   revalidatePath(`/projects/${projectId}/compute`);
   return { ok: true };
@@ -858,7 +859,7 @@ export async function createReadReplicaAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to create read replica.",
+      error: apiErrorMessage(err) ?? "Failed to create read replica.",
     };
   }
   revalidatePath(`/projects/${projectId}/compute`);
@@ -876,7 +877,7 @@ export async function deleteEndpointAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to delete endpoint.",
+      error: apiErrorMessage(err) ?? "Failed to delete endpoint.",
     };
   }
   revalidatePath(`/projects/${projectId}/compute`);
@@ -894,7 +895,7 @@ export async function restartEndpointAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to restart endpoint.",
+      error: apiErrorMessage(err) ?? "Failed to restart endpoint.",
     };
   }
   revalidatePath(`/projects/${projectId}/compute`);
@@ -942,7 +943,7 @@ export async function updateIpAllowlistAction(
     // The Neon SDK wraps fetch in axios; the most useful detail lives
     // on `response.data.message`. Fall back to the Error.message if the
     // shape is unfamiliar, and to a generic string if even that's gone.
-    const upstream = extractApiError(err);
+    const upstream = apiErrorMessage(err);
     return {
       ok: false,
       error: upstream ?? "Failed to update IP allowlist.",
@@ -958,26 +959,7 @@ export async function updateIpAllowlistAction(
  * the part worth showing; the trailing pairs just repeat what the user is
  * already looking at.
  */
-function stripApiErrorContext(message: string): string {
-  return message.replace(/;\s*\w+:".*$/s, "").trim() || message;
-}
 
-function extractApiError(err: unknown): string | null {
-  if (err instanceof NeonApiError) {
-    const body = err.body;
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "message" in body &&
-      typeof body.message === "string"
-    ) {
-      return stripApiErrorContext(body.message);
-    }
-    return stripApiErrorContext(err.message);
-  }
-  if (err instanceof Error && err.message) return stripApiErrorContext(err.message);
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // App-level tenancy
@@ -1046,7 +1028,7 @@ export async function enableDataApiAction(
       add_default_grants: grantPublicSchemaAccess,
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to enable Data API." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Data API." };
   }
   revalidatePath(`/projects/${projectId}/data-api`);
   return { ok: true };
@@ -1103,7 +1085,7 @@ export async function updateDataApiSettingsAction(
       { settings }
     );
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to update Data API." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to update Data API." };
   }
   revalidatePath(`/projects/${projectId}/data-api`);
   return { ok: true };
@@ -1131,7 +1113,7 @@ export async function refreshDataApiSchemaCacheAction(
       {}
     );
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to refresh schema cache." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to refresh schema cache." };
   }
   revalidatePath(`/projects/${projectId}/data-api`);
   return { ok: true };
@@ -1147,7 +1129,7 @@ export async function disableDataApiAction(
   try {
     await neon.deleteProjectBranchDataApi(projectId, branchId, databaseName);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to disable Data API." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Data API." };
   }
   revalidatePath(`/projects/${projectId}/data-api`);
   return { ok: true };
@@ -1188,7 +1170,7 @@ export async function enableAuthAction(
       auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to enable Neon Auth." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to enable Neon Auth." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1206,7 +1188,7 @@ export async function disableAuthAction(
       delete_data: deleteData,
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to disable Neon Auth." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to disable Neon Auth." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1229,7 +1211,7 @@ export async function addAuthTrustedDomainAction(
       auth_provider: NeonAuthSupportedAuthProvider.BetterAuth,
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to add domain." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to add domain." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1248,7 +1230,7 @@ export async function removeAuthTrustedDomainAction(
       domains: [{ domain }],
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to remove domain." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to remove domain." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1266,7 +1248,7 @@ export async function setAuthAllowLocalhostAction(
       allow_localhost: allow,
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to update allow localhost." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to update allow localhost." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1294,7 +1276,7 @@ export async function updateAuthEmailPasswordConfigAction(
       update
     );
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to update email/password config." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to update email/password config." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1335,7 +1317,7 @@ export async function addAuthOauthProviderAction(
   try {
     await neon.addBranchNeonAuthOauthProvider(projectId, branchId, body);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to add provider." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to add provider." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1361,7 +1343,7 @@ export async function removeAuthOauthProviderAction(
   } catch (err) {
     return {
       ok: false,
-      error: extractApiError(err) ?? "Failed to remove provider.",
+      error: apiErrorMessage(err) ?? "Failed to remove provider.",
     };
   }
   revalidatePath(`/projects/${projectId}/auth`);
@@ -1409,7 +1391,7 @@ export async function updateAuthWebhookConfigAction(
   try {
     await neon.updateNeonAuthWebhookConfig(projectId, branchId, config);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to update webhook config." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to update webhook config." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1433,7 +1415,7 @@ export async function createAuthUserAction(
       ...(name ? { name } : {}),
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create user." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create user." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1449,7 +1431,7 @@ export async function deleteAuthUserAction(
   try {
     await neon.deleteBranchNeonAuthUser(projectId, branchId, userId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to delete user." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete user." };
   }
   revalidatePath(`/projects/${projectId}/auth`);
   return { ok: true };
@@ -1502,7 +1484,7 @@ export async function createBucketAction(
       access_level: isPublic ? "public_read" : "private",
     });
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create bucket." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create bucket." };
   }
   revalidatePath(`/projects/${projectId}/storage`);
   return { ok: true };
@@ -1518,7 +1500,7 @@ export async function deleteBucketAction(
   try {
     await neon.deleteBucket(projectId, branchId, bucketName);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to delete bucket." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete bucket." };
   }
   revalidatePath(`/projects/${projectId}/storage`);
   return { ok: true };
@@ -1564,7 +1546,7 @@ export async function createFolderAction(
       return { ok: false, error: `Storage rejected the folder marker (${res.status}).` };
     }
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create folder." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create folder." };
   }
   revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
   return { ok: true };
@@ -1581,7 +1563,7 @@ export async function deleteObjectAction(
   try {
     await neon.deleteBucketObject(projectId, branchId, bucketName, objectKey);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to delete object." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to delete object." };
   }
   revalidatePath(`/projects/${projectId}/storage/${bucketName}`);
   return { ok: true };
@@ -1628,7 +1610,7 @@ export async function presignUploadAction(
     );
     return { ok: true, url: data.url, method: data.method, headers: data.headers };
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to presign upload." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to presign upload." };
   }
 }
 
@@ -1651,7 +1633,7 @@ export async function presignDownloadAction(
     );
     return { ok: true, url: data.url };
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to presign download." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to presign download." };
   }
 }
 
@@ -1713,7 +1695,7 @@ export async function createCredentialAction(
     // acknowledges that they copied the secret.
     return { ok: true, credential: data };
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to create credential." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to create credential." };
   }
 }
 
@@ -1727,7 +1709,7 @@ export async function revokeCredentialAction(
   try {
     await neon.revokeCredential(projectId, branchId, tokenId);
   } catch (err) {
-    return { ok: false, error: extractApiError(err) ?? "Failed to revoke credential." };
+    return { ok: false, error: apiErrorMessage(err) ?? "Failed to revoke credential." };
   }
   revalidatePath(`/projects/${projectId}/credentials`);
   return { ok: true };
