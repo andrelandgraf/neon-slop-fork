@@ -129,8 +129,8 @@ export function SqlEditor({
   const shown = statements[activeResult];
 
   return (
-    <div className="flex h-full min-h-[640px]">
-      <div className="flex w-[180px] shrink-0 flex-col border-panel-border border-r px-4 py-5">
+    <div className="flex h-full min-h-[640px] flex-col md:flex-row">
+      <div className="flex shrink-0 flex-col border-panel-border border-b px-4 py-5 md:w-[180px] md:border-r md:border-b-0">
         <h1 className="font-semibold text-2xl">SQL Editor</h1>
         <div className="mt-1 flex items-center gap-1 truncate text-xs">
           <Link href="/projects" className="text-link">
@@ -167,7 +167,7 @@ export function SqlEditor({
             </button>
           ))}
         </div>
-        <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto max-md:max-h-40">
           {items.length === 0 && (
             <p className="text-muted-foreground text-xs">
               {list === "saved" ? "No saved queries yet." : "Run a query to see it here."}

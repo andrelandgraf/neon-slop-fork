@@ -23,7 +23,7 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("mb-5 flex items-start justify-between gap-4", className)}>
+    <div className={cn("mb-5 flex flex-wrap items-start justify-between gap-4", className)}>
       <div className="min-w-0">
         <h1 className="flex items-center gap-2 font-semibold text-2xl text-foreground">
           {title}
@@ -63,5 +63,5 @@ export function PageBody({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("px-6 py-5", className)}>{children}</div>;
+  return <div className={cn("px-4 py-5 md:px-6", className)}>{children}</div>;
 }

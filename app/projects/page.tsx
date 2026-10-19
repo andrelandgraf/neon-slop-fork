@@ -52,7 +52,7 @@ export default async function ProjectsPage() {
 
   const usage = (
     <div className="rounded-[3px] border border-panel-border p-4">
-      <div className="grid grid-cols-4 rounded-[3px] border border-panel-border px-4 py-3">
+      <div className="grid grid-cols-2 gap-y-3 rounded-[3px] border border-panel-border px-4 py-3 md:grid-cols-4">
         <Metric label="Compute" value={`${+(totals.computeSeconds / 3600).toFixed(2)} CU-hrs`} />
         <Metric label="Storage" value={formatBytes(totals.storageBytes)} />
         <Metric label="History" value="—" hint="History size isn't reported by the public API." />

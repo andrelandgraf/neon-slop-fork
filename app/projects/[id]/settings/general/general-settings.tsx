@@ -51,7 +51,7 @@ export function GeneralSettings({ project, branch, branches, otherOrgs, claimLin
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
         <ReadonlyId label="Project ID" value={project.id} />
         <form
           className="space-y-1.5"

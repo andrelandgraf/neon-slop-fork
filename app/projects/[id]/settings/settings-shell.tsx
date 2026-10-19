@@ -14,7 +14,7 @@ export async function SettingsShell({
   return (
     <PageBody>
       <PageHeader title="Settings" project={context.project} branch={context.branch} />
-      <div className="flex gap-8">
+      <div className="flex flex-col gap-6 md:flex-row md:gap-8">
         <SettingsNav projectId={context.project.id} capabilities={capabilities} />
         <div className="min-w-0 max-w-[760px] flex-1 space-y-8">{children}</div>
       </div>

@@ -65,11 +65,12 @@ export function CommandBar({ project }: { project?: CommandBarProject }) {
       <DialogPrimitive.Trigger asChild>
         <button
           type="button"
-          className="flex h-7 w-[220px] items-center gap-2 rounded-[3px] border border-panel-border bg-panel px-2.5 text-muted-foreground text-sm hover:border-foreground/30"
+          aria-label="Search"
+          className="flex h-7 items-center gap-2 rounded-[3px] border border-panel-border bg-panel px-2 text-muted-foreground text-sm hover:border-foreground/30 md:w-[220px] md:px-2.5"
         >
           <Search className="size-3.5" />
-          <span className="flex-1 text-left">Search...</span>
-          <kbd className="font-sans text-xs">⌘K</kbd>
+          <span className="flex-1 text-left max-md:hidden">Search...</span>
+          <kbd className="font-sans text-xs max-md:hidden">⌘K</kbd>
         </button>
       </DialogPrimitive.Trigger>
       <DialogPrimitive.Portal>

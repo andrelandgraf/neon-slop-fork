@@ -1,5 +1,6 @@
 import type { TenantContext } from "@/lib/tenancy";
 import { TopBar } from "./topbar";
+import { MobileNavProvider } from "./mobile-nav";
 import type { CommandBarProject } from "./command-bar";
 
 /**
@@ -18,16 +19,18 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-dvh flex-col bg-canvas">
-      <TopBar tenant={tenant} project={project} />
-      <div className="flex min-h-0 flex-1">
-        {sidebar}
-        <main className="min-w-0 flex-1 pr-2 pb-2">
-          <div className="h-full overflow-y-auto rounded-[4px] border border-panel-border bg-panel">
-            {children}
-          </div>
-        </main>
+    <MobileNavProvider>
+      <div className="flex h-dvh flex-col bg-canvas">
+        <TopBar tenant={tenant} project={project} />
+        <div className="flex min-h-0 flex-1">
+          {sidebar}
+          <main className="min-w-0 flex-1 px-2 pb-2 md:pl-0">
+            <div className="h-full overflow-y-auto rounded-[4px] border border-panel-border bg-panel">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </MobileNavProvider>
   );
 }

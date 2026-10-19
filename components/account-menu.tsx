@@ -88,8 +88,8 @@ export function AccountMenu({
             className="flex h-7 items-center gap-2 rounded-md px-2 font-semibold text-sm transition-colors hover:bg-nav-active aria-expanded:bg-nav-active"
           >
             <Avatar name={user.name} email={user.email} image={user.image} />
-            <span className="max-w-[160px] truncate">{activeOrg.name}</span>
-            <ChevronDown className="size-3.5 text-muted-foreground" />
+            <span className="max-w-[160px] truncate max-md:hidden">{activeOrg.name}</span>
+            <ChevronDown className="size-3.5 text-muted-foreground max-md:hidden" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[260px] p-0">

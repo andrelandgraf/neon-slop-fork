@@ -154,7 +154,7 @@ export default async function BranchOverviewPage({
             />
         }
       />
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="min-w-0 flex-1">
           <div className="overflow-hidden rounded-[3px] border border-panel-border">
             <table className="w-full text-sm">
@@ -198,7 +198,7 @@ export default async function BranchOverviewPage({
             </div>
           </div>
         </div>
-        <aside className="w-[288px] shrink-0">
+        <aside className="w-full shrink-0 lg:w-[288px]">
           <DetailSection title="Branch">
             <Detail label="Name" value={branch.name} />
             <Detail label="ID" value={branch.id} mono />

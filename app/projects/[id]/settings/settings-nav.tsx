@@ -25,7 +25,7 @@ export function SettingsNav({
   const branch = useSearchParams().get("branch");
   const query = branch ? `?branch=${branch}` : "";
   return (
-    <nav className="w-[180px] shrink-0 space-y-0.5">
+    <nav className="-mx-1 flex shrink-0 gap-0.5 overflow-x-auto px-1 md:mx-0 md:block md:w-[180px] md:space-y-0.5 md:px-0">
       {SECTIONS.filter((s) => !("capability" in s) || capabilities[s.capability]).map((s) => {
         const href = `/projects/${projectId}/settings/${s.path}`;
         const active = pathname === href;
@@ -34,7 +34,7 @@ export function SettingsNav({
             key={s.path}
             href={`${href}${query}`}
             className={cn(
-              "block rounded-[3px] px-2.5 py-1.5 text-sm",
+              "block shrink-0 whitespace-nowrap rounded-[3px] px-2.5 py-1.5 text-sm",
               active ? "bg-nav-active font-semibold" : "text-nav-foreground hover:bg-nav-active/60"
             )}
           >

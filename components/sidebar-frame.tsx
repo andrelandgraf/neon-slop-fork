@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquareHeart, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { MessageSquareHeart, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useMobileNav } from "@/components/mobile-nav";
 
 const COLLAPSED_KEY = "neon-slop-sidebar-collapsed";
 const listeners = new Set<() => void>();
@@ -42,24 +43,40 @@ export function useSidebarCollapsed(): boolean {
 /**
  * The console's sidebar column: nav on the gray canvas, Feedback and
  * "Collapse menu" pinned to the bottom. Collapsing shrinks it to an icon
- * rail and is remembered per browser.
+ * rail and is remembered per browser. On small screens the same column is
+ * the full-screen drawer opened from the top bar.
  */
 export function SidebarFrame({ children }: { children: React.ReactNode }) {
-  const collapsed = useSyncExternalStore(
+  const storedCollapsed = useSyncExternalStore(
     subscribe,
     () => window.localStorage.getItem(COLLAPSED_KEY) === "1",
     () => false
   );
+  const mobileNav = useMobileNav();
+  const collapsed = storedCollapsed && !mobileNav.open;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <CollapsedContext.Provider value={collapsed}>
       <aside
         className={cn(
-          "flex shrink-0 flex-col transition-[width] duration-200",
-          collapsed ? "w-[60px]" : "w-[212px]"
+          "shrink-0 flex-col transition-[width] duration-200 md:flex",
+          collapsed ? "md:w-[60px]" : "md:w-[212px]",
+          mobileNav.open ? "fixed inset-0 z-50 flex w-full bg-canvas pt-2" : "hidden"
         )}
       >
+        {mobileNav.open && (
+          <div className="flex justify-end px-3 pb-2 md:hidden">
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => mobileNav.setOpen(false)}
+              className="flex size-7 items-center justify-center rounded-[3px] border border-panel-border bg-panel"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto px-3 pb-3">{children}</div>
         <div className="space-y-0.5 px-3 pb-3">
           <NavButton
@@ -68,7 +85,7 @@ export function SidebarFrame({ children }: { children: React.ReactNode }) {
             onClick={() => setFeedbackOpen(true)}
           />
         </div>
-        <div className="border-panel-border border-t px-3 py-2">
+        <div className="border-panel-border border-t px-3 py-2 max-md:hidden">
           <NavButton
             icon={collapsed ? PanelLeftOpen : PanelLeftClose}
             label={collapsed ? "Expand menu" : "Collapse menu"}
