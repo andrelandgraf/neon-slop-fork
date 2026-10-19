@@ -1,193 +1,27 @@
-# Neon Clone (aka. Slop Fork)
+# Neon Slop Fork
 
-A community-built clone of the [Neon](https://neon.com) Postgres console,
-built on top of the public Neon REST API. Same console you know, open all
-the way down.
+> **slopfork** /ˈslɑpˌfɔrk/: a hastily produced software clone that imitates the surface features, design language, or "vibe" of an existing product while lacking architectural rigor, security hardening, or production readiness. ([slopfork.dev](https://slopfork.dev))
 
-> **Note:** this is an unofficial project, not affiliated with Neon. It exists
-> to demonstrate how much of the console you can rebuild against the public
-> API — and to make a faithful, open reference implementation for anyone
-> writing dashboards, agents, or CLIs against Neon.
+Guilty as charged. This is a clone of the Neon console, built from scratch on the [Neon API](https://neon.com/docs/reference/api-reference). Every project, branch and compute you manage here goes through the same endpoints you can call with an API key, from a script, an agent or your own platform.
 
-## What's in here
+Try it at [neon-slop-fork.vercel.app](https://neon-slop-fork.vercel.app).
 
-The layout follows the current Console: a top bar with the command bar
-(`⌘K`) and account menu, an org sidebar, and a project sidebar with a
-branch switcher and the Connect button.
+## In the agentic era, APIs are the product
 
-Views update live with [Neon Realtime](https://neon.com/docs/realtime/overview):
-a project created, renamed, transferred or deleted in one tab shows up in
-every other open tab of the org without a reload, including the "Creating
-project" state while it's being set up. The org list, org name, members,
-projects list, project switcher and billing usage read TanStack DB
-collections synced from sealed live queries over the control database, and
-so do a project's branches, computes, databases, roles and operations: the
-sidebar and ⌘K branch lists, Branches, Branch overview, Computes, Databases,
-Roles, Monitoring → System operations and Settings → General, Postgres,
-Credentials, Better Auth, Functions and Project permissions. App-backend
-state is live too: Realtime, Auth and Data API on/off, buckets, functions
-with their triggers and domains, credentials, snapshots and their schedule,
-collaborators, and Data Masking progress.
+Agents are changing how we build software and they're doing it at agent speed. They're far better (faster, more token-efficient) at using APIs, CLIs and MCP servers than at clicking through a dashboard. Give an agent an API key and it can rule the world (or at least your dev tool).
 
-Tables shows a table's rows live when the tenant branch has Realtime on and
-the table has a primary key. The page subscribes to the tenant's own
-Realtime endpoint, not the control database's, and says why when it can't.
+For the best developer and agent experience, think of your open API as the core of your product. That's the bet Neon makes: if you can do it in the console, there's an endpoint for it too.
 
-Not live, by design: the table list on the Tables page, object listings
-inside a bucket (uploads go from the browser straight to S3), Auth users,
-SQL Editor and active queries (they read the tenant's own database), logs
-(they have "Go live"), and the AI Gateway model catalog.
+As a developer, you can use the API to automate everything around the platform and build on top of it. As an agent, you can do the same at agent speed, without getting stuck behind the console's bot protection.
 
-Organization:
+Neon went all in on its API because of Neon for [(agentic) platforms](https://neon.com/agents). Neon works as infrastructure behind other products: [Vercel](https://vercel.com/docs/storage/vercel-postgres), [Netlify DB](https://www.netlify.com/products/database/), Replit and Laravel Cloud all manage fleets of Neon databases through the same APIs you have access to. If they can build a platform on top of Neon, so can you.
 
-- **Projects**: list, create, and delete projects. Create opens the Console's
-  two-step modal: project name, Postgres version, region, and services, then
-  an agent prompt, a `neon init` command, and an `.env` with generated keys.
-- **People**, **Billing**, **Integrations**, **Settings**: members, usage from
-  the Neon API, integration links, and the org name.
-- Account menu: switch organization, create an organization, theme, log out.
+So I slop forked Neon to prove that you can literally rebuild the Neon console from scratch on Neon's APIs. Check it out: [sign up](https://neon-slop-fork.vercel.app/signup) and provision real Neon resources through the slop fork.
 
-Project, scoped to a branch at `/projects/<id>/branches/<branchId>/<page>`:
+## Now powered by Neon Realtime
 
-- **Overview**: branch details, services, and branch actions (rename, set
-  default, protect, expire, reset from parent, delete).
-- **Computes**, **Roles**, **Databases**: edit compute size and name, add
-  read replicas, create and delete roles and databases.
-- **Realtime**: enable, disable, reveal and rotate the secret, agent prompt.
-- **Data API**, **Auth**: enable and configure both; Auth lists users from
-  `neon_auth."user"`.
-- **Storage**: buckets and objects, with upload, download, and presigned URLs.
-- **Functions**: deployed functions, cron triggers, custom domains.
-- **AI Gateway**: model catalog from `neon.com/models.json` and per-SDK setup.
-- **Backup & Restore**: point-in-time restore of the current branch, snapshots
-  and snapshot schedules.
-- **Data Masking**: anonymized branches with per-column masking rules.
-- **Monitoring**: active queries, query performance, operations, and Postgres,
-  function, storage, and Realtime logs.
-- **SQL Editor**, **Tables**.
+The console is live. Create, rename or delete a project, branch, bucket or credential in one tab and every other open tab updates without a reload, including the "Creating project" state. On the Tables page, rows from your own database stream in when Realtime is on for the branch. It runs on [Neon Realtime](https://neon.com/docs/realtime/overview) and [TanStack DB](https://tanstack.com/db).
 
-Project-level pages take `?branch=<branchId>` and fall back to the default
-branch: **Branches** (create from current data, a past time, schema only, or
-anonymized), **Integrations**, and **Settings** (general, Postgres, networking,
-credentials, Auth, Functions, HIPAA, permissions).
+## Contributing
 
-Old routes such as `/projects/<id>/sql?branch=<branchId>` redirect to
-their new location.
-
-Regions without the app backend (Storage, Functions, AI Gateway, Realtime)
-hide those pages. The Neon Clone org is on the Free plan, so AI Gateway
-requests and snapshot schedules return Neon's paid-plan errors.
-
-### Disabled / mocked
-
-Disabled controls carry a tooltip explaining why:
-
-- **Ask AI** in the top bar and account settings, which live on
-  console.neon.tech.
-- Org **Billing** shows usage but no plan management. Org **People** can't
-  send invites, org **API keys** and **Delete organization** are disabled, and
-  org **Integrations** link out instead of installing.
-- **Monitoring** compute charts and Data API advisories: Neon computes these
-  internally and the public API doesn't return them.
-- Auth **email provider** SMTP credentials are read-only.
-
-## Configuration
-
-The control database is a Neon project on Postgres 18 with Realtime enabled,
-maintained through `neon.ts` and the `neon` CLI. Project:
-`bitter-dawn-83086481` (`neon-slop-fork-control`) in org
-`org-nameless-thunder-12993511`.
-
-```bash
-neon link --project-id bitter-dawn-83086481
-neon checkout main
-```
-
-That writes `.neon` (gitignored) and pulls `DATABASE_URL`,
-`NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` into `.env.local`.
-
-Add the names the app reads to `.env.local`, next to the pulled values.
-Next.js expands `$VAR` within a file, and `neon env pull` keeps lines it
-doesn't manage:
-
-```bash
-META_DATABASE_URL=$DATABASE_URL_UNPOOLED
-NEXT_PUBLIC_NEON_REALTIME_URL=$NEON_REALTIME_URL
-```
-
-The rest of the app's env isn't produced by the CLI:
-
-```bash
-NEON_API_KEY=<org-level Neon API key>
-NEON_ORG_ID=org-nameless-thunder-12993511
-NEON_ORG_NAME="Neon Clone"
-BETTER_AUTH_SECRET=<32+ character secret>
-BETTER_AUTH_URL=http://localhost:3030
-```
-
-### How live views work
-
-- Most console state lives in the Neon API, so the control database
-  mirrors what the live views render (`neon_project`, `neon_branch`,
-  `neon_endpoint`, `neon_operation`, `neon_database`, `neon_role`, and the
-  app-backend tables `neon_branch_service`, `neon_data_api`, `neon_bucket`,
-  `neon_function`, `neon_trigger`, `neon_custom_domain`, `neon_credential`,
-  `neon_snapshot`, `neon_snapshot_schedule`, `neon_project_permission`,
-  `neon_masking_status`). Secrets are never stored: role passwords,
-  credential secrets and Realtime secrets only appear in one-time responses,
-  and function deployments are stored without their environment. While a Neon operation a write started is
-  still running, the project keeps re-syncing, so states like a starting
-  compute move on screen.
-  Server actions update the mirror after each Neon API write, and every
-  sealed-query renewal (about once a minute per open view) reconciles the
-  org from the Neon API, at most once per 20 seconds.
-- `lib/live/queries.ts` holds one Drizzle query per collection. The server
-  render reads it and seals it; the browser subscribes and renews through
-  `POST /api/live/<collection>`. Authorization is part of each query, so
-  losing membership or ownership drops the rows live.
-- Renewals and live writes carry the user and org the page was rendered
-  for. A different session or active org answers 401, and the page reloads.
-- The Tables page seals `SELECT * FROM <table> ORDER BY <primary key>
-  LIMIT/OFFSET` with the tenant branch's Realtime secret, fetched from the
-  Neon API on each seal, and renews through `POST /api/live/table-rows`,
-  which rebuilds the SQL from the catalog. Both the server render and the
-  live rows keep every value as Postgres text, so cells don't change when
-  the subscription takes over. It needs the console's origin in the
-  branch's Realtime allowed origins, or the list empty.
-## Local dev
-
-```bash
-bun install
-neon link
-neon checkout main
-bun run dev
-# http://localhost:3030
-```
-
-## Deploy
-
-The included `vercel.json` uses `npm install --legacy-peer-deps` + `npx next
-build` so bun isn't required on the build host. Set the env vars above in
-your Vercel project, with `NEON_REALTIME_SECRET` and
-`NEXT_PUBLIC_NEON_REALTIME_URL` from the control database's `main` branch.
-When `lib/db/schema.ts` changed, push the schema to the production control
-database before deploying, and fill the live mirror once:
-
-```bash
-META_DATABASE_URL=<production control database URL> bunx drizzle-kit push
-META_DATABASE_URL=<...> NEON_API_KEY=<...> bun --conditions=react-server scripts/backfill-mirror.ts --apply
-vercel deploy --prod
-```
-
-## Stack
-
-- [Next.js 15](https://nextjs.org/) App Router on Node.js
-- [@neon/sdk](https://www.npmjs.com/package/@neon/sdk) for the control-plane
-- [@neondatabase/serverless](https://www.npmjs.com/package/@neondatabase/serverless)
-  for SQL queries
-- [Neon Realtime](https://neon.com/docs/realtime/overview) (`@neon/realtime`,
-  `@neon/realtime-drizzle`, `@neon/realtime-tanstack`) and
-  [TanStack DB](https://tanstack.com/db) for live views
-- Tailwind CSS v4, shadcn/ui, Radix UI and Base UI primitives
-- Lucide icons
-- Sonner for toasts
+Setup, checks, how the live views work and deploys: [CONTRIBUTING.md](CONTRIBUTING.md).

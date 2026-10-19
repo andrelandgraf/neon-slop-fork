@@ -180,51 +180,47 @@ function WhyStory() {
 
         <div className="mt-6 space-y-6 text-[17px] leading-[1.75] text-white/75">
           <p>
-            Agents are changing how we build software. They&rsquo;re far better
-            at using APIs, CLIs, and MCP servers than they are at clicking
-            through a dashboard &mdash; give an agent an API key and it can
-            provision resources, inspect state, and manage infrastructure on its
-            own, no UI to drive.
+            Agents are changing how we build software and they&rsquo;re doing it
+            at agent speed. They&rsquo;re far better (faster, more
+            token-efficient) at using APIs, CLIs and MCP servers than at
+            clicking through a dashboard. Give an agent an API key and it can
+            rule the world (or at least your dev tool).
           </p>
           <p>
-            So the best developer platforms are becoming agent-native, exposing
-            everything through open surfaces. That&rsquo;s the bet Neon makes:
-            if you can do it in the console, there&rsquo;s an endpoint for it
-            too. This fork is the proof &mdash; the whole console, rebuilt on
-            nothing but the public API.
+            For the best developer and agent experience, think of your open API
+            as the core of your product. That&rsquo;s the bet Neon makes: if you
+            can do it in the console, there&rsquo;s an endpoint for it too.
           </p>
           <p>
-            It&rsquo;s also why Neon works as infrastructure{" "}
-            <span className="text-white">behind</span> other products.{" "}
-            <a
-              href="https://vercel.com/docs/storage/vercel-postgres"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
-            >
+            As a developer, you can use the API to automate everything around
+            the platform and build on top of it. As an agent, you can do the
+            same at agent speed, without getting stuck behind the
+            console&rsquo;s bot protection.
+          </p>
+          <p>
+            Neon went all in on its API because of Neon for{" "}
+            <a href="https://neon.com/agents" target="_blank" rel="noreferrer" className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]">
+              (agentic) platforms
+            </a>
+            . Neon works as infrastructure behind other products:{" "}
+            <a href="https://vercel.com/docs/storage/vercel-postgres" target="_blank" rel="noreferrer" className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]">
               Vercel
             </a>
             ,{" "}
-            <a
-              href="https://www.netlify.com/products/database/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
-            >
+            <a href="https://www.netlify.com/products/database/" target="_blank" rel="noreferrer" className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]">
               Netlify DB
             </a>
-            , Replit, and Laravel Cloud all manage fleets of Neon databases
+            , Replit and Laravel Cloud all manage fleets of Neon databases
             through the same APIs you have access to. If they can build a
             platform on top of Neon, so can you.
           </p>
           <p>
-            That&rsquo;s the real reason to slop fork. It&rsquo;s a fast way to
-            prototype product ideas &mdash; new layouts, workflows, resource
-            experiences &mdash; and an even better starting point for your own
-            console: tighter integrations with your tooling, custom
-            observability, AI-native workflows, or a completely different UX for
-            your team. Fork it and build the dashboard your Postgres fleet
-            actually deserves.
+            So I slop forked Neon to prove that you can literally rebuild the
+            Neon console from scratch on Neon&rsquo;s APIs. Check it out:{" "}
+            <Link href="/signup" className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]">
+              sign up
+            </Link>{" "}
+            and provision real Neon resources through the slop fork.
           </p>
         </div>
 
