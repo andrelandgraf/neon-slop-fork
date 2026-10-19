@@ -21,6 +21,7 @@ export default async function GeneralSettingsPage({
   return (
     <SettingsShell context={context}>
       <GeneralSettings
+        key={branch.id}
         project={{ id: project.id, name: project.name }}
         branch={{
           id: branch.id,

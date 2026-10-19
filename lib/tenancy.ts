@@ -75,21 +75,28 @@ async function provisionPersonalOrg(
 ): Promise<{ id: string; slug: string; name: string }> {
   const shortId = userId.slice(0, 8);
   const slug = `personal-${shortId}`;
-  const orgRow = await db
+  // A new user's first page load can run several server renders at once,
+  // each finding no org; the slug makes the insert idempotent.
+  await db
     .insert(appOrg)
     .values({
       slug,
       name: personalOrgName(userName),
       createdBy: userId,
     })
-    .returning({ id: appOrg.id, slug: appOrg.slug, name: appOrg.name });
-  const org = orgRow[0]!;
-  await db.insert(appOrgMember).values({
-    orgId: org.id,
-    userId,
-    role: "owner",
-  });
-  return org;
+    .onConflictDoNothing({ target: appOrg.slug });
+  const [org] = await db
+    .select({ id: appOrg.id, slug: appOrg.slug, name: appOrg.name, createdBy: appOrg.createdBy })
+    .from(appOrg)
+    .where(eq(appOrg.slug, slug));
+  if (!org || org.createdBy !== userId) {
+    throw new Error(`Personal org slug ${slug} belongs to another user.`);
+  }
+  await db
+    .insert(appOrgMember)
+    .values({ orgId: org.id, userId, role: "owner" })
+    .onConflictDoNothing();
+  return { id: org.id, slug: org.slug, name: org.name };
 }
 
 /**

@@ -15,9 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { restoreToTimestampAction } from "@/app/actions";
 
+/** Five minutes ago, as a `datetime-local` value in the viewer's zone. */
 function defaultIso(): string {
   const d = new Date(Date.now() - 5 * 60 * 1000);
-  return d.toISOString().slice(0, 16);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 export function RestoreForm({

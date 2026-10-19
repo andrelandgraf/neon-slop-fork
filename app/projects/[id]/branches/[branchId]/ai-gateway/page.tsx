@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { requireCapability } from "@/lib/capabilities";
 import { loadGatewayModels, type GatewayModel } from "@/lib/ai-gateway/models";
-import { neonSdk } from "@/lib/neon";
+import { neonRaw, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
 import { GetStarted, type WorkflowModels } from "./get-started";
 import { ModelCatalog } from "./model-catalog";
@@ -28,10 +28,12 @@ export default async function AiGatewayPage({
   const { view } = await searchParams;
   const { project, branch, defaultBranch } = await loadBranch(projectId, branchId);
   await requireCapability(projectId, defaultBranch.id, "aiGateway");
-  const [gateway, models] = await Promise.all([
+  const [gateway, models, plan] = await Promise.all([
     neonSdk.aiGateway.get({ projectId, branchId }),
     loadGatewayModels(),
+    neonRaw.getOrgPlan(),
   ]);
+  const upgrade = plan === "free" ? <UpgradeNotice /> : null;
   const base = `/projects/${projectId}/branches/${branchId}/ai-gateway`;
 
   if (view === "get_started") {
@@ -50,6 +52,7 @@ export default async function AiGatewayPage({
     };
     return (
       <PageBody>
+        {upgrade}
         <GetStarted
           projectId={projectId}
           branchId={branchId}
@@ -74,7 +77,41 @@ export default async function AiGatewayPage({
           </Button>
         }
       />
+      {upgrade}
       <ModelCatalog models={models} />
     </PageBody>
+  );
+}
+
+const UPGRADE_FEATURES = [
+  "OpenAI-compatible endpoint — no SDK changes",
+  "Per-branch credentials with granular scopes",
+  "Usage analytics across every model and route",
+];
+
+/** The Console's notice for organizations on the Free plan, where requests return `paid_plan_required`. */
+function UpgradeNotice() {
+  return (
+    <div className="mb-5 rounded-[3px] border border-panel-border px-5 py-4">
+      <h2 className="font-semibold text-base">Upgrade to use AI Gateway</h2>
+      <p className="mt-1 max-w-3xl text-sm">
+        AI Gateway is available on paid plans. Route requests to Llama, Mistral,
+        GPT, Claude, and Gemini through a single OpenAI-compatible endpoint with
+        usage analytics and per-branch credentials. Usage will be billed at
+        provider list prices with no Neon markup.
+      </p>
+      <ul className="mt-2 list-disc pl-5 text-sm">
+        {UPGRADE_FEATURES.map((f) => (
+          <li key={f}>{f}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-muted-foreground text-xs">
+        This clone runs every project in one shared organization on the Free plan,
+        so gateway requests are refused until that organization is upgraded.{" "}
+        <a className="text-link" href="https://neon.com/docs/ai-gateway/overview" target="_blank" rel="noreferrer">
+          Learn more about AI Gateway
+        </a>
+      </p>
+    </div>
   );
 }

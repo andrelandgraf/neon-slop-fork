@@ -59,8 +59,8 @@ export default async function ProjectsPage() {
         <Metric label="Network transfer" value={formatBytes(totals.transferBytes)} />
       </div>
       <p className="mt-3 text-muted-foreground text-xs">
-        Usage since {formatDate(since)}. Metrics may be delayed by an hour and are
-        not updated for inactive projects.
+        {since ? `Usage since ${formatDate(since)}. ` : ""}Metrics may be delayed by an
+        hour and are not updated for inactive projects.
       </p>
     </div>
   );

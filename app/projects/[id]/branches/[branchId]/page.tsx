@@ -140,6 +140,7 @@ export default async function BranchOverviewPage({
         branch={branch}
         actions={
             <BranchHeaderActions
+              key={branch.id}
               projectId={projectId}
               branch={{
                 id: branch.id,

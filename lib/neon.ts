@@ -893,6 +893,16 @@ export const neonRaw = {
     });
   },
 
+  /** The shared org's plan ("free", "launch", …); gates the AI Gateway. */
+  async getOrgPlan(): Promise<string> {
+    const org = await raw.getOrganization({
+      client: sdk.client,
+      path: { org_id: ORG_ID },
+      throwOnError: true,
+    });
+    return org.plan;
+  },
+
   createTransferRequest(projectId: string) {
     return raw.createProjectTransferRequest({
       client: sdk.client,
