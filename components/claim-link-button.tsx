@@ -19,7 +19,7 @@ export function ClaimLinkButton({
   variant = "outline",
 }: {
   projectId: string;
-  variant?: "outline" | "default";
+  variant?: "outline" | "default" | "brand";
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
