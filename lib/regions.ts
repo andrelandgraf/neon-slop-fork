@@ -28,7 +28,7 @@ function providerOf(regionId: string): string | undefined {
 export const DEFAULT_REGION_ID = "aws-us-east-1";
 
 /** Postgres versions the Console offers, newest first. */
-export const PG_VERSIONS = ["18", "17", "16", "15", "14"];
+export const PG_VERSIONS = [18, 17, 16, 15, 14] as const;
 
 /**
  * The API returns coordinates as strings and leaves them empty when a

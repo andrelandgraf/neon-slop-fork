@@ -1,183 +1,204 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Search, GitBranch, Database } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, ChevronsLeft, CirclePlus, EllipsisVertical, Search } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { relativeTime } from "@/lib/utils";
+import { CreateProjectModal } from "@/components/create-project-modal";
+import type { ServerRegion } from "@/components/neon-ui/region-select";
 
-interface ProjectRow {
+export interface ProjectRow {
   id: string;
   name: string;
-  region_id: string;
-  pg_version: number;
-  created_at: string;
-  storageMb: number;
+  region: string;
+  createdAt: string;
+  storage: string;
+  lastActive: string | null;
   branches: number;
+  defaultBranchId: string;
 }
 
-const REGION_LABELS: Record<string, string> = {
-  "aws-us-east-1": "AWS US East 1 (N. Virginia)",
-  "aws-us-east-2": "AWS US East 2 (Ohio)",
-  "aws-us-west-2": "AWS US West 2 (Oregon)",
-  "aws-eu-central-1": "AWS EU Central 1 (Frankfurt)",
-  "aws-eu-west-2": "AWS EU West 2 (London)",
-  "aws-ap-southeast-1": "AWS AP Southeast 1 (Singapore)",
-};
+const PAGE_SIZE = 10;
 
-function regionLabel(id: string): string {
-  return REGION_LABELS[id] ?? id;
-}
-
-function formatStorage(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
-  return `${mb.toFixed(2)} MB`;
-}
-
-export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
+export function ProjectsList({
+  orgName,
+  projects,
+  usage,
+  regions,
+  defaultRegionId,
+  pgVersions,
+  backendRegions,
+}: {
+  orgName: string;
+  projects: ProjectRow[];
+  usage: React.ReactNode;
+  regions: ServerRegion[];
+  defaultRegionId: string;
+  pgVersions: readonly number[];
+  backendRegions: string[];
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const modalOpen = params.get("modal") === "create_project";
+  const needle = query.trim().toLowerCase();
+  const filtered = projects.filter(
+    (p) => !needle || p.name.toLowerCase().includes(needle) || p.id.includes(needle)
+  );
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pages - 1);
+  const visible = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q) ||
-        p.region_id.toLowerCase().includes(q)
-    );
-  }, [projects, query]);
+  function setModal(open: boolean) {
+    const next = new URLSearchParams(params);
+    if (open) next.set("modal", "create_project");
+    else next.delete("modal");
+    const search = next.toString();
+    router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false });
+  }
 
   return (
     <>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="font-semibold text-base">{filtered.length} Projects</div>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="font-semibold text-2xl">{orgName}&apos;s projects</h1>
+        <div className="flex gap-2">
+          <Button onClick={() => setModal(true)}>
+            <CirclePlus className="size-3.5" />
+            New project
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href="https://neon.com/docs/import/migrate-intro" target="_blank" rel="noreferrer" />}
+          >
+            Import data
+          </Button>
+        </div>
       </div>
-      <div className="relative mb-3">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      {usage}
+      <h2 className="mt-6 mb-3 font-semibold text-lg">
+        {filtered.length} {filtered.length === 1 ? "Project" : "Projects"}
+      </h2>
+      <label className="mb-2 flex h-8 items-center gap-2 rounded-[3px] border border-panel-border px-2.5">
+        <Search className="size-3.5 text-muted-foreground" />
+        <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search projects by name, ID, or region…"
-          className="h-9 pl-9"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setPage(0);
+          }}
+          placeholder="Search..."
+          className="flex-1 bg-transparent text-sm outline-none"
         />
-      </div>
-
-      {filtered.length === 0 ? (
-        projects.length === 0 ? (
-          <div className="relative overflow-hidden rounded-xl border bg-card p-12 text-center">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.6]"
-              style={{
-                background:
-                  "radial-gradient(420px circle at 50% 0%, color-mix(in oklab, var(--primary) 12%, transparent), transparent 70%)",
-              }}
-            />
-            <div className="relative">
-              <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
-                <Database className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-semibold tracking-tight">Create your first project</h3>
-              <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
-                A project is a serverless Postgres database with instant branching.
-                Spin one up in seconds — it scales to zero when idle.
-              </p>
-              <Link
-                href="/projects/new"
-                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-[0_0_24px_-6px_var(--primary)] transition-shadow hover:shadow-[0_0_34px_-6px_var(--primary)]"
-              >
-                <Database className="h-4 w-4" />
-                New project
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
-            No projects match &ldquo;{query}&rdquo;.
-          </div>
-        )
-      ) : (
-        <div className="border rounded-lg bg-card overflow-hidden">
-          <div className="max-h-[calc(100vh-22rem)] overflow-auto">
-            <table className="w-full text-sm min-w-[900px]">
-              <thead className="sticky top-0 z-10 bg-card">
-                <tr className="border-b bg-muted/30 text-left">
-                  <Th>Name</Th>
-                  <Th>Region</Th>
-                  <Th>Created at</Th>
-                  <Th>Storage</Th>
-                  <Th>Postgres</Th>
-                  <Th>Branches</Th>
-                  <Th>HIPAA</Th>
-                  <Th className="w-10"></Th>
-                </tr>
-              </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b last:border-b-0 hover:bg-muted/30">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="font-medium hover:underline flex items-center gap-2"
+      </label>
+      <table className="w-full text-sm">
+        <thead className="text-left">
+          <tr className="border-panel-border border-b">
+            {["Name", "Region", "Created at", "Storage", "Compute last active at", "Branches", "Integrations", ""].map((h) => (
+              <th key={h} className="px-3 py-2.5 font-semibold">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((p) => (
+            <tr key={p.id} className="border-panel-border border-b">
+              <td className="px-3 py-2.5">
+                <Link href={`/projects/${p.id}`} className="font-semibold hover:underline">
+                  {p.name}
+                </Link>
+              </td>
+              <td className="px-3 py-2.5">{p.region}</td>
+              <td className="px-3 py-2.5">{relativeTime(p.createdAt)}</td>
+              <td className="px-3 py-2.5">{p.storage}</td>
+              <td className="px-3 py-2.5">{p.lastActive ? relativeTime(p.lastActive) : "-"}</td>
+              <td className="px-3 py-2.5">{p.branches}</td>
+              <td className="px-3 py-2.5">
+                <Link
+                  href={`/projects/${p.id}/integrations?branch=${p.defaultBranchId}`}
+                  className="flex items-center gap-1 font-semibold"
+                >
+                  Add <CirclePlus className="size-3.5" />
+                </Link>
+              </td>
+              <td className="px-2 py-2.5 text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Table row actions"
+                      className="grid size-7 place-items-center rounded-[3px] text-muted-foreground hover:bg-muted"
                     >
-                      <Database className="h-3.5 w-3.5 text-muted-foreground" />
-                      {p.name}
-                    </Link>
-                    <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                      {p.id}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {regionLabel(p.region_id)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {relativeTime(p.created_at)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                    {formatStorage(p.storageMb)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="secondary">v{p.pg_version}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                    <span className="inline-flex items-center gap-1">
-                      <GitBranch className="h-3 w-3" />
-                      {p.branches}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="secondary">
-                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                      Disabled
-                    </Badge>
-                  </td>
-                  <td className="px-2 py-3 text-right">
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      <EllipsisVertical className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => router.push(`/projects/${p.id}`)}>Dashboard</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => router.push(`/projects/${p.id}/branches/${p.defaultBranchId}/sql-editor`)}
                     >
-                      Open →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+                      SQL Editor
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.push(`/projects/${p.id}/settings/general#transfer`)}>
+                      Transfer project
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.push(`/projects/${p.id}/settings/general`)}>
+                      Settings
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </td>
+            </tr>
+          ))}
+          {visible.length === 0 && (
+            <tr>
+              <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">
+                {projects.length === 0 ? "No projects yet. Create one to get started." : "No projects match your search."}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      {pages > 1 && (
+        <div className="mt-3 flex items-center justify-end gap-1 text-sm">
+          <span className="mr-2 text-muted-foreground">
+            {current * PAGE_SIZE + 1}–{Math.min((current + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </span>
+          <Button variant="ghost" size="icon-sm" aria-label="Go to first page" disabled={current === 0} onClick={() => setPage(0)}>
+            <ChevronsLeft className="size-4" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Go to previous page" disabled={current === 0} onClick={() => setPage(current - 1)}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Go to next page"
+            disabled={current >= pages - 1}
+            onClick={() => setPage(current + 1)}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
         </div>
       )}
+      <CreateProjectModal
+        open={modalOpen}
+        onOpenChange={setModal}
+        regions={regions}
+        defaultRegionId={defaultRegionId}
+        pgVersions={pgVersions}
+        backendRegions={backendRegions}
+      />
     </>
-  );
-}
-
-function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
-  return (
-    <th
-      className={`px-4 py-2.5 font-medium text-[11px] font-mono uppercase tracking-[0.14em] text-muted-foreground ${
-        className ?? ""
-      }`}
-    >
-      {children}
-    </th>
   );
 }

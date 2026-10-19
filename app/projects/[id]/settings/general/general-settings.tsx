@@ -136,6 +136,7 @@ export function GeneralSettings({ project, branch, branches, otherOrgs, claimLin
       </SettingsSection>
 
       <SettingsSection
+        id="transfer"
         title="Transfer project"
         description={
           <>
