@@ -903,6 +903,16 @@ export const neonRaw = {
     return org.plan;
   },
 
+  /** Table and column structure, read from storage, so it works without a running compute. */
+  getBranchSchemaJson(projectId: string, branchId: string, databaseName: string) {
+    return raw.getProjectBranchSchema({
+      client: sdk.client,
+      path: { project_id: projectId, branch_id: branchId },
+      query: { db_name: databaseName, format: "json" },
+      throwOnError: true,
+    });
+  },
+
   createTransferRequest(projectId: string) {
     return raw.createProjectTransferRequest({
       client: sdk.client,

@@ -30,11 +30,11 @@ describe("masking rules", () => {
     expect(ruleToOption({ masking_function: "anon.lorem_ipsum(paragraphs := 5)" })).toBe("anon.lorem_ipsum");
   });
 
-  test("column kinds follow information_schema types", () => {
-    expect(columnKind("character varying", "varchar")).toBe("text");
-    expect(columnKind("timestamp with time zone", "timestamptz")).toBe("timestamp");
-    expect(columnKind("USER-DEFINED", "citext")).toBe("text");
-    expect(columnKind("USER-DEFINED", "mood")).toBe("enum");
-    expect(columnKind("tsvector", "tsvector")).toBeNull();
+  test("column kinds follow Postgres type names", () => {
+    expect(columnKind("character varying(255)")).toBe("text");
+    expect(columnKind("timestamp with time zone")).toBe("timestamp");
+    expect(columnKind("text[]")).toBe("array");
+    expect(columnKind("numeric(10,2)")).toBe("numeric");
+    expect(columnKind("tsvector")).toBeNull();
   });
 });

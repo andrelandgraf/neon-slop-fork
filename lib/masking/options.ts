@@ -148,18 +148,17 @@ export const MASK_OPTIONS: Record<ColumnKind, MaskGroup[]> = {
   ],
 };
 
-/** Maps `information_schema.columns.data_type` / `udt_name` to the Console's kinds. */
-export function columnKind(dataType: string, udtName: string): ColumnKind | null {
-  const t = dataType.toLowerCase();
-  if (t === "array") return "array";
-  if (t === "user-defined") return udtName === "citext" ? "text" : "enum";
-  if (["text", "character varying", "character", "citext", "name"].includes(t)) return "text";
-  if (["integer", "smallint"].includes(t)) return "integer";
-  if (t === "bigint") return "biginteger";
-  if (["numeric", "real", "double precision", "money"].includes(t)) return "numeric";
+/** Maps a Postgres type name (as the branch schema API reports it) to the Console's kinds. */
+export function columnKind(typeName: string): ColumnKind | null {
+  const t = typeName.toLowerCase().replace(/\(.*\)/, "").trim();
+  if (t.endsWith("[]")) return "array";
+  if (["text", "character varying", "varchar", "character", "char", "bpchar", "citext", "name"].includes(t)) return "text";
+  if (["integer", "smallint", "int4", "int2", "serial"].includes(t)) return "integer";
+  if (t === "bigint" || t === "int8" || t === "bigserial") return "biginteger";
+  if (["numeric", "decimal", "real", "double precision", "float4", "float8", "money"].includes(t)) return "numeric";
   if (t === "date") return "date";
   if (t.startsWith("timestamp")) return "timestamp";
-  if (t === "boolean") return "boolean";
+  if (t === "boolean" || t === "bool") return "boolean";
   if (t === "bytea") return "bytea";
   if (t === "json" || t === "jsonb") return "json";
   if (t === "uuid") return "uuid";

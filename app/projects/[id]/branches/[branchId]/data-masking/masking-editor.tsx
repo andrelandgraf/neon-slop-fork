@@ -175,9 +175,11 @@ export function MaskingEditor({
       </label>
       {columns.length === 0 && (
         <p className="py-8 text-center text-muted-foreground text-sm">
-          {state === "anonymizing"
-            ? "The schema is shown again once anonymization finishes."
-            : "This branch has no tables to mask."}
+          {state === "created"
+            ? "Neon is preparing the branch. The schema appears here once it's ready."
+            : state === "anonymizing"
+              ? "The schema is shown again once anonymization finishes."
+              : "This branch has no tables to mask."}
         </p>
       )}
       <div className="space-y-1 text-sm">
