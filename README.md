@@ -20,7 +20,7 @@ So I slop forked Neon to prove that you can literally rebuild the Neon console f
 
 ## Now powered by Neon Realtime
 
-The console is live. Create, rename or delete a project, branch, bucket or credential in one tab and every other open tab updates without a reload, including the "Creating project" state. On the Tables page, rows from your own database stream in when Realtime is on for the branch. It runs on [Neon Realtime](https://neon.com/docs/realtime/overview) and [TanStack DB](https://tanstack.com/db).
+The console is live. Create, rename or delete a project, branch, bucket or credential in one tab and every other open tab updates without a reload, including the "Creating project" state. On the Tables page, rows from your own database stream in when Realtime is on for the branch and the table has a primary key. It runs on [Neon Realtime](https://neon.com/docs/realtime/overview) and [TanStack DB](https://tanstack.com/db).
 
 ## Contributing
 
