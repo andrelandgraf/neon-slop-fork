@@ -269,6 +269,14 @@ async function reconcileProject(projectId: string): Promise<void> {
 }
 
 async function reconcileBranch(projectId: string, branchId: string): Promise<void> {
+  // Branch ids come from the browser. Only claim a scope for a branch the
+  // project mirror knows; an unknown one (new, or invented) waits for the
+  // throttled project reconcile instead of minting a scope per request.
+  const [known] = await db
+    .select({ id: neonBranch.id })
+    .from(neonBranch)
+    .where(and(eq(neonBranch.id, branchId), eq(neonBranch.project_id, projectId)));
+  if (!known) return reconcileProject(projectId);
   const started = await claim(scope.branch(projectId, branchId), BACKGROUND_MAX_AGE_MS);
   if (started) await syncBranch(projectId, branchId, started);
 }

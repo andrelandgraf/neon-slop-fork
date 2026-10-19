@@ -49,7 +49,7 @@ export function ObjectRow({
   actions,
 }: {
   name: string;
-  columns: { label: string; value: string }[];
+  columns: { label: string; value: React.ReactNode }[];
   actions: React.ReactNode;
 }) {
   return (
@@ -248,7 +248,9 @@ export function AddDatabaseButton({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [owner, setOwner] = useState(roles[0] ?? "");
+  const [chosen, setChosen] = useState("");
+  // Roles can change while the dialog is open; a role that's gone falls back to the first one left.
+  const owner = roles.includes(chosen) ? chosen : (roles[0] ?? "");
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
@@ -281,7 +283,7 @@ export function AddDatabaseButton({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="database-owner">Owner</Label>
-            <NativeSelect id="database-owner" value={owner} onChange={(e) => setOwner(e.target.value)}>
+            <NativeSelect id="database-owner" value={owner} onChange={(e) => setChosen(e.target.value)}>
               {roles.map((r) => (
                 <option key={r} value={r}>
                   {r}

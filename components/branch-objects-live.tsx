@@ -5,6 +5,8 @@ import { useBranchDatabases, useBranchRoles } from "@/components/live/project-li
 import type { LiveSeed } from "@/lib/live/load";
 import type { DatabaseRow, RoleRow } from "@/lib/live/queries";
 import { relativeTime } from "@/lib/utils";
+import { LiveStatus } from "@/components/live/live-status";
+import { LocalTime } from "@/components/local-time";
 
 interface Seeds {
   projectId: string;
@@ -20,13 +22,14 @@ function useObjects({ branchId, roles, databases }: Seeds) {
   const liveDatabases = useLiveQuery((q) =>
     q.from({ database: databasesCollection }).orderBy(({ database }) => database.created_at, "asc")
   );
-  return { roles: liveRoles.data, databases: liveDatabases.data };
+  return { roles: liveRoles.data, databases: liveDatabases.data, queries: [liveRoles, liveDatabases] };
 }
 
 export function RolesList(seeds: Seeds) {
-  const { roles, databases } = useObjects(seeds);
+  const { roles, databases, queries } = useObjects(seeds);
   return (
     <div className="space-y-2">
+      <LiveStatus queries={queries} />
       {roles
         .filter((role) => !role.protected)
         .map((role) => (
@@ -42,8 +45,8 @@ export function RolesList(seeds: Seeds) {
                     .map((d) => d.name)
                     .join(", ") || "—",
               },
-              { label: "Created", value: relativeTime(role.created_at) },
-              { label: "Last updated", value: relativeTime(role.updated_at) },
+              { label: "Created", value: <LocalTime date={role.created_at} format={relativeTime} /> },
+              { label: "Last updated", value: <LocalTime date={role.updated_at} format={relativeTime} /> },
             ]}
             actions={<RoleActions projectId={seeds.projectId} branchId={seeds.branchId} roleName={role.name} />}
           />
@@ -53,17 +56,18 @@ export function RolesList(seeds: Seeds) {
 }
 
 export function DatabasesList(seeds: Seeds) {
-  const { databases } = useObjects(seeds);
+  const { databases, queries } = useObjects(seeds);
   return (
     <div className="space-y-2">
+      <LiveStatus queries={queries} />
       {databases.map((database) => (
         <ObjectRow
           key={database.name}
           name={database.name}
           columns={[
             { label: "Owner", value: database.owner_name },
-            { label: "Created", value: relativeTime(database.created_at) },
-            { label: "Last updated", value: relativeTime(database.updated_at) },
+            { label: "Created", value: <LocalTime date={database.created_at} format={relativeTime} /> },
+            { label: "Last updated", value: <LocalTime date={database.updated_at} format={relativeTime} /> },
           ]}
           actions={<DatabaseActions projectId={seeds.projectId} branchId={seeds.branchId} databaseName={database.name} />}
         />

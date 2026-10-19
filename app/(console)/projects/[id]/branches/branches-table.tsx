@@ -11,6 +11,8 @@ import { cn, relativeTime } from "@/lib/utils";
 import { formatBytes, formatCuRange } from "@/lib/format";
 import { useLiveQuery } from "@tanstack/react-db";
 import { useProjectLive } from "@/components/live/project-live";
+import { LiveStatus } from "@/components/live/live-status";
+import { LocalTime, useHydrated } from "@/components/local-time";
 
 interface BranchRow {
   id: string;
@@ -24,21 +26,23 @@ interface BranchRow {
   primary: { range: string; active: boolean } | null;
   storage: string;
   createdBy: string;
-  lastActive: string;
+  lastActive: React.ReactNode;
 }
 
 /** The table's rows, computed from the live branches and computes. */
-function useBranchRows(): BranchRow[] {
+function useBranchRows() {
   const live = useProjectLive();
-  const { data: branches } = useLiveQuery((q) =>
+  const branchesQuery = useLiveQuery((q) =>
     q
       .from({ branch: live.branches })
       .orderBy(({ branch }) => branch.default, "desc")
       .orderBy(({ branch }) => branch.created_at, "asc")
   );
-  const { data: endpoints } = useLiveQuery((q) => q.from({ endpoint: live.endpoints }));
+  const endpointsQuery = useLiveQuery((q) => q.from({ endpoint: live.endpoints }));
+  const branches = branchesQuery.data;
+  const endpoints = endpointsQuery.data;
   const nameById = new Map(branches.map((b) => [b.id, b.name]));
-  return branches.map((b) => {
+  const rows = branches.map((b): BranchRow => {
     const primary = endpoints.find((e) => e.branch_id === b.id && e.type === "read_write");
     return {
       id: b.id,
@@ -58,9 +62,16 @@ function useBranchRows(): BranchRow[] {
       storage: b.logical_size ? formatBytes(b.logical_size) : "-",
       createdBy: b.created_by?.name ?? "—",
       lastActive:
-        primary?.current_state === "active" ? "now" : primary?.last_active ? relativeTime(primary.last_active) : "-",
+        primary?.current_state === "active" ? (
+          "now"
+        ) : primary?.last_active ? (
+          <LocalTime date={primary.last_active} format={relativeTime} />
+        ) : (
+          "-"
+        ),
     };
   });
+  return { rows, queries: [branchesQuery, endpointsQuery] };
 }
 
 export function BranchesTable({
@@ -72,7 +83,8 @@ export function BranchesTable({
   projectName: string;
   currentBranchId: string;
 }) {
-  const rows = useBranchRows();
+  const { rows, queries } = useBranchRows();
+  const hydrated = useHydrated();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -96,6 +108,7 @@ export function BranchesTable({
           <h1 className="font-semibold text-2xl">
             {rows.length} {rows.length === 1 ? "Branch" : "Branches"}
           </h1>
+          <LiveStatus queries={queries} />
           <nav className="mt-1 text-sm">
             <Link href="/projects" className="text-link">
               All projects
@@ -146,7 +159,7 @@ export function BranchesTable({
                   {row.default && <Badge variant="secondary">Default</Badge>}
                   {row.protected && <Badge variant="secondary">Protected</Badge>}
                   {row.expiresAt && (
-                    <span title={`Expires ${new Date(row.expiresAt).toLocaleString()}`}>
+                    <span title={hydrated ? `Expires ${new Date(row.expiresAt).toLocaleString()}` : undefined}>
                       <Hourglass className="size-3.5 text-muted-foreground" />
                     </span>
                   )}

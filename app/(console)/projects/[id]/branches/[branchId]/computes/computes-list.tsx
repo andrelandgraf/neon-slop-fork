@@ -3,6 +3,8 @@ import { eq, useLiveQuery } from "@tanstack/react-db";
 import { useProjectLive } from "@/components/live/project-live";
 import type { ProjectCapabilities } from "@/lib/capabilities";
 import { relativeTime } from "@/lib/utils";
+import { LocalTime } from "@/components/local-time";
+import { LiveStatus } from "@/components/live/live-status";
 import { ComputeRow } from "./compute-row";
 
 /** The branch's computes, primary first, then replicas by age; live. */
@@ -16,9 +18,10 @@ export function ComputesList({
   capabilities: ProjectCapabilities;
 }) {
   const live = useProjectLive();
-  const { data } = useLiveQuery({
+  const query = useLiveQuery({
     query: (q) => q.from({ endpoint: live.endpoints }).where(({ endpoint }) => eq(endpoint.branch_id, branchId)),
   });
+  const { data } = query;
   const endpoints = [...data].sort((a, b) =>
     a.type === b.type ? a.created_at.getTime() - b.created_at.getTime() : a.type === "read_write" ? -1 : 1
   );
@@ -27,11 +30,13 @@ export function ComputesList({
     return (
       <div className="rounded-[3px] border border-panel-border px-5 py-8 text-center text-muted-foreground text-sm">
         This branch has no compute.
+        <LiveStatus queries={[query]} />
       </div>
     );
   }
   return (
     <>
+      <LiveStatus queries={[query]} />
       {endpoints.map((endpoint) => {
         const label = endpoint.type === "read_write" ? "Primary" : `Read replica ${++replica}`;
         const since = endpoint.current_state === "active" ? endpoint.started_at : endpoint.suspended_at;
@@ -42,12 +47,13 @@ export function ComputesList({
             branchId={branchId}
             label={label}
             capabilities={capabilities}
-            sinceLabel={since ? relativeTime(since) : "—"}
+            sinceLabel={since ? <LocalTime date={since} format={relativeTime} /> : "—"}
             endpoint={{
               id: endpoint.id,
               name: endpoint.name,
               type: endpoint.type,
-              current_state: endpoint.pending_state ?? endpoint.current_state,
+              current_state: endpoint.current_state,
+              pending_state: endpoint.pending_state,
               started_at: endpoint.started_at?.toISOString() ?? null,
               suspended_at: endpoint.suspended_at?.toISOString() ?? null,
               autoscaling_limit_min_cu: endpoint.autoscaling_limit_min_cu,

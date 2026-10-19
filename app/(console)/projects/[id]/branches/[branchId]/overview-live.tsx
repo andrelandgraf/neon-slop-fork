@@ -8,6 +8,8 @@ import { formatBytes, formatCuRange, formatDate, formatDateTime, formatHistoryRe
 import type { LiveSeed } from "@/lib/live/load";
 import type { DatabaseRow } from "@/lib/live/queries";
 import { regionLabel } from "@/lib/region-catalog";
+import { LiveStatus } from "@/components/live/live-status";
+import { LocalTime } from "@/components/local-time";
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -17,21 +19,28 @@ function plural(count: number, noun: string): string {
 export function PostgresServiceDetail({ branchId, databases: seed }: { branchId: string; databases: LiveSeed<DatabaseRow> }) {
   const live = useProjectLive();
   const databases = useBranchDatabases(branchId, seed);
-  const { data: dbs } = useLiveQuery((q) => q.from({ database: databases }));
-  const { data: computes } = useLiveQuery({
+  const dbs = useLiveQuery((q) => q.from({ database: databases }));
+  const computes = useLiveQuery({
     query: (q) => q.from({ endpoint: live.endpoints }).where(({ endpoint }) => eq(endpoint.branch_id, branchId)),
   });
-  return <>{`${plural(dbs.length, "database")}, ${plural(computes.length, "compute")}`}</>;
+  return (
+    <>
+      {`${plural(dbs.data.length, "database")}, ${plural(computes.data.length, "compute")}`}
+      <LiveStatus queries={[dbs, computes]} />
+    </>
+  );
 }
 
 /** The overview's right-hand details: branch, project, usage and Postgres defaults, all live. */
 export function BranchDetailsAside({ projectId, branchId }: { projectId: string; branchId: string }) {
   const live = useProjectLive();
   const shell = useShellCollections();
-  const { data: branches } = useLiveQuery((q) => q.from({ branch: live.branches }));
-  const { data: projects } = useLiveQuery({
+  const branchesQuery = useLiveQuery((q) => q.from({ branch: live.branches }));
+  const projectsQuery = useLiveQuery({
     query: (q) => q.from({ project: shell.projects }).where(({ project }) => eq(project.id, projectId)),
   });
+  const branches = branchesQuery.data;
+  const projects = projectsQuery.data;
   const project = projects[0];
   const branch = branches.find((b) => b.id === branchId);
   if (!project || !branch) return null;
@@ -41,11 +50,12 @@ export function BranchDetailsAside({ projectId, branchId }: { projectId: string;
   const storageBytes = branches.reduce((sum, b) => sum + (b.logical_size ?? 0), 0);
   return (
     <aside className="w-full shrink-0 lg:w-[288px]">
+      <LiveStatus queries={[branchesQuery, projectsQuery]} />
       <DetailSection title="Branch">
         <Detail label="Name" value={branch.name} />
         <Detail label="ID" value={branch.id} mono />
-        <Detail label="Expires" value={branch.expires_at ? formatDateTime(branch.expires_at) : "Never"} link />
-        <Detail label="Created" value={formatDateTime(branch.created_at)} />
+        <Detail label="Expires" value={branch.expires_at ? <LocalTime date={branch.expires_at} format={formatDateTime} /> : "Never"} link />
+        <Detail label="Created" value={<LocalTime date={branch.created_at} format={formatDateTime} />} />
         <Detail label="Created by" value={branch.created_by?.name ?? "—"} />
         {parent && (
           <>
@@ -59,10 +69,18 @@ export function BranchDetailsAside({ projectId, branchId }: { projectId: string;
             />
             <Detail
               label="Branched from"
-              value={branch.parent_lsn ? `LSN ${branch.parent_lsn}` : formatDateTime(branch.parent_timestamp)}
+              value={
+                branch.parent_lsn ? (
+                  `LSN ${branch.parent_lsn}`
+                ) : branch.parent_timestamp ? (
+                  <LocalTime date={branch.parent_timestamp} format={formatDateTime} />
+                ) : (
+                  "—"
+                )
+              }
               mono
             />
-            <Detail label="Last updated" value={formatDateTime(branch.updated_at)} />
+            <Detail label="Last updated" value={<LocalTime date={branch.updated_at} format={formatDateTime} />} />
           </>
         )}
       </DetailSection>
@@ -106,7 +124,9 @@ export function BranchDetailsAside({ projectId, branchId }: { projectId: string;
           </Link>
         }
       >
-        <p className="pb-1 text-muted-foreground text-xs">Since {formatDate(project.consumption_period_start)}</p>
+        <p className="pb-1 text-muted-foreground text-xs">
+          Since <LocalTime date={project.consumption_period_start} format={formatDate} />
+        </p>
         <Detail label="Compute" value={`${(project.compute_time_seconds / 3600).toFixed(2)} CU-hrs`} />
         <Detail label="Storage" value={formatBytes(storageBytes)} />
         <Detail label="Written data" value={formatBytes(project.written_data_bytes)} />
