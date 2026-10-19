@@ -7,7 +7,7 @@ import { APP_BACKEND_REGIONS } from "@/lib/region-catalog";
 import { db } from "@/lib/db/client";
 import { projectCreation } from "@/lib/db/schema";
 import { txid } from "@/lib/mirror/sql";
-import { syncProject } from "@/lib/mirror/sync";
+import { mirrorProject } from "@/lib/mirror/after-write";
 import type { LiveWriteResult } from "@/lib/live/writes";
 import { creationUpdate, pruneCreations, recordCreationStart } from "./creation";
 
@@ -101,9 +101,16 @@ export async function createProjectWithServicesAction(
   // Ownership is recorded before anything else can fail, so a broken service
   // step never leaves a project nobody can see. The creation row names the
   // project before its mirror row lands, so lists swap one for the other.
-  await attachProjectToOrg(projectId, orgId, userId);
+  try {
+    await attachProjectToOrg(projectId, orgId, userId);
+  } catch (cause) {
+    console.error(`Neon project ${projectId} was created but attaching it to org ${orgId} failed.`, cause);
+    const error = "The Neon project was created, but recording its owner failed.";
+    await creationUpdate(input.id, { status: "failed", project_id: projectId, error });
+    return { ok: false, error };
+  }
   await creationUpdate(input.id, { status: "configuring", project_id: projectId });
-  await syncProject(projectId);
+  await mirrorProject(projectId);
 
   const branch = await neonSdk.branches.getDefault({ projectId });
   const branchId = branch.id;

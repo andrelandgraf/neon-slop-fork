@@ -1630,7 +1630,9 @@ export async function revalidateBucketAction(
   projectId: string,
   bucketName: string
 ): Promise<void> {
-  await await projectChanged(projectId);
+  const tenant = await requireTenant();
+  await requireProjectAccess(tenant, projectId);
+  await projectChanged(projectId);
 }
 
 // ---------------------------------------------------------------------------

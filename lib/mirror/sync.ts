@@ -1,12 +1,12 @@
 import "server-only";
 import { after } from "next/server";
-import { and, eq, lt, notInArray, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql, type SQL } from "drizzle-orm";
 import { NeonApiError } from "@neon/sdk";
 import { db } from "@/lib/db/client";
 import { appProject, mirrorSync, neonBranch, neonProject } from "@/lib/db/schema";
 import { neon } from "@/lib/neon";
 import { branchRow, projectRow } from "./rows";
-import { excludedSet, newerAndChanged, txid } from "./sql";
+import { changedColumns, excludedSet, gatedInsert, txid } from "./sql";
 
 /** What a write did to the rows a collection subscribes to. */
 export type MirrorResult = { kind: "committed"; txid: string } | { kind: "unchanged" };
@@ -58,6 +58,26 @@ function markSynced(scopeKey: string) {
 }
 
 /**
+ * Raises the scope's applied version to this snapshot's, unless a newer
+ * snapshot already applied. Concurrent syncs of one scope serialize on this
+ * row, so each later statement of the batch can check `appliedIs(version)`
+ * and an older snapshot that commits last writes nothing.
+ */
+function applyVersion(scopeKey: string, version: SQL) {
+  return db
+    .insert(mirrorSync)
+    .values({ scope: scopeKey, applied_version: version })
+    .onConflictDoUpdate({
+      target: mirrorSync.scope,
+      set: { applied_version: sql`excluded.applied_version` },
+      setWhere: sql`${mirrorSync.applied_version} is null or ${mirrorSync.applied_version} <= excluded.applied_version`,
+    });
+}
+
+const appliedIs = (scopeKey: string, version: SQL) =>
+  sql`exists (select 1 from mirror_sync where scope = ${scopeKey} and applied_version = ${version})`;
+
+/**
  * Mirrors one project and its branches. `version` is the database time taken
  * before the API reads; it defaults to now, which is right for a sync that
  * follows a write the caller just made.
@@ -65,6 +85,8 @@ function markSynced(scopeKey: string) {
 export async function syncProject(projectId: string, version?: string): Promise<ProjectSync> {
   const started = version ?? (await databaseNow());
   const v = sql`${started}::timestamptz`;
+  const scopeKey = scope.project(projectId);
+  const current = appliedIs(scopeKey, v);
   let project;
   let branches;
   try {
@@ -77,9 +99,10 @@ export async function syncProject(projectId: string, version?: string): Promise<
   } catch (error) {
     // Deleted, or claimed into another Neon account. Branch rows cascade.
     if (error instanceof NeonApiError && error.status === 404) {
-      const [deleted] = await db.batch([
-        db.delete(neonProject).where(eq(neonProject.id, projectId)).returning({ txid }),
-        markSynced(scope.project(projectId)),
+      const [, deleted] = await db.batch([
+        applyVersion(scopeKey, v),
+        db.delete(neonProject).where(and(eq(neonProject.id, projectId), current)).returning({ txid }),
+        markSynced(scopeKey),
       ]);
       const gone = result(deleted);
       return { project: gone, branches: gone };
@@ -88,23 +111,24 @@ export async function syncProject(projectId: string, version?: string): Promise<
   }
   if (branches.length === 0) throw new Error(`Neon returned no branches for project ${projectId}.`);
 
-  const [projectRows, branchRows, removedBranches] = await db.batch([
-    db
-      .insert(neonProject)
-      .values({ ...projectRow(project), mirrored_at: v })
+  const [, projectRows, branchRows, removedBranches] = await db.batch([
+    applyVersion(scopeKey, v),
+    gatedInsert(neonProject, [{ ...projectRow(project), mirrored_at: started }], current)
       .onConflictDoUpdate({
         target: neonProject.id,
         set: excludedSet(neonProject, ["id"]),
-        setWhere: newerAndChanged(neonProject, v),
+        setWhere: changedColumns(neonProject),
       })
       .returning({ txid }),
-    db
-      .insert(neonBranch)
-      .values(branches.map((b) => ({ ...branchRow(b), mirrored_at: v })))
+    gatedInsert(
+      neonBranch,
+      branches.map((b) => ({ ...branchRow(b), mirrored_at: started })),
+      current
+    )
       .onConflictDoUpdate({
         target: neonBranch.id,
         set: excludedSet(neonBranch, ["id"]),
-        setWhere: newerAndChanged(neonBranch, v),
+        setWhere: changedColumns(neonBranch),
       })
       .returning({ txid }),
     db
@@ -116,11 +140,11 @@ export async function syncProject(projectId: string, version?: string): Promise<
             neonBranch.id,
             branches.map((b) => b.id)
           ),
-          lt(neonBranch.mirrored_at, v)
+          current
         )
       )
       .returning({ txid }),
-    markSynced(scope.project(projectId)),
+    markSynced(scopeKey),
   ]);
   return { project: result(projectRows), branches: result([...branchRows, ...removedBranches]) };
 }

@@ -11,11 +11,16 @@ Work on your own branch: it copies production data and inherits Realtime.
 
 `.neon` is gitignored and records which Neon project this checkout points at.
 
-`neon checkout` writes `DATABASE_URL`, `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` to `.env.local`. The app reads `META_DATABASE_URL` for the control database. Put the rest in `.env.development.local`:
+`neon checkout` writes `DATABASE_URL`, `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` to `.env.local`. Add the names the app reads to the same file (Next.js only expands `$VAR` within one file, and `neon env pull` keeps these lines):
 
 ```bash
 META_DATABASE_URL=$DATABASE_URL_UNPOOLED
 NEXT_PUBLIC_NEON_REALTIME_URL=$NEON_REALTIME_URL
+```
+
+Put the rest in `.env.development.local`:
+
+```bash
 NEON_API_KEY=               # org-level key for the Neon Clone org
 NEON_ORG_ID=org-nameless-thunder-12993511
 NEON_ORG_NAME="Neon Clone"

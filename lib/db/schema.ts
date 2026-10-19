@@ -264,11 +264,16 @@ export const projectCreation = pgTable(
   (t) => [index("project_creation_org_idx").on(t.org_id)]
 );
 
-/** Bookkeeping for mirror syncs: when a scope last synced, and who holds it. */
+/**
+ * Bookkeeping for mirror syncs: when a scope last synced, who holds it, and
+ * the version (database time before the API reads) of the newest snapshot
+ * applied. A snapshot older than `applied_version` writes nothing.
+ */
 export const mirrorSync = pgTable("mirror_sync", {
   scope: text("scope").primaryKey(),
   synced_at: tz("synced_at"),
   claimed_at: tz("claimed_at"),
+  applied_version: tz("applied_version"),
 });
 
 export type NeonProjectRow = typeof neonProject.$inferSelect;

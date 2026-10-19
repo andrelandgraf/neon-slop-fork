@@ -90,20 +90,24 @@ neon checkout main
 That writes `.neon` (gitignored) and pulls `DATABASE_URL`,
 `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` into `.env.local`.
 
-App runtime env is separate; the CLI doesn't produce these:
+Add the names the app reads to `.env.local`, next to the pulled values.
+Next.js expands `$VAR` within a file, and `neon env pull` keeps lines it
+doesn't manage:
 
 ```bash
-META_DATABASE_URL=$DATABASE_URL_UNPOOLED   # the app reads this name
+META_DATABASE_URL=$DATABASE_URL_UNPOOLED
 NEXT_PUBLIC_NEON_REALTIME_URL=$NEON_REALTIME_URL
+```
+
+The rest of the app's env isn't produced by the CLI:
+
+```bash
 NEON_API_KEY=<org-level Neon API key>
 NEON_ORG_ID=org-nameless-thunder-12993511
 NEON_ORG_NAME="Neon Clone"
 BETTER_AUTH_SECRET=<32+ character secret>
 BETTER_AUTH_URL=http://localhost:3030
 ```
-
-Next.js expands `$VAR` across env files, so these can live in
-`.env.development.local` next to the pulled `.env.local`.
 
 ### How live views work
 

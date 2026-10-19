@@ -5,7 +5,7 @@ This repo's Neon project is maintained through `neon.ts`, `.neon`, and the `neon
 - `.neon` is gitignored. After a clone: `neon link --project-id bitter-dawn-83086481`, then `neon checkout` a dev branch (see CONTRIBUTING.md).
 - Linked project: `bitter-dawn-83086481` (`neon-slop-fork-control`, Postgres 18, Realtime enabled) in org `org-nameless-thunder-12993511`.
 - Change Neon services in `neon.ts`. The `neon` CLI loads it; it is not an app dependency. Run `neon config plan` before `neon config apply`. Do not apply if the plan is unexpected.
-- `neon checkout` / `neon env pull` write `DATABASE_URL`, `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` to `.env.local`. The app also reads `META_DATABASE_URL`, `NEXT_PUBLIC_NEON_REALTIME_URL`, `NEON_API_KEY`, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`, which the CLI does not produce.
+- `neon checkout` / `neon env pull` write `DATABASE_URL`, `NEON_REALTIME_URL` and `NEON_REALTIME_SECRET` to `.env.local`. The app also reads `META_DATABASE_URL`, `NEXT_PUBLIC_NEON_REALTIME_URL`, `NEON_API_KEY`, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`, which the CLI does not produce. Keep the `META_DATABASE_URL=$DATABASE_URL_UNPOOLED` and `NEXT_PUBLIC_NEON_REALTIME_URL=$NEON_REALTIME_URL` references in `.env.local`: Next.js only expands `$VAR` within one file.
 
 ## App conventions
 
