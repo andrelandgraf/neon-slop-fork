@@ -254,7 +254,7 @@ function SnapshotRow({ projectId, snapshot }: { projectId: string; snapshot: Sna
         }}
       />
       <Dialog open={dialog === "rename"} onOpenChange={close}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Rename snapshot</DialogTitle>
           </DialogHeader>

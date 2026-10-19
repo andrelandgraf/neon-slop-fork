@@ -248,7 +248,7 @@ function TriggerDialog({
   return (
     <>
       <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[480px]">
+        <DialogContent aria-describedby={undefined} className="max-w-[480px]">
           <form onSubmit={submit} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{trigger ? "Edit trigger" : "Create trigger"}</DialogTitle>

@@ -88,7 +88,7 @@ export function NewBranchDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
-      <DialogContent className="max-w-2xl gap-0 p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-2xl gap-0 p-0">
         <DialogHeader className="border-panel-border border-b px-5 py-4">
           <DialogTitle>Connection details for your new branch</DialogTitle>
         </DialogHeader>

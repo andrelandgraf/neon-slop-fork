@@ -27,6 +27,7 @@ export async function createClaimLinkAction(projectId: string): Promise<ClaimLin
   try {
     const request = await neonRaw.createTransferRequest(projectId);
     await recordClaimLinkExpiry(projectId, new Date(request.expires_at));
+    revalidatePath(`/projects/${projectId}`, "layout");
     const url = `https://console.neon.tech/app/claim?${new URLSearchParams({
       tr: request.id,
       p: projectId,

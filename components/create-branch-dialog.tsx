@@ -138,7 +138,7 @@ export function CreateBranchDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[480px] gap-0 p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-[480px] gap-0 p-0">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="border-panel-border border-b px-5 py-4">
             <DialogTitle>Create new branch</DialogTitle>

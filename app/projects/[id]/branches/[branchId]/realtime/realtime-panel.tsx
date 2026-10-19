@@ -181,7 +181,7 @@ export function RealtimeEnabled({
       </div>
 
       <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
-        <DialogContent className="max-w-[720px]">
+        <DialogContent aria-describedby={undefined} className="max-w-[720px]">
           <DialogHeader>
             <DialogTitle>Agent instructions</DialogTitle>
           </DialogHeader>

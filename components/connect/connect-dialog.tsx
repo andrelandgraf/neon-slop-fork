@@ -95,7 +95,7 @@ export function ConnectDialog({
         <ConnectTrigger onClick={() => handleOpen(true)} />
       )}
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="max-w-2xl gap-0 p-0">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl gap-0 p-0">
           <DialogHeader className="border-panel-border border-b px-6 py-4">
             <DialogTitle>Connect to your branch</DialogTitle>
           </DialogHeader>

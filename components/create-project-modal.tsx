@@ -78,7 +78,7 @@ export function CreateProjectModal({
         if (!next) setCreated(null);
       }}
     >
-      <DialogContent className="max-w-[940px] gap-0 p-0">
+      <DialogContent aria-describedby={undefined} className="max-w-[940px] gap-0 p-0">
         <div className="flex items-center justify-between border-panel-border border-b px-6 py-4">
           <DialogTitle className="font-semibold text-lg">Create project</DialogTitle>
         </div>
