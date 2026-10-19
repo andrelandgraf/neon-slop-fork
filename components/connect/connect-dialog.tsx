@@ -43,12 +43,12 @@ export function ConnectDialog({
   projectId,
   branchId,
   capabilities,
-  trigger,
+  variant = "sidebar",
 }: {
   projectId: string;
   branchId: string;
   capabilities: ProjectCapabilities;
-  trigger?: React.ReactNode;
+  variant?: "sidebar" | "button";
 }) {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<ConnectDetails | null>(null);
@@ -81,8 +81,8 @@ export function ConnectDialog({
 
   return (
     <>
-      {trigger ? (
-        <span onClickCapture={() => handleOpen(true)}>{trigger}</span>
+      {variant === "button" ? (
+        <Button onClick={() => handleOpen(true)}>Connect</Button>
       ) : (
         <ConnectTrigger onClick={() => handleOpen(true)} />
       )}

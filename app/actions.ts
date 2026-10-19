@@ -793,10 +793,12 @@ export async function updateEndpointAutoscalingAction(
   if (!Number.isFinite(minCu) || !Number.isFinite(maxCu) || minCu > maxCu) {
     return { ok: false, error: "Min CU must be ≤ Max CU." };
   }
+  const name = formData.get("name");
   await requireProjectAccess(tenant, projectId);
   try {
     await neon.updateProjectEndpoint(projectId, endpointId, {
       endpoint: {
+        ...(typeof name === "string" ? { name } : {}),
         autoscaling_limit_min_cu: minCu,
         autoscaling_limit_max_cu: maxCu,
         ...(suspendSeconds !== null && Number.isFinite(suspendSeconds)
@@ -843,10 +845,12 @@ export async function createReadReplicaAction(
   if (!Number.isFinite(minCu) || !Number.isFinite(maxCu) || minCu > maxCu) {
     return { ok: false, error: "Min CU must be ≤ Max CU." };
   }
+  const name = String(formData.get("name") ?? "").trim();
   await requireProjectAccess(tenant, projectId);
   try {
     await neon.createProjectEndpoint(projectId, {
       endpoint: {
+        ...(name ? { name } : {}),
         branch_id: branchId,
         type: EndpointType.ReadOnly,
         autoscaling_limit_min_cu: minCu,
