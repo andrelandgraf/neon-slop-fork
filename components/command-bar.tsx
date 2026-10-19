@@ -29,7 +29,7 @@ import {
   isBranchItem,
   navHref,
 } from "@/components/project-nav";
-import { useCurrentBranchId, type SidebarBranch } from "@/components/sidebar";
+import { useCurrentBranchId, useSidebarBranches } from "@/components/sidebar";
 
 interface Command {
   id: string;
@@ -42,7 +42,6 @@ interface Command {
 export interface CommandBarProject {
   id: string;
   name: string;
-  branches: SidebarBranch[];
   capabilities: ProjectCapabilities;
 }
 
@@ -100,8 +99,9 @@ function ProjectCommands({
   onDone: () => void;
 }) {
   const router = useRouter();
-  const branchId = useCurrentBranchId(project.branches);
-  const branchName = project.branches.find((b) => b.id === branchId)?.name ?? "";
+  const branches = useSidebarBranches();
+  const branchId = useCurrentBranchId(branches);
+  const branchName = branches.find((b) => b.id === branchId)?.name ?? "";
 
   const commands = useMemo(() => {
     const go = (href: string) => () => router.push(href);

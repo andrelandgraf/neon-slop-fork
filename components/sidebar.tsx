@@ -40,6 +40,7 @@ import {
 import { ConnectDialog } from "@/components/connect/connect-dialog";
 import { CreateBranchDialog } from "@/components/create-branch-dialog";
 import { useShellCollections } from "@/components/live/live-root";
+import { useProjectLive } from "@/components/live/project-live";
 import { useLiveQuery } from "@tanstack/react-db";
 
 export interface SidebarBranch {
@@ -51,8 +52,19 @@ export interface SidebarBranch {
 interface SidebarProps {
   projectId: string;
   projectName: string;
-  branches: SidebarBranch[];
   capabilities: ProjectCapabilities;
+}
+
+/** The open project's branches, default first, then oldest first; live. */
+export function useSidebarBranches(): SidebarBranch[] {
+  const { branches } = useProjectLive();
+  const { data } = useLiveQuery((q) =>
+    q
+      .from({ branch: branches })
+      .orderBy(({ branch }) => branch.default, "desc")
+      .orderBy(({ branch }) => branch.created_at, "asc")
+  );
+  return data.map((b) => ({ id: b.id, name: b.name, default: b.default }));
 }
 
 /**
@@ -70,9 +82,9 @@ export function useCurrentBranchId(branches: SidebarBranch[]): string {
 export function Sidebar({
   projectId,
   projectName,
-  branches,
   capabilities,
 }: SidebarProps) {
+  const branches = useSidebarBranches();
   const pathname = usePathname();
   const branchId = useCurrentBranchId(branches);
   const [postgresOpen, setPostgresOpen] = useState(true);

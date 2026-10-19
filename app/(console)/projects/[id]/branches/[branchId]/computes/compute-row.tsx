@@ -24,6 +24,8 @@ export interface ComputeEndpoint {
   name: string | null;
   type: string;
   current_state: string;
+  /** The state Neon is moving the compute to, while a start or suspend runs. */
+  pending_state: string | null;
   started_at: string | null;
   suspended_at: string | null;
   autoscaling_limit_min_cu: number;
@@ -45,7 +47,7 @@ export function ComputeRow({
   endpoint: ComputeEndpoint;
   label: string;
   capabilities: ProjectCapabilities;
-  sinceLabel: string;
+  sinceLabel: React.ReactNode;
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -82,7 +84,7 @@ export function ComputeRow({
             )}
           >
             <span className={cn("size-1.5 rounded-full", active ? "bg-primary" : "bg-muted-foreground")} />
-            {active ? "Active" : "Idle"}
+            {statusLabel(endpoint)}
           </span>
         </div>
         <button
@@ -173,4 +175,12 @@ export function ComputeRow({
       />
     </div>
   );
+}
+
+function statusLabel(endpoint: ComputeEndpoint): string {
+  if (endpoint.pending_state && endpoint.pending_state !== endpoint.current_state) {
+    if (endpoint.pending_state === "active") return "Starting";
+    if (endpoint.pending_state === "idle") return "Suspending";
+  }
+  return endpoint.current_state === "active" ? "Active" : "Idle";
 }

@@ -1,5 +1,5 @@
-import type { neonBranch, neonProject } from "@/lib/db/schema";
-import type { Branch, Project } from "@/lib/neon";
+import type { neonBranch, neonDatabase, neonEndpoint, neonOperation, neonProject, neonRole } from "@/lib/db/schema";
+import type { Branch, Database, Endpoint, Operation, Project, Role } from "@/lib/neon";
 
 export type ProjectInsert = Omit<typeof neonProject.$inferInsert, "mirrored_at">;
 export type BranchInsert = Omit<typeof neonBranch.$inferInsert, "mirrored_at">;
@@ -68,5 +68,80 @@ export function branchRow(b: Branch): BranchInsert {
     restore_status: b.restore_status ?? null,
     restored_from: b.restored_from ?? null,
     restored_as: b.restored_as ?? null,
+  };
+}
+
+export type EndpointInsert = Omit<typeof neonEndpoint.$inferInsert, "mirrored_at">;
+export type OperationInsert = Omit<typeof neonOperation.$inferInsert, "mirrored_at">;
+export type DatabaseInsert = Omit<typeof neonDatabase.$inferInsert, "mirrored_at">;
+export type RoleInsert = Omit<typeof neonRole.$inferInsert, "mirrored_at">;
+
+export function endpointRow(e: Endpoint): EndpointInsert {
+  return {
+    id: e.id,
+    project_id: e.project_id,
+    branch_id: e.branch_id,
+    name: e.name ?? null,
+    host: e.host,
+    region_id: e.region_id,
+    type: e.type,
+    current_state: e.current_state,
+    pending_state: e.pending_state ?? null,
+    autoscaling_limit_min_cu: e.autoscaling_limit_min_cu,
+    autoscaling_limit_max_cu: e.autoscaling_limit_max_cu,
+    suspend_timeout_seconds: e.suspend_timeout_seconds,
+    pooler_enabled: e.pooler_enabled,
+    pooler_mode: e.pooler_mode,
+    disabled: e.disabled,
+    passwordless_access: e.passwordless_access,
+    settings: e.settings ?? null,
+    proxy_host: e.proxy_host,
+    creation_source: e.creation_source,
+    last_active: maybeDate(e.last_active),
+    started_at: maybeDate(e.started_at),
+    suspended_at: maybeDate(e.suspended_at),
+    created_at: date(e.created_at),
+    updated_at: date(e.updated_at),
+  };
+}
+
+export function operationRow(o: Operation): OperationInsert {
+  return {
+    id: o.id,
+    project_id: o.project_id,
+    branch_id: o.branch_id ?? null,
+    endpoint_id: o.endpoint_id ?? null,
+    action: o.action,
+    status: o.status,
+    error: o.error ?? null,
+    failures_count: o.failures_count,
+    retry_at: maybeDate(o.retry_at),
+    total_duration_ms: o.total_duration_ms,
+    created_at: date(o.created_at),
+    updated_at: date(o.updated_at),
+  };
+}
+
+export function databaseRow(projectId: string, d: Database): DatabaseInsert {
+  return {
+    id: d.id,
+    project_id: projectId,
+    branch_id: d.branch_id,
+    name: d.name,
+    owner_name: d.owner_name,
+    created_at: date(d.created_at),
+    updated_at: date(d.updated_at),
+  };
+}
+
+export function roleRow(projectId: string, r: Role): RoleInsert {
+  return {
+    project_id: projectId,
+    branch_id: r.branch_id,
+    name: r.name,
+    protected: r.protected ?? false,
+    authentication_method: r.authentication_method ?? null,
+    created_at: date(r.created_at),
+    updated_at: date(r.updated_at),
   };
 }

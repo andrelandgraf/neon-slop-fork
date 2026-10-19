@@ -1,6 +1,6 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
-import { reconcileLater, syncProject, type ProjectSync } from "./sync";
+import { followOperations, reconcileLater, syncBranch, syncProject, type ProjectSync } from "./sync";
 
 /**
  * Mirrors a project after a server action changed it through the Neon API,
@@ -11,7 +11,9 @@ import { reconcileLater, syncProject, type ProjectSync } from "./sync";
  */
 export async function mirrorProject(projectId: string): Promise<ProjectSync | null> {
   try {
-    return await syncProject(projectId);
+    const synced = await syncProject(projectId);
+    if (synced.inFlight) followOperations(projectId);
+    return synced;
   } catch (cause) {
     console.error(`Mirror sync failed after a Neon write to project ${projectId}; reconciling later.`, cause);
     reconcileLater({ projectId });
@@ -19,9 +21,22 @@ export async function mirrorProject(projectId: string): Promise<ProjectSync | nu
   }
 }
 
-/** `mirrorProject`, then revalidates the pages that still render from the Neon API. */
-export async function projectChanged(projectId: string): Promise<ProjectSync | null> {
-  const synced = await mirrorProject(projectId);
+/** Mirrors one branch's databases and roles after a write to them; failures are handled like `mirrorProject`'s. */
+async function mirrorBranch(projectId: string, branchId: string): Promise<void> {
+  try {
+    await syncBranch(projectId, branchId);
+  } catch (cause) {
+    console.error(`Mirror sync failed after a Neon write to branch ${branchId}; reconciling later.`, cause);
+    reconcileLater({ projectId, branchId });
+  }
+}
+
+/**
+ * `mirrorProject` (and the branch's databases and roles when `branchId` is
+ * given), then revalidates the pages that still render from the Neon API.
+ */
+export async function projectChanged(projectId: string, branchId?: string): Promise<ProjectSync | null> {
+  const [synced] = await Promise.all([mirrorProject(projectId), branchId ? mirrorBranch(projectId, branchId) : null]);
   revalidatePath(`/projects/${projectId}`, "layout");
   return synced;
 }

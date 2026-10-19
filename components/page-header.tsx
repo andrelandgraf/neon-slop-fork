@@ -1,7 +1,9 @@
+"use client";
 import Link from "next/link";
 import { CornerDownRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useLiveHeader } from "@/components/live/project-live";
 
 /**
  * The Console page header: H1, then "All projects / <project> ⤷ <branch>"
@@ -19,9 +21,13 @@ export function PageHeader({
   description?: React.ReactNode;
   actions?: React.ReactNode;
   project?: { id: string; name: string };
-  branch?: { name: string; default: boolean };
+  branch?: { id?: string; name: string; default: boolean };
   className?: string;
 }) {
+  const live = useLiveHeader(project?.id, branch?.id);
+  const projectName = live.project?.name ?? project?.name;
+  const branchName = live.branch?.name ?? branch?.name;
+  const isDefault = live.branch?.default ?? branch?.default;
   return (
     <div className={cn("mb-5 flex flex-wrap items-start justify-between gap-4", className)}>
       <div className="min-w-0">
@@ -34,12 +40,12 @@ export function PageHeader({
               All projects
             </Link>
             <span className="text-muted-foreground">/</span>
-            <span className="text-nav-foreground">{project.name}</span>
+            <span className="text-nav-foreground">{projectName}</span>
             {branch && (
               <>
                 <CornerDownRight className="size-3.5 text-muted-foreground" />
-                <span>{branch.name}</span>
-                {branch.default && <Badge variant="secondary">Default</Badge>}
+                <span>{branchName}</span>
+                {isDefault && <Badge variant="secondary">Default</Badge>}
               </>
             )}
           </nav>

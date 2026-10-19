@@ -1,8 +1,8 @@
 import { PageBody, PageHeader } from "@/components/page-header";
-import { neon } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
-import { relativeTime } from "@/lib/utils";
-import { AddDatabaseButton, DatabaseActions, ObjectRow } from "@/components/postgres-objects";
+import { DatabasesList, LiveAddDatabaseButton } from "@/components/branch-objects-live";
+import { loadLive } from "@/lib/live/load";
+import { ensureBranchMirrored } from "@/lib/mirror/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +12,11 @@ export default async function DatabasesPage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch } = await loadBranch(projectId, branchId);
-  const [roles, databases] = await Promise.all([
-    neon.listProjectBranchRoles(projectId, branchId).then((r) => r.data.roles),
-    neon.listProjectBranchDatabases(projectId, branchId).then((r) => r.data.databases),
-  ]);
+  const { tenant, project, branch } = await loadBranch(projectId, branchId);
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
+  await ensureBranchMirrored(projectId, branchId);
+  const [roles, databases] = await Promise.all([loadLive("roles", live), loadLive("databases", live)]);
+  const seeds = { projectId, branchId, roles, databases };
 
   return (
     <PageBody>
@@ -25,12 +25,7 @@ export default async function DatabasesPage({
         project={project}
         branch={branch}
         actions={
-          <AddDatabaseButton
-            projectId={projectId}
-            branchId={branchId}
-            branchName={branch.name}
-            roles={roles.filter((r) => !r.protected).map((r) => r.name)}
-          />
+          <LiveAddDatabaseButton {...seeds} branchName={branch.name} />
         }
       />
       <p className="mb-4 text-sm">
@@ -39,22 +34,7 @@ export default async function DatabasesPage({
           Manage databases.
         </a>
       </p>
-      <div className="space-y-2">
-        {databases.map((database) => (
-          <ObjectRow
-            key={database.name}
-            name={database.name}
-            columns={[
-              { label: "Owner", value: database.owner_name },
-              { label: "Created", value: relativeTime(database.created_at) },
-              { label: "Last updated", value: relativeTime(database.updated_at) },
-            ]}
-            actions={
-              <DatabaseActions projectId={projectId} branchId={branchId} databaseName={database.name} />
-            }
-          />
-        ))}
-      </div>
+      <DatabasesList {...seeds} />
     </PageBody>
   );
 }
