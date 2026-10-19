@@ -170,14 +170,11 @@ type View = Record<string, string | boolean>;
 
 /**
  * Role and database names are user-chosen and land inside single-quoted
- * shell and JavaScript strings, so `'` must not survive encoding.
- * `encodeURIComponent` leaves `!'()*` alone; RFC 3986 allows encoding them.
+ * shell and JavaScript strings. `encodeURIComponent` leaves `'` alone, so it
+ * is encoded on top; every other character keeps the Console's encoding.
  */
 function encodeUriPart(value: string): string {
-  return encodeURIComponent(value).replace(
-    /[!'()*]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
-  );
+  return encodeURIComponent(value).replace(/'/g, "%27");
 }
 
 /** Raw values only appear inside `'…'` in the shell `parameters` snippet. */

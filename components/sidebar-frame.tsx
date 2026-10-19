@@ -60,9 +60,10 @@ export function SidebarFrame({ children }: { children: React.ReactNode }) {
     <CollapsedContext.Provider value={collapsed}>
       <aside
         className={cn(
-          "shrink-0 flex-col transition-[width] duration-200 md:flex",
+          "hidden shrink-0 flex-col transition-[width] duration-200 md:flex",
           collapsed ? "md:w-[60px]" : "md:w-[212px]",
-          mobileNav.open ? "fixed inset-0 z-50 flex w-full bg-canvas pt-2" : "hidden"
+          mobileNav.open &&
+            "max-md:fixed max-md:inset-0 max-md:z-50 max-md:flex max-md:w-full max-md:bg-canvas max-md:pt-2"
         )}
       >
         {mobileNav.open && (

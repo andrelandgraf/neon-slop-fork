@@ -56,6 +56,14 @@ describe("renderSnippet", () => {
     expect(decodeURIComponent(new URL(uri).username)).toBe(role);
   });
 
+  test("characters the Console leaves literal stay literal", () => {
+    const snippet = renderSnippet("parameters", { ...parts, database: "app(prod)" }, true);
+    expect(snippet).toContain("PGDATABASE='app(prod)'");
+    expect(renderSnippet("dotnet_ssl", { ...parts, password: "pass!word" }, false)).toContain(
+      "Password=pass!word;"
+    );
+  });
+
   test(".NET partial renders inside quotes", () => {
     expect(renderSnippet("dotnet_ssl", parts, false)).toBe(
       '"Host=ep-cool-paper-b5x598eh.us-east-2.aws.neon.tech; Database=neondb; Username=neondb_owner; Password=p%40ss; SSL Mode=VerifyFull; Channel Binding=Require;"'
