@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Copy, ExternalLink, Loader2, RefreshCw, TriangleAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,16 +25,6 @@ const QUICKSTART_URL = "https://neon.com/docs/realtime/quickstart";
 const DESCRIPTION =
   "Neon Realtime makes any SQL query live. Subscribe in realtime to your Lakebase Postgres. Develop reactive apps and agents using type-safe realtime queries and optimistic mutations.";
 
-/** While Neon reports `pending`, re-fetch the page until it settles. */
-function usePollWhilePending(pending: boolean) {
-  const router = useRouter();
-  useEffect(() => {
-    if (!pending) return;
-    const timer = window.setInterval(() => router.refresh(), 2000);
-    return () => window.clearInterval(timer);
-  }, [pending, router]);
-}
-
 export function RealtimeDisabled({
   projectId,
   branchId,
@@ -46,7 +35,6 @@ export function RealtimeDisabled({
   pending: boolean;
 }) {
   const [busy, startTransition] = useTransition();
-  usePollWhilePending(pending);
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-6 py-10 text-center">
       <InventoryIllustration />
@@ -102,7 +90,6 @@ export function RealtimeEnabled({
   const [promptOpen, setPromptOpen] = useState(false);
   const [dialog, setDialog] = useState<"rotate" | "disable" | null>(null);
   const [copying, startCopy] = useTransition();
-  usePollWhilePending(pending);
 
   function copySecret() {
     startCopy(async () => {

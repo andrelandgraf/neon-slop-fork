@@ -5,26 +5,29 @@ import { useRouter } from "next/navigation";
 import { Archive, Globe, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BucketRowActions } from "./bucket-row-actions";
-
-export interface BucketRow {
-  name: string;
-  public: boolean;
-  createdAt: string;
-}
+import { useLiveQuery } from "@tanstack/react-db";
+import { useBuckets } from "@/components/live/project-live";
+import { LiveStatus } from "@/components/live/live-status";
+import { LocalTime } from "@/components/local-time";
+import type { LiveSeed } from "@/lib/live/load";
+import type { BucketRow as BucketLiveRow } from "@/lib/live/queries";
 
 export function BucketTable({
   projectId,
   branchId,
-  buckets,
+  buckets: seed,
   actions,
 }: {
   projectId: string;
   branchId: string;
-  buckets: BucketRow[];
+  buckets: LiveSeed<BucketLiveRow>;
   actions: React.ReactNode;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const collection = useBuckets(branchId, seed);
+  const live = useLiveQuery((q) => q.from({ bucket: collection }).orderBy(({ bucket }) => bucket.name, "asc"));
+  const buckets = live.data.map((b) => ({ name: b.name, public: b.access_level === "public_read", createdAt: b.created_at }));
   const visible = buckets.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
   const base = `/projects/${projectId}/branches/${branchId}/storage`;
 
@@ -40,6 +43,7 @@ export function BucketTable({
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </label>
+        <LiveStatus queries={[live]} />
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="icon" aria-label="Refresh" onClick={() => router.refresh()}>
             <RefreshCw className="size-3.5" />
@@ -73,7 +77,9 @@ export function BucketTable({
                     {bucket.public ? "Public" : "Private"}
                   </span>
                 </td>
-                <td className="px-3 py-2.5">{new Date(bucket.createdAt).toLocaleDateString("en-US")}</td>
+                <td className="px-3 py-2.5">
+                  <LocalTime date={bucket.createdAt} format={(d) => d.toLocaleDateString("en-US")} />
+                </td>
                 <td className="px-2 py-2.5 text-right">
                   <BucketRowActions
                     projectId={projectId}

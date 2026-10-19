@@ -26,7 +26,7 @@ export async function setSnapshotScheduleAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to update the schedule." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true };
 }
 
@@ -51,6 +51,6 @@ export async function createSnapshotNowAction(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? "Failed to create snapshot." };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { extras: true });
   return { ok: true, elapsedMs: Date.now() - started };
 }

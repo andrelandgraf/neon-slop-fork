@@ -1,8 +1,11 @@
 import { ifFound, neon, neonRaw } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
+import { loadLive } from "@/lib/live/load";
+import { ensureMirrored } from "@/lib/mirror/services";
+import { LiveMasking } from "./live-masking";
 import { columnKind } from "@/lib/masking/options";
 import { MaskingEmptyState } from "./empty-state";
-import { MaskingEditor, type MaskColumn } from "./masking-editor";
+import type { MaskColumn } from "./masking-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +18,13 @@ export default async function DataMaskingPage({
   params: Promise<{ id: string; branchId: string }>;
 }) {
   const { id: projectId, branchId } = await params;
-  const { project, branch, branches } = await loadBranch(projectId, branchId);
-  const status = await ifFound(neonRaw.getAnonymizedStatus(projectId, branchId));
+  const { tenant, project, branch, branches } = await loadBranch(projectId, branchId);
+  await ensureMirrored({ kind: "masking", projectId, branchId });
+  const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
+  const [status, liveStatus] = await Promise.all([
+    ifFound(neonRaw.getAnonymizedStatus(projectId, branchId)),
+    loadLive("masking-status", live),
+  ]);
 
   if (!status) {
     return (
@@ -67,10 +75,9 @@ export default async function DataMaskingPage({
     : [];
 
   return (
-    <MaskingEditor
-      // The editor's draft starts from `rules`; remount once real rules load
-      // so applying never replaces them with the placeholder empty list.
-      key={ready ? "ready" : "pending"}
+    <LiveMasking
+      status={liveStatus}
+      serverState={status.state}
       projectId={projectId}
       branchId={branchId}
       project={project}

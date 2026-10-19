@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, Loader2, Search, Table2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import type { MaskingRule } from "@neon/sdk";
@@ -63,7 +62,6 @@ export function MaskingEditor({
   columns: MaskColumn[];
   rules: MaskingRule[];
 }) {
-  const router = useRouter();
   const initial = useMemo(() => {
     const map = new Map<string, MaskingRule>();
     for (const r of rules) {
@@ -77,12 +75,6 @@ export function MaskingEditor({
   const [pending, startTransition] = useTransition();
   const busy = BUSY.has(state);
 
-  // Neon runs setup and anonymization asynchronously; poll until it settles.
-  useEffect(() => {
-    if (!busy) return;
-    const timer = window.setInterval(() => router.refresh(), 3000);
-    return () => window.clearInterval(timer);
-  }, [busy, router]);
 
   const dirty =
     draft.size !== initial.size ||

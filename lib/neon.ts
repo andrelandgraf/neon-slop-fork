@@ -966,3 +966,16 @@ export type Operation = Extract<
   Awaited<ReturnType<ReturnType<typeof neonSdk.operations.list>["page"]>>,
   { items: unknown }
 >["items"][number];
+
+export type {
+  AnonymizedBranchStatusResponse as AnonymizedBranchStatus,
+  BackupScheduleItem,
+  CustomDomain,
+  DataApiReponse as DataApi,
+  NeonFunction,
+  ProjectPermission,
+  Realtime,
+  Snapshot,
+  Trigger as FunctionTrigger,
+} from "@neon/sdk/raw";
+export type { BranchAiGateway, NeonAuthIntegration };

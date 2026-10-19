@@ -35,21 +35,24 @@ export interface BranchSync {
   roles: MirrorResult;
 }
 
-const BACKGROUND_MAX_AGE_MS = 20_000;
+export const BACKGROUND_MAX_AGE_MS = 20_000;
 const IN_FLIGHT = new Set(["scheduling", "running", "cancelling"]);
 
 export const scope = {
   org: (orgId: string) => `org:${orgId}`,
   project: (projectId: string) => `project:${projectId}`,
   branch: (projectId: string, branchId: string) => `branch:${projectId}:${branchId}`,
+  services: (projectId: string, branchId: string) => `services:${projectId}:${branchId}`,
+  extras: (projectId: string) => `extras:${projectId}`,
+  masking: (projectId: string, branchId: string) => `masking:${projectId}:${branchId}`,
 };
 
-function result(...rowSets: { txid: string }[][]): MirrorResult {
+export function result(...rowSets: { txid: string }[][]): MirrorResult {
   const first = rowSets.flat()[0];
   return first ? { kind: "committed", txid: first.txid } : { kind: "unchanged" };
 }
 
-async function databaseNow(): Promise<string> {
+export async function databaseNow(): Promise<string> {
   const { rows } = await db.execute<{ now: string }>(sql`select now()::text as now`);
   const row = rows[0];
   if (!row) throw new Error("select now() returned no row");
@@ -61,7 +64,7 @@ async function databaseNow(): Promise<string> {
  * use as the snapshot's version, or null when another request holds the
  * scope or it synced within `maxAgeMs`. An abandoned claim expires after 60 s.
  */
-async function claim(scopeKey: string, maxAgeMs: number): Promise<string | null> {
+export async function claim(scopeKey: string, maxAgeMs: number): Promise<string | null> {
   const { rows } = await db.execute<{ started: string }>(sql`
     insert into mirror_sync (scope, claimed_at) values (${scopeKey}, now())
     on conflict (scope) do update set claimed_at = now()
@@ -71,7 +74,7 @@ async function claim(scopeKey: string, maxAgeMs: number): Promise<string | null>
   return rows[0]?.started ?? null;
 }
 
-function markSynced(scopeKey: string) {
+export function markSynced(scopeKey: string) {
   return db
     .insert(mirrorSync)
     .values({ scope: scopeKey, synced_at: sql`now()`, claimed_at: null })
@@ -84,7 +87,7 @@ function markSynced(scopeKey: string) {
  * row, so each later statement of the batch can check `appliedIs(version)`
  * and an older snapshot that commits last writes nothing.
  */
-function applyVersion(scopeKey: string, version: SQL) {
+export function applyVersion(scopeKey: string, version: SQL) {
   return db
     .insert(mirrorSync)
     .values({ scope: scopeKey, applied_version: version })
@@ -95,11 +98,11 @@ function applyVersion(scopeKey: string, version: SQL) {
     });
 }
 
-const appliedIs = (scopeKey: string, version: SQL) =>
+export const appliedIs = (scopeKey: string, version: SQL) =>
   sql`exists (select 1 from mirror_sync where scope = ${scopeKey} and applied_version = ${version})`;
 
 /** Inserts or updates a snapshot's rows, only while it's the newest applied snapshot of its scope. */
-function upsert(table: PgTable, target: PgColumn[], keys: string[], rows: Record<string, unknown>[], gate: SQL) {
+export function upsert(table: PgTable, target: PgColumn[], keys: string[], rows: Record<string, unknown>[], gate: SQL) {
   return gatedInsert(table, rows, gate)
     .onConflictDoUpdate({ target, set: excludedSet(table, keys), setWhere: changedColumns(table) })
     .returning({ txid });
@@ -263,20 +266,13 @@ async function reconcileOrg(orgId: string): Promise<void> {
   await markSynced(scope.org(orgId));
 }
 
-async function reconcileProject(projectId: string): Promise<void> {
+export async function reconcileProject(projectId: string): Promise<void> {
   const started = await claim(scope.project(projectId), BACKGROUND_MAX_AGE_MS);
   if (started) await syncProject(projectId, started);
 }
 
 async function reconcileBranch(projectId: string, branchId: string): Promise<void> {
-  // Branch ids come from the browser. Only claim a scope for a branch the
-  // project mirror knows; an unknown one (new, or invented) waits for the
-  // throttled project reconcile instead of minting a scope per request.
-  const [known] = await db
-    .select({ id: neonBranch.id })
-    .from(neonBranch)
-    .where(and(eq(neonBranch.id, branchId), eq(neonBranch.project_id, projectId)));
-  if (!known) return reconcileProject(projectId);
+  if (!(await branchIsMirrored(projectId, branchId))) return reconcileProject(projectId);
   const started = await claim(scope.branch(projectId, branchId), BACKGROUND_MAX_AGE_MS);
   if (started) await syncBranch(projectId, branchId, started);
 }
@@ -343,7 +339,21 @@ export async function ensureBranchMirrored(projectId: string, branchId: string):
   reconcileLater({ projectId, branchId });
 }
 
-async function syncedOnce(scopeKey: string): Promise<boolean> {
+export async function syncedOnce(scopeKey: string): Promise<boolean> {
   const [row] = await db.select({ synced_at: mirrorSync.synced_at }).from(mirrorSync).where(eq(mirrorSync.scope, scopeKey));
   return Boolean(row?.synced_at);
+}
+
+/**
+ * Branch ids in renewals come from the browser. Background reconciles only
+ * claim a scope for a branch the project mirror knows; an unknown one (new,
+ * or invented) waits for the throttled project reconcile instead of minting
+ * a scope per request.
+ */
+export async function branchIsMirrored(projectId: string, branchId: string): Promise<boolean> {
+  const [known] = await db
+    .select({ id: neonBranch.id })
+    .from(neonBranch)
+    .where(and(eq(neonBranch.id, branchId), eq(neonBranch.project_id, projectId)));
+  return Boolean(known);
 }

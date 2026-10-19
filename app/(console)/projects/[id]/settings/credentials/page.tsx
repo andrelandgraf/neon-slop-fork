@@ -1,11 +1,12 @@
-import { Badge } from "@/components/ui/badge";
 import { requireCapability } from "@/lib/capabilities";
 import { ifFound, neonSdk } from "@/lib/neon";
 import { loadProjectBranch } from "@/lib/project-context";
 import { SettingsShell } from "../settings-shell";
 import { SettingsSection } from "../settings-section";
 import { CreateCredentialDialog } from "./create-credential-dialog";
-import { CredentialRowActions } from "./credential-row-actions";
+import { CredentialsTable } from "./credentials-table";
+import { loadLive } from "@/lib/live/load";
+import { ensureMirrored } from "@/lib/mirror/services";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,10 @@ export default async function CredentialsSettingsPage({
   const context = await loadProjectBranch(projectId, branchParam);
   const branchId = context.branch.id;
   await requireCapability(projectId, context.defaultBranch.id, "credentials");
+  await ensureMirrored({ kind: "services", projectId, branchId });
+  const live = { userId: context.tenant.session.user.id, orgId: context.tenant.activeOrg.id, projectId, branchId };
   const [credentials, storage] = await Promise.all([
-    neonSdk.credentials.list({ projectId, branchId }),
+    loadLive("credentials", live),
     ifFound(neonSdk.storage.get({ projectId, branchId })),
   ]);
 
@@ -40,54 +43,7 @@ export default async function CredentialsSettingsPage({
             region={storage?.region ?? ""}
           />
         </div>
-        <table className="w-full text-sm">
-          <thead className="text-left">
-            <tr className="border-panel-border border-b">
-              {["Name", "Key ID", "Created", "Last used", "Revoked", ""].map((h) => (
-                <th key={h} className="px-3 py-2.5 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {credentials.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
-                  No credentials on this branch yet.
-                </td>
-              </tr>
-            )}
-            {credentials.map((cred) => (
-              <tr key={cred.token_id} className="border-panel-border border-b">
-                <td className="px-3 py-2.5">
-                  <div className="font-semibold">{cred.name ?? "—"}</div>
-                  <div className="text-muted-foreground text-xs" title={cred.scopes.join(", ")}>
-                    {cred.scopes.length} scope{cred.scopes.length === 1 ? "" : "s"}
-                  </div>
-                </td>
-                <td className="px-3 py-2.5 font-mono text-xs">{cred.token_id_short}</td>
-                <td className="px-3 py-2.5">{new Date(cred.created_at).toLocaleDateString("en-US")}</td>
-                <td className="px-3 py-2.5">
-                  {cred.last_used_at ? new Date(cred.last_used_at).toLocaleDateString("en-US") : "-"}
-                </td>
-                <td className="px-3 py-2.5">
-                  {cred.revoked_at ? <Badge variant="destructive">Revoked</Badge> : "-"}
-                </td>
-                <td className="px-2 py-2.5 text-right">
-                  {!cred.revoked_at && (
-                    <CredentialRowActions
-                      projectId={projectId}
-                      branchId={branchId}
-                      tokenId={cred.token_id}
-                      name={cred.name ?? cred.token_id_short}
-                    />
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <CredentialsTable projectId={projectId} branchId={branchId} credentials={credentials} />
       </SettingsSection>
     </SettingsShell>
   );

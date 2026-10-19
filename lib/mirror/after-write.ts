@@ -1,5 +1,6 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
+import { followMasking, followServices, reconcileServicesLater, syncExtras, syncMasking, syncServices } from "./services";
 import { followOperations, reconcileLater, syncBranch, syncProject, type ProjectSync } from "./sync";
 
 /**
@@ -21,22 +22,70 @@ export async function mirrorProject(projectId: string): Promise<ProjectSync | nu
   }
 }
 
-/** Mirrors one branch's databases and roles after a write to them; failures are handled like `mirrorProject`'s. */
-async function mirrorBranch(projectId: string, branchId: string): Promise<void> {
+async function mirrorScope(label: string, sync: () => Promise<unknown>, recover: () => void): Promise<void> {
   try {
-    await syncBranch(projectId, branchId);
+    await sync();
   } catch (cause) {
-    console.error(`Mirror sync failed after a Neon write to branch ${branchId}; reconciling later.`, cause);
-    reconcileLater({ projectId, branchId });
+    console.error(`Mirror sync of ${label} failed after a Neon write; reconciling later.`, cause);
+    recover();
   }
 }
 
-/**
- * `mirrorProject` (and the branch's databases and roles when `branchId` is
- * given), then revalidates the pages that still render from the Neon API.
- */
-export async function projectChanged(projectId: string, branchId?: string): Promise<ProjectSync | null> {
-  const [synced] = await Promise.all([mirrorProject(projectId), branchId ? mirrorBranch(projectId, branchId) : null]);
+/** Mirrors a branch's app-backend state without revalidating, for writes whose response must not remount the page. */
+export function mirrorServices(projectId: string, branchId: string): Promise<void> {
+  return mirrorScope(
+    `services of ${branchId}`,
+    () => syncServices(projectId, branchId),
+    () => reconcileServicesLater({ kind: "services", projectId, branchId })
+  );
+}
+
+/** What else a write changed, besides the project, its branches, computes and operations. */
+export interface ChangedScopes {
+  /** A branch whose databases or roles changed. */
+  branch?: string;
+  /** A branch whose app-backend services, buckets, functions or credentials changed. */
+  services?: string;
+  /** Snapshots, snapshot schedules or collaborators. */
+  extras?: boolean;
+  /** A branch whose masking status changed; its setup or anonymization is followed while it runs. */
+  masking?: string;
+}
+
+/** Mirrors the project and the scopes a write changed, then revalidates the pages that still render from the Neon API. */
+export async function projectChanged(projectId: string, scopes: ChangedScopes = {}): Promise<ProjectSync | null> {
+  const { branch, services, extras, masking } = scopes;
+  const [synced] = await Promise.all([
+    mirrorProject(projectId),
+    branch
+      ? mirrorScope(`branch ${branch}`, () => syncBranch(projectId, branch), () => reconcileLater({ projectId, branchId: branch }))
+      : null,
+    services
+      ? mirrorScope(
+          `services of ${services}`,
+          async () => {
+            await syncServices(projectId, services);
+            followServices(projectId, services);
+          },
+          () => reconcileServicesLater({ kind: "services", projectId, branchId: services })
+        )
+      : null,
+    extras
+      ? mirrorScope(`extras of ${projectId}`, () => syncExtras(projectId), () =>
+          reconcileServicesLater({ kind: "extras", projectId })
+        )
+      : null,
+    masking
+      ? mirrorScope(
+          `masking of ${masking}`,
+          async () => {
+            await syncMasking(projectId, masking);
+            followMasking(projectId, masking);
+          },
+          () => reconcileServicesLater({ kind: "masking", projectId, branchId: masking })
+        )
+      : null,
+  ]);
   revalidatePath(`/projects/${projectId}`, "layout");
   return synced;
 }

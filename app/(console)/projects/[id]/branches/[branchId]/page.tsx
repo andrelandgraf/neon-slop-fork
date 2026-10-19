@@ -9,16 +9,22 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { getProjectCapabilities } from "@/lib/capabilities";
-import { ifFound, neon, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
 import { loadLive } from "@/lib/live/load";
 import { ensureBranchMirrored } from "@/lib/mirror/sync";
 import { BranchHeaderActions } from "./branch-header-actions";
 import { NewBranchDialog } from "./new-branch-dialog";
-import { BranchDetailsAside, PostgresServiceDetail } from "./overview-live";
+import {
+  AuthServiceDetail,
+  BranchDetailsAside,
+  FunctionsServiceDetail,
+  PostgresServiceDetail,
+  RealtimeServiceDetail,
+  StorageServiceDetail,
+} from "./overview-live";
+import { ensureMirrored } from "@/lib/mirror/services";
 
 export const dynamic = "force-dynamic";
 
@@ -32,18 +38,14 @@ export default async function BranchOverviewPage({
   const live = { userId: tenant.session.user.id, orgId: tenant.activeOrg.id, projectId, branchId };
   await ensureBranchMirrored(projectId, branchId);
   const capabilities = await getProjectCapabilities(projectId, defaultBranch.id);
-  const [databases, auth, buckets, functions, realtime] =
-    await Promise.all([
-      loadLive("databases", live),
-      ifFound(neonSdk.auth.get({ projectId, branchId })),
-      capabilities.storage
-        ? ifFound(neonSdk.storage.buckets.list({ projectId, branchId }))
-        : null,
-      capabilities.functions
-        ? ifFound(neon.listFunctionsFirstPage(projectId, branchId))
-        : null,
-      capabilities.realtime ? ifFound(neonSdk.realtime.get({ projectId, branchId })) : null,
-    ]);
+  await ensureMirrored({ kind: "services", projectId, branchId });
+  const [databases, serviceState, buckets, functions] = await Promise.all([
+    loadLive("databases", live),
+    loadLive("branch-services", live),
+    loadLive("buckets", live),
+    loadLive("functions", live),
+  ]);
+  const seeds = { branchId, services: serviceState, buckets, functions };
 
   const base = `/projects/${projectId}/branches/${branchId}`;
 
@@ -65,36 +67,21 @@ export default async function BranchOverviewPage({
       icon: UserRoundCheck,
       label: "Better Auth",
       href: `${base}/auth`,
-      detail: auth ? (
-        "Users and sessions in your database"
-      ) : (
-        <span className="flex items-center justify-between gap-3">
-          Get user management via Better Auth
-          <Button size="xs" variant="outline" nativeButton={false} render={<Link href={`${base}/auth`} />}>
-            Get started
-          </Button>
-        </span>
-      ),
+      detail: <AuthServiceDetail base={base} {...seeds} />,
       show: true,
     },
     {
       icon: Folder,
       label: "Object storage",
       href: `${base}/storage`,
-      detail:
-        buckets && buckets.length > 0
-          ? plural(buckets.length, "bucket")
-          : "Upload files and media to buckets",
+      detail: <StorageServiceDetail {...seeds} />,
       show: capabilities.storage,
     },
     {
       icon: SquareFunction,
       label: "Functions",
       href: `${base}/functions`,
-      detail:
-        functions && functions.data.functions.length > 0
-          ? plural(functions.data.functions.length, "function")
-          : "Deploy serverless functions next to your data",
+      detail: <FunctionsServiceDetail {...seeds} />,
       show: capabilities.functions,
     },
     {
@@ -108,9 +95,7 @@ export default async function BranchOverviewPage({
       icon: Zap,
       label: "Realtime",
       href: `${base}/realtime`,
-      detail: realtime?.enabled
-        ? "Enabled"
-        : "Live query results that update as your data changes",
+      detail: <RealtimeServiceDetail {...seeds} />,
       show: capabilities.realtime,
     },
   ];
@@ -179,6 +164,3 @@ export default async function BranchOverviewPage({
   );
 }
 
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}

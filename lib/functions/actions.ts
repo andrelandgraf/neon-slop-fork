@@ -30,7 +30,7 @@ async function run(
   } catch (err) {
     return { ok: false, error: apiErrorMessage(err) ?? fallback };
   }
-  await projectChanged(projectId);
+  await projectChanged(projectId, { services: branchId });
   return { ok: true };
 }
 

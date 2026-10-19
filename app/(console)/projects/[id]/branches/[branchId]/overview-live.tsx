@@ -1,12 +1,13 @@
 "use client";
-import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { useShellCollections } from "@/components/live/live-root";
-import { useBranchDatabases, useProjectLive } from "@/components/live/project-live";
+import { useBranchDatabases, useBranchServices, useBuckets, useFunctions, useProjectLive } from "@/components/live/project-live";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { formatBytes, formatCuRange, formatDate, formatDateTime, formatHistoryRetention } from "@/lib/format";
 import type { LiveSeed } from "@/lib/live/load";
-import type { DatabaseRow } from "@/lib/live/queries";
+import type { BranchServiceRow, BucketRow, DatabaseRow, FunctionRow } from "@/lib/live/queries";
 import { regionLabel } from "@/lib/region-catalog";
 import { LiveStatus } from "@/components/live/live-status";
 import { LocalTime } from "@/components/local-time";
@@ -186,3 +187,52 @@ function Detail({ label, value, mono, link }: { label: string; value: React.Reac
     </div>
   );
 }
+
+/** The services table's Auth, Storage, Functions and Realtime details, from the branch's live app-backend state. */
+export function useServiceDetails(
+  branchId: string,
+  seeds: { services: LiveSeed<BranchServiceRow>; buckets: LiveSeed<BucketRow>; functions: LiveSeed<FunctionRow> }
+) {
+  const servicesCollection = useBranchServices(branchId, seeds.services);
+  const bucketsCollection = useBuckets(branchId, seeds.buckets);
+  const functionsCollection = useFunctions(branchId, seeds.functions);
+  const services = useLiveQuery((q) => q.from({ s: servicesCollection }));
+  const buckets = useLiveQuery((q) => q.from({ b: bucketsCollection }));
+  const functions = useLiveQuery((q) => q.from({ f: functionsCollection }));
+  return { service: services.data[0], buckets: buckets.data.length, functions: functions.data.length, queries: [services, buckets, functions] };
+}
+
+export function AuthServiceDetail({ base, ...props }: { base: string; branchId: string } & Seeds) {
+  const { service } = useServiceDetails(props.branchId, props);
+  if (service?.auth) return <>Users and sessions in your database</>;
+  return (
+    <span className="flex items-center justify-between gap-3">
+      Get user management via Better Auth
+      <Button size="xs" variant="outline" nativeButton={false} render={<Link href={`${base}/auth`} />}>
+        Get started
+      </Button>
+    </span>
+  );
+}
+
+export function StorageServiceDetail(props: { branchId: string } & Seeds) {
+  const { buckets, queries } = useServiceDetails(props.branchId, props);
+  return (
+    <>
+      {buckets > 0 ? plural(buckets, "bucket") : "Upload files and media to buckets"}
+      <LiveStatus queries={queries} />
+    </>
+  );
+}
+
+export function FunctionsServiceDetail(props: { branchId: string } & Seeds) {
+  const { functions } = useServiceDetails(props.branchId, props);
+  return <>{functions > 0 ? plural(functions, "function") : "Deploy serverless functions next to your data"}</>;
+}
+
+export function RealtimeServiceDetail(props: { branchId: string } & Seeds) {
+  const { service } = useServiceDetails(props.branchId, props);
+  return <>{service?.realtime?.enabled ? "Enabled" : "Live query results that update as your data changes"}</>;
+}
+
+type Seeds = { services: LiveSeed<BranchServiceRow>; buckets: LiveSeed<BucketRow>; functions: LiveSeed<FunctionRow> };
