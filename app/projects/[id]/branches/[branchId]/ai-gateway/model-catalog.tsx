@@ -111,7 +111,7 @@ export function ModelCatalog({ models }: { models: CatalogModel[] }) {
         <NativeSelect
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          className="w-[220px]"
+          wrapperClassName="w-[220px]"
           aria-label="Filter models by provider"
         >
           <option value="">All providers</option>
@@ -124,7 +124,7 @@ export function ModelCatalog({ models }: { models: CatalogModel[] }) {
         <NativeSelect
           value={capability}
           onChange={(e) => setCapability(e.target.value)}
-          className="w-[220px]"
+          wrapperClassName="w-[220px]"
           aria-label="Filter models by capability"
         >
           <option value="">All capabilities</option>

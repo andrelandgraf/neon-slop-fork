@@ -128,7 +128,7 @@ export function GetStarted({
                 if (next) setWorkflow(next.value);
               }}
               aria-label="Choose a workflow"
-              className="flex-1"
+              wrapperClassName="flex-1"
             >
               {GATEWAY_WORKFLOWS.map((w) => (
                 <option key={w.value} value={w.value}>

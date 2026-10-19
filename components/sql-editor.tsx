@@ -208,7 +208,7 @@ export function SqlEditor({
           <NativeSelect
             value={database}
             onChange={(e) => setDatabase(e.target.value)}
-            className="w-44"
+            wrapperClassName="w-44"
             aria-label="Database"
           >
             {databases.map((d) => (

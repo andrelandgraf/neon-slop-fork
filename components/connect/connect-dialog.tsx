@@ -274,7 +274,7 @@ export function PostgresTab({
         <NativeSelect
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="w-56"
+          wrapperClassName="w-56"
         >
           {CONNECT_LANGUAGES.map((l) => (
             <option key={l.value} value={l.value}>
@@ -427,7 +427,7 @@ function StorageTab({
           const next = STORAGE_CLIENTS.find((c) => c.value === e.target.value);
           if (next) setClient(next.value);
         }}
-        className="w-48"
+        wrapperClassName="w-48"
       >
         {STORAGE_CLIENTS.map((c) => (
           <option key={c.value} value={c.value}>
