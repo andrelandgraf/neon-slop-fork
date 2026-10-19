@@ -4,10 +4,12 @@ import { loadBranch } from "@/lib/project-context";
 import { PageBody, PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/neon-ui/empty-state";
-import { TableProperties, ChevronLeft, ChevronRight } from "lucide-react";
-import { TablePreviewActions } from "./table-preview-actions";
+import { TableProperties } from "lucide-react";
+import { setUpTableLive } from "@/lib/tables/live";
+import { loadTablePreview, type TablePreview as Preview } from "@/lib/tables/preview";
+import type { PageSize } from "@/lib/tables/preview-sql";
+import { TablePreview } from "./table-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +18,6 @@ interface TableRow {
   table_name: string;
   row_estimate: number;
 }
-
-const PAGE_SIZES = [10, 25, 50, 100] as const;
 
 export default async function TablesPage({
   params,
@@ -40,9 +40,8 @@ export default async function TablesPage({
   } = await searchParams;
   const page = positiveInt(pageParam, 1);
   const pageSize = allowedPageSize(pageSizeParam);
-  const offset = (page - 1) * pageSize;
 
-  const { project, branch: activeBranch } = await loadBranch(id, branchId);
+  const { tenant, project, branch: activeBranch, defaultBranch } = await loadBranch(id, branchId);
 
   let tables: TableRow[] = [];
   let listError: string | null = null;
@@ -88,25 +87,16 @@ export default async function TablesPage({
     listError = e instanceof Error ? e.message : String(e);
   }
 
-  let preview: {
-    columns: string[];
-    rows: Record<string, unknown>[];
-    rowCount: number;
-  } | null = null;
+  let preview: Preview | null = null;
   let previewError: string | null = null;
   if (table) {
     try {
-      const qSchema = quoteIdent(schema);
-      const qTable = quoteIdent(table);
-      preview = await runProjectSql(
-        id,
-        `SELECT * FROM ${qSchema}.${qTable} LIMIT ${pageSize} OFFSET ${offset};`,
-        { branchId: activeBranch.id }
-      );
+      preview = await loadTablePreview(id, activeBranch.id, { schema, table, page, pageSize });
     } catch (e) {
       previewError = e instanceof Error ? e.message : String(e);
     }
   }
+  const live = preview ? await setUpTableLive(id, defaultBranch.id, activeBranch.id, preview) : null;
 
   // Helper: build a link target preserving the active branch.
   const linkFor = (s: string, t: string) => {
@@ -116,15 +106,6 @@ export default async function TablesPage({
     params.set("pageSize", String(pageSize));
     return `?${params.toString()}`;
   };
-  const pageHref = (targetPage: number, targetPageSize = pageSize) => {
-    const params = new URLSearchParams();
-    if (table) params.set("table", table);
-    params.set("schema", schema);
-    params.set("page", String(targetPage));
-    params.set("pageSize", String(targetPageSize));
-    return `?${params.toString()}`;
-  };
-
   return (
     <PageBody>
       <PageHeader title="Tables" project={project} branch={activeBranch} />
@@ -192,117 +173,25 @@ export default async function TablesPage({
               </pre>
             </div>
           )}
-          {table && preview && (
-            <>
-              <div className="px-4 py-2.5 border-b flex items-center justify-between gap-3">
-                <div className="font-mono text-sm">
-                  {schema}.{table}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-xs text-muted-foreground">
-                    {preview.rowCount} {preview.rowCount === 1 ? "row" : "rows"} on
-                    this page
-                  </div>
-                  <TablePreviewActions
-                    columns={preview.columns}
-                    rows={preview.rows}
-                  />
-                </div>
-              </div>
-              {preview.rows.length === 0 ? (
-                <EmptyState
-                  variant="bare"
-                  size="md"
-                  title="Table is empty"
-                  description="No rows on this page yet."
-                />
-              ) : (
-                <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-background">
-                      <tr className="border-b">
-                        {preview.columns.map((c) => (
-                          <th
-                            key={c}
-                            className="whitespace-nowrap bg-table-head px-3 py-2 text-left font-semibold"
-                          >
-                            {c}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.rows.map((row, i) => (
-                        <tr key={i} className="border-b last:border-b-0 hover:bg-muted/30">
-                          {preview.columns.map((c) => (
-                            <td
-                              key={c}
-                              className="px-3 py-1.5 font-mono text-[12px] align-top max-w-[260px] truncate"
-                              title={cellString(row[c])}
-                            >
-                              {cellString(row[c])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <div className="flex items-center justify-between border-t px-4 py-3">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>Rows per page</span>
-                  {PAGE_SIZES.map((size) => (
-                    <Link
-                      key={size}
-                      href={pageHref(1, size)}
-                      className={
-                        size === pageSize
-                          ? "rounded-md bg-primary/10 px-1.5 py-0.5 font-medium text-primary"
-                          : "rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted"
-                      }
-                    >
-                      {size}
-                    </Link>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Page {page}</span>
-                  {page > 1 ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      nativeButton={false}
-                      render={<Link href={pageHref(page - 1)} />}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      Previous
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" disabled>
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      Previous
-                    </Button>
-                  )}
-                  {preview.rows.length === pageSize ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      nativeButton={false}
-                      render={<Link href={pageHref(page + 1)} />}
-                    >
-                      Next
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" disabled>
-                      Next
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </>
+          {table && preview && live && (
+            <TablePreview
+              renewal={{
+                userId: tenant.session.user.id,
+                orgId: tenant.activeOrg.id,
+                projectId: id,
+                branchId: activeBranch.id,
+                databaseName: preview.databaseName,
+                schema,
+                table,
+                page,
+                pageSize,
+              }}
+              columns={preview.columns}
+              rows={preview.rows}
+              primaryKey={preview.primaryKey}
+              live={live}
+              realtimeHref={`/projects/${id}/branches/${activeBranch.id}/realtime`}
+            />
           )}
         </Card>
       </div>
@@ -317,23 +206,13 @@ function groupBySchema(tables: TableRow[]): Record<string, TableRow[]> {
   }, {});
 }
 
-function cellString(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
-
-function quoteIdent(ident: string): string {
-  return `"${ident.replace(/"/g, '""')}"`;
-}
-
 function positiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function allowedPageSize(value: string | undefined): 10 | 25 | 50 | 100 {
+function allowedPageSize(value: string | undefined): PageSize {
   if (value === "10") return 10;
   if (value === "25") return 25;
   if (value === "50") return 50;
