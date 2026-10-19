@@ -50,7 +50,7 @@ export function CreateBucketDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button>
           <Plus className="size-3.5" />
           {triggerLabel}
         </Button>

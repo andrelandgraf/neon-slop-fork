@@ -37,24 +37,27 @@ import {
 } from "@/lib/connect/actions";
 import { createCredentialAction, resetRolePasswordAction } from "@/app/actions";
 
-type Tab = "postgres" | "storage" | "aiGateway" | "dataApi" | "auth";
+export type ConnectTab = "postgres" | "storage" | "aiGateway" | "dataApi" | "auth";
+type Tab = ConnectTab;
 
 export function ConnectDialog({
   projectId,
   branchId,
   capabilities,
   variant = "sidebar",
+  initialTab = "postgres",
 }: {
   projectId: string;
   branchId: string;
   capabilities: ProjectCapabilities;
-  variant?: "sidebar" | "button";
+  variant?: "sidebar" | "button" | "outline";
+  initialTab?: Tab;
 }) {
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<ConnectDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
-  const [tab, setTab] = useState<Tab>("postgres");
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   function handleOpen(next: boolean) {
     setOpen(next);
@@ -83,6 +86,11 @@ export function ConnectDialog({
     <>
       {variant === "button" ? (
         <Button onClick={() => handleOpen(true)}>Connect</Button>
+      ) : variant === "outline" ? (
+        <Button variant="outline" onClick={() => handleOpen(true)}>
+          <Plug className="size-3.5" />
+          Connect
+        </Button>
       ) : (
         <ConnectTrigger onClick={() => handleOpen(true)} />
       )}

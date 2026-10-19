@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Folder, FileText } from "lucide-react";
-import { neon, type BranchStorage } from "@/lib/neon";
-import { StorageConnectDialog } from "../storage-connect-dialog";
+import { ConnectDialog } from "@/components/connect/connect-dialog";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { getProjectCapabilities, requireCapability } from "@/lib/capabilities";
+import { neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
 import { ObjectToolbar } from "./object-toolbar";
 import { ObjectRowActions } from "./object-row-actions";
 
@@ -18,34 +21,21 @@ export default async function BucketDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string; bucket: string }>;
-  searchParams: Promise<{ branch?: string; prefix?: string }>;
+  params: Promise<{ id: string; branchId: string; bucket: string }>;
+  searchParams: Promise<{ prefix?: string }>;
 }) {
-  const { id: projectId, bucket: bucketParam } = await params;
+  const { id: projectId, branchId, bucket: bucketParam } = await params;
   const bucketName = decodeURIComponent(bucketParam);
-  const { branch: branchParam, prefix = "" } = await searchParams;
+  const { prefix = "" } = await searchParams;
+  const { project, branch: activeBranch, defaultBranch } = await loadBranch(projectId, branchId);
+  await requireCapability(projectId, defaultBranch.id, "storage");
 
-  const branchesRes = await neon.listProjectBranches({ projectId });
-  const branches = branchesRes.data.branches;
-  const defaultBranch = branches.find((b) => b.default) ?? branches[0];
-  const activeBranch =
-    branches.find((b) => b.id === branchParam) ?? defaultBranch;
+  const storageHref = `/projects/${projectId}/branches/${branchId}/storage`;
+  const baseHref = `${storageHref}/${encodeURIComponent(bucketName)}`;
 
-  const branchQ = branchParam ? `&branch=${branchParam}` : "";
-  const baseHref = `/projects/${projectId}/storage/${encodeURIComponent(bucketName)}`;
-
-  const [listing, storage] = await Promise.all([
-    neon
-      .listBucketObjects(projectId, activeBranch.id, bucketName, {
-        prefix,
-        delimiter: "/",
-      })
-      .then((r) => r.data)
-      .catch(() => ({ folders: [], objects: [], prefix, is_truncated: false })),
-    neon
-      .getBranchStorage(projectId, activeBranch.id)
-      .then((r) => r.data)
-      .catch(() => null as BranchStorage | null),
+  const [listing, capabilities] = await Promise.all([
+    neonSdk.storage.objects.list({ projectId, branchId, bucketName, prefix, delimiter: "/" }),
+    getProjectCapabilities(projectId, defaultBranch.id),
   ]);
 
   // Objects whose key === prefix are folder markers for this level — hide them.
@@ -55,21 +45,18 @@ export default async function BucketDetailPage({
   const segments = prefix ? prefix.replace(/\/$/, "").split("/") : [];
 
   return (
-    <div className="px-8 py-6 max-w-4xl">
-      <h1 className="text-xl font-semibold">{bucketName}</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-4">
-        Objects in this bucket. Open a folder to browse its contents.
-      </p>
+    <PageBody>
+      <PageHeader title={bucketName} project={project} branch={activeBranch} />
 
       <div className="flex items-center justify-between gap-2 mb-3">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
-          <Link href={`/projects/${projectId}/storage${branchParam ? `?branch=${branchParam}` : ""}`} className="hover:text-foreground">
+          <Link href={storageHref} className="text-link hover:underline">
             Buckets
           </Link>
           <span>/</span>
           <Link
-            href={`${baseHref}${branchParam ? `?branch=${branchParam}` : ""}`}
+            href={baseHref}
             className="hover:text-foreground inline-flex items-center gap-1"
           >
             {bucketName}
@@ -80,7 +67,7 @@ export default async function BucketDetailPage({
               <span key={p} className="inline-flex items-center gap-1.5 min-w-0">
                 <span>/</span>
                 <Link
-                  href={`${baseHref}?prefix=${encodeURIComponent(p)}${branchQ}`}
+                  href={`${baseHref}?prefix=${encodeURIComponent(p)}`}
                   className="hover:text-foreground truncate"
                 >
                   {seg}
@@ -91,10 +78,12 @@ export default async function BucketDetailPage({
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StorageConnectDialog
-            branchName={activeBranch.name}
-            storage={storage}
-            bucketName={bucketName}
+          <ConnectDialog
+            projectId={projectId}
+            branchId={branchId}
+            capabilities={capabilities}
+            variant="outline"
+            initialTab="storage"
           />
           <ObjectToolbar
             projectId={projectId}
@@ -117,10 +106,10 @@ export default async function BucketDetailPage({
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
-                <th className="font-medium px-4 py-2.5">Name</th>
-                <th className="font-medium px-4 py-2.5">Size</th>
-                <th className="font-medium px-4 py-2.5">Last modified</th>
+              <tr className="border-b bg-table-head text-left">
+                <th className="font-semibold px-4 py-2.5">Name</th>
+                <th className="font-semibold px-4 py-2.5">Size</th>
+                <th className="font-semibold px-4 py-2.5">Last modified</th>
                 <th className="px-4 py-2.5 w-10" />
               </tr>
             </thead>
@@ -131,7 +120,7 @@ export default async function BucketDetailPage({
                   <tr key={folder} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="px-4 py-2.5" colSpan={3}>
                       <Link
-                        href={`${baseHref}?prefix=${encodeURIComponent(folder)}${branchQ}`}
+                        href={`${baseHref}?prefix=${encodeURIComponent(folder)}`}
                         className="inline-flex items-center gap-2 font-medium hover:text-primary"
                       >
                         <Folder className="h-3.5 w-3.5 text-muted-foreground" />
@@ -173,6 +162,6 @@ export default async function BucketDetailPage({
           </table>
         )}
       </div>
-    </div>
+    </PageBody>
   );
 }
