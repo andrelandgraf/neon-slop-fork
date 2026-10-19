@@ -68,10 +68,19 @@ export function CodePanel({
   );
 }
 
-export function CopyAction({ text, label }: { text: string; label: string }) {
+export function CopyAction({
+  text,
+  label,
+  iconOnly = false,
+}: {
+  text: string;
+  label: string;
+  iconOnly?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <FooterAction
+      title={iconOnly ? label : undefined}
       onClick={() => {
         navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
@@ -80,7 +89,7 @@ export function CopyAction({ text, label }: { text: string; label: string }) {
       }}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      {copied ? "Copied" : label}
+      {iconOnly ? <span className="sr-only">{label}</span> : copied ? "Copied" : label}
     </FooterAction>
   );
 }
@@ -89,14 +98,17 @@ export function FooterAction({
   children,
   onClick,
   disabled,
+  title,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
       disabled={disabled}
       className="flex items-center gap-1.5 text-muted-foreground text-xs hover:text-foreground disabled:opacity-50"

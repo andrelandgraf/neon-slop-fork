@@ -546,7 +546,7 @@ function UrlRow({ label, value }: { label: string; value: string }) {
       <div className="mb-1 text-muted-foreground text-xs">{label}</div>
       <div className="flex items-center justify-between gap-3 rounded-[3px] border border-panel-border bg-muted px-3 py-2">
         <code className="truncate font-mono text-xs">{value}</code>
-        <CopyAction text={value} label="Copy" />
+        <CopyAction text={value} label={`Copy ${label}`} iconOnly />
       </div>
     </div>
   );
