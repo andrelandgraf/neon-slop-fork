@@ -23,7 +23,8 @@ projects list, project switcher and billing usage read TanStack DB
 collections synced from sealed live queries over the control database, and
 so do a project's branches, computes, databases, roles and operations: the
 sidebar and ⌘K branch lists, Branches, Branch overview, Computes, Databases,
-Roles, Monitoring → System operations and Settings → General. App-backend
+Roles, Monitoring → System operations and Settings → General, Postgres,
+Credentials, Better Auth, Functions and Project permissions. App-backend
 state is live too: Realtime, Auth and Data API on/off, buckets, functions
 with their triggers and domains, credentials, snapshots and their schedule,
 collaborators, and Data Masking progress.

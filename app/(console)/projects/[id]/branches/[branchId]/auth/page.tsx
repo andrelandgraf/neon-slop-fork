@@ -3,7 +3,7 @@ import { ifFound, neonSdk } from "@/lib/neon";
 import { loadBranch } from "@/lib/project-context";
 import { loadLive } from "@/lib/live/load";
 import { ensureMirrored } from "@/lib/mirror/services";
-import { LiveServiceGate } from "@/components/live/live-service-gate";
+import { LiveAuthGate } from "@/components/live/live-auth-gate";
 import { runProjectSql } from "@/lib/sql";
 import { formatDateTime } from "@/lib/format";
 import { AuthLinks, EnableAuth, NoUsers, SignupBanner } from "./auth-panels";
@@ -45,8 +45,8 @@ export default async function AuthPage({
     loadLive("branch-services", live),
     ifFound(neonSdk.auth.get({ projectId, branchId })),
   ]);
-  const off = <EnableAuth projectId={projectId} branchId={branchId} />;
-  if (!auth) return <LiveServiceGate branchId={branchId} service="auth" services={services} off={off} />;
+  const off = <EnableAuth key="off" projectId={projectId} branchId={branchId} />;
+  if (!auth) return <LiveAuthGate branchId={branchId} services={services} off={off} />;
 
   // Managed Better Auth keeps users in the `neon_auth` schema of the
   // database it was enabled on.
@@ -61,8 +61,8 @@ export default async function AuthPage({
   const createUser = <CreateUserDialog projectId={projectId} branchId={branchId} />;
 
   return (
-    <LiveServiceGate branchId={branchId} service="auth" services={services} off={off}>
-    <PageBody>
+    <LiveAuthGate branchId={branchId} services={services} off={off}>
+    <PageBody key="on">
       <PageHeader
         title="Better Auth"
         project={project}
@@ -140,6 +140,6 @@ export default async function AuthPage({
         </div>
       )}
     </PageBody>
-    </LiveServiceGate>
+    </LiveAuthGate>
   );
 }
