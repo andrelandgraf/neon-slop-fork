@@ -1,5 +1,5 @@
 import { loadProjectBranch } from "@/lib/project-context";
-import { HipaaCard } from "../hipaa-card";
+import { LiveHipaaCard } from "../live-project-settings";
 import { SettingsShell } from "../settings-shell";
 import { SettingsSection } from "../settings-section";
 
@@ -33,7 +33,7 @@ export default async function HipaaSettingsPage({
           </>
         }
       >
-        <HipaaCard projectId={id} initialEnabled={context.project.settings?.hipaa ?? false} />
+        <LiveHipaaCard projectId={id} />
       </SettingsSection>
     </SettingsShell>
   );
