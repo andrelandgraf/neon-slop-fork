@@ -141,19 +141,20 @@ function SlopForkIntro() {
         </figure>
 
         <p className="mt-10 text-[17px] leading-[1.7] text-white/75">
-          This is exactly that: a faithful clone of the Neon console, rebuilt
-          from scratch on top of the{" "}
+          Guilty as charged. This is a clone of the Neon console, built from
+          scratch on the{" "}
           <a
             href="https://neon.com/docs/reference/api-reference"
             target="_blank"
             rel="noreferrer"
             className="text-[#00e599] underline decoration-white/20 underline-offset-4 hover:decoration-[#00e599]"
           >
-            Neon Open REST API
+            Neon API
           </a>
-          . No private backend, no special access &mdash; every project,
-          branch, compute control and SQL query you see here runs through the
-          same public endpoints any developer, agent, or platform can call.
+          . Every project, branch and compute you manage here goes through the
+          same endpoints you can call with an API key, from a script, an agent
+          or your own platform. The SQL editor asks the API for a connection
+          string and talks to your database like any other Postgres client.
         </p>
 
         <a
