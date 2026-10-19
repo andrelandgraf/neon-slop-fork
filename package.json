@@ -14,7 +14,7 @@
     "@better-auth/drizzle-adapter": "^1.6.10",
     "@hugeicons/core-free-icons": "^4.2.2",
     "@hugeicons/react": "^1.1.9",
-    "@neon/sdk": "^6.0.0",
+    "@neon/sdk": "^7.3.0",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",

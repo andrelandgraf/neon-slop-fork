@@ -111,7 +111,7 @@ export const neon = {
    * `lib/regions.ts`.
    */
   async listActiveRegions(): Promise<{ data: ActiveRegionsResponse }> {
-    const { data } = await raw.getActiveRegions({
+    const data = await raw.getActiveRegions({
       client: sdk.client,
       throwOnError: true,
     });
