@@ -11,45 +11,62 @@ the way down.
 
 ## What's in here
 
-- **Projects** — list/create/delete projects in a Neon org via the public API.
-- **Branches** — list, fork, delete branches (one read/write endpoint per
-  branch, the same default the real console uses).
-- **SQL Editor** — run ad-hoc SQL against any branch via Neon's serverless
-  driver.
-- **Tables** — browse schemas, tables, and the first 100 rows of any table on
-  any branch.
-- **Monitoring** — compute settings + the few series the public API exposes
-  via `getConsumptionHistoryPerProject`. Live RAM/CPU/connection series are
-  *not* on the public API; we surface a clear "not available" empty state.
-- **Backup & Restore** — point-in-time restore for any branch via
-  `restoreProjectBranch` (with a preserve branch so it's reversible).
-- **API Keys** — project-scoped Neon API keys via `/projects/{id}/api_keys`,
-  with a copy-once-on-create dialog and one-click revoke.
-- **Data API** — enable/disable the per-branch PostgREST-compatible REST
-  endpoint, edit exposed schemas / anon role / row caps / CORS / OpenAPI
-  mode / server timing, and trigger schema-cache refreshes.
-- **Auth** — enable/disable Neon Auth on a branch, list users from
-  `neon_auth.users_sync`, create/delete users, manage trusted redirect
-  domains + allow-localhost, configure email-and-password sign-up/sign-in,
-  add/remove OAuth providers (Google, GitHub, Microsoft, Apple, Facebook,
-  X, LinkedIn, GitLab, Bitbucket, Spotify, Discord, Twitch), and set the
-  webhook URL.
-- **Settings** — rename, view defaults, delete project.
+The layout follows the current Console: a top bar with the command bar
+(`⌘K`) and account menu, an org sidebar, and a project sidebar with a
+branch switcher and the Connect button.
+
+Organization:
+
+- **Projects**: list, create, and delete projects. Create opens the Console's
+  two-step modal: project name, Postgres version, region, and services, then
+  an agent prompt, a `neon init` command, and an `.env` with generated keys.
+- **People**, **Billing**, **Integrations**, **Settings**: members, usage from
+  the Neon API, integration links, and the org name.
+- Account menu: switch organization, create an organization, theme, log out.
+
+Project, scoped to a branch at `/projects/<id>/branches/<branchId>/<page>`:
+
+- **Overview**: branch details, services, and branch actions (rename, set
+  default, protect, expire, reset from parent, delete).
+- **Computes**, **Roles**, **Databases**: edit compute size and name, add
+  read replicas, create and delete roles and databases.
+- **Realtime**: enable, disable, reveal and rotate the secret, agent prompt.
+- **Data API**, **Auth**: enable and configure both; Auth lists users from
+  `neon_auth."user"`.
+- **Storage**: buckets and objects, with upload, download, and presigned URLs.
+- **Functions**: deployed functions, cron triggers, custom domains.
+- **AI Gateway**: model catalog from `neon.com/models.json` and per-SDK setup.
+- **Backup & Restore**: point-in-time restore of the current branch, snapshots
+  and snapshot schedules.
+- **Data Masking**: anonymized branches with per-column masking rules.
+- **Monitoring**: active queries, query performance, operations, and Postgres,
+  function, storage, and Realtime logs.
+- **SQL Editor**, **Tables**.
+
+Project-level pages take `?branch=<branchId>` and fall back to the default
+branch: **Branches** (create from current data, a past time, schema only, or
+anonymized), **Integrations**, and **Settings** (general, Postgres, networking,
+credentials, Auth, Functions, HIPAA, permissions).
+
+Old routes such as `/projects/<id>/sql-editor?branch=<branchId>` redirect to
+their new location.
+
+Regions without the app backend (Storage, Functions, AI Gateway, Realtime)
+hide those pages. The Neon Clone org is on the Free plan, so AI Gateway
+requests and snapshot schedules return Neon's paid-plan errors.
 
 ### Disabled / mocked
 
-We refuse to fake what we can't actually do through the public API. The
-following are intentionally inert with `Mock` tags:
+Disabled controls carry a tooltip explaining why:
 
-- Org-level **People**, **Billing**, **Integrations** (UI sidebar items).
-- Project-level **Overview**, **Data Masking**, **Integrations**.
-- Topbar **Open admin menu**, **Ask AI**, **Account menu**, **Feedback**,
-  **Collapse menu**.
-- Snapshot creation (Beta API not yet in the SDK).
-- Auth **email provider** SMTP credentials (the public `PATCH
-  /auth/email_provider` accepts host/port/username/password, but editing
-  raw SMTP creds through a multi-tenant clone needs more guardrails than
-  we ship today — provider details are read-only here).
+- **Ask AI** in the top bar and account settings, which live on
+  console.neon.tech.
+- Org **Billing** shows usage but no plan management. Org **People** can't
+  send invites, org **API keys** and **Delete organization** are disabled, and
+  org **Integrations** link out instead of installing.
+- **Monitoring** compute charts and Data API advisories: Neon computes these
+  internally and the public API doesn't return them.
+- Auth **email provider** SMTP credentials are read-only.
 
 ## Configuration
 
@@ -86,10 +103,12 @@ bun run dev
 ## Deploy
 
 The included `vercel.json` uses `npm install --legacy-peer-deps` + `npx next
-build` so bun isn't required on the build host. Set the three env vars in
-your Vercel project and deploy:
+build` so bun isn't required on the build host. Set the env vars above in
+your Vercel project. When `lib/db/schema.ts` changed, push the schema to the
+production meta database before deploying:
 
 ```bash
+META_DATABASE_URL=<production meta database URL> bunx drizzle-kit push
 vercel deploy --prod
 ```
 
@@ -99,6 +118,6 @@ vercel deploy --prod
 - [@neon/sdk](https://www.npmjs.com/package/@neon/sdk) for the control-plane
 - [@neondatabase/serverless](https://www.npmjs.com/package/@neondatabase/serverless)
   for SQL queries
-- Tailwind CSS + Radix UI primitives
+- Tailwind CSS v4, shadcn/ui, Radix UI and Base UI primitives
 - Lucide icons
 - Sonner for toasts
