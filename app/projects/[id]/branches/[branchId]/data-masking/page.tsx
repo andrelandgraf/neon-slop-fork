@@ -1,58 +1,97 @@
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { ifFound, neon, neonRaw } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { runProjectSql } from "@/lib/sql";
+import { columnKind } from "@/lib/masking/options";
+import { MaskingEmptyState } from "./empty-state";
+import { MaskingEditor, type MaskColumn } from "./masking-editor";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Data Masking is a Console/Scale-plan workflow. The public Neon API and
- * @neon/sdk do not expose the masking-rule or anonymized-branch operations, so
- * the clone can faithfully expose the discovery surface but must not pretend it
- * can create an anonymized branch. The action links to the supported Console
- * documentation instead of creating a branch with unmasked data.
- */
-export default function DataMaskingPage() {
+const COLUMNS_SQL = `
+SELECT c.table_schema, c.table_name, c.column_name, c.data_type, c.udt_name,
+       c.is_nullable = 'YES' AS nullable,
+       EXISTS (
+         SELECT 1 FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage k
+           ON k.constraint_name = tc.constraint_name AND k.table_schema = tc.table_schema
+         WHERE tc.constraint_type = 'PRIMARY KEY' AND k.table_schema = c.table_schema
+           AND k.table_name = c.table_name AND k.column_name = c.column_name
+       ) AS primary_key,
+       EXISTS (
+         SELECT 1 FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage k
+           ON k.constraint_name = tc.constraint_name AND k.table_schema = tc.table_schema
+         WHERE tc.constraint_type = 'FOREIGN KEY' AND k.table_schema = c.table_schema
+           AND k.table_name = c.table_name AND k.column_name = c.column_name
+       ) AS foreign_key
+FROM information_schema.columns c
+JOIN information_schema.tables t
+  ON t.table_schema = c.table_schema AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'
+WHERE c.table_schema NOT IN ('pg_catalog', 'information_schema', 'anon')
+  AND c.table_schema NOT LIKE 'pg_%'
+ORDER BY c.table_schema, c.table_name, c.ordinal_position`;
+
+export default async function DataMaskingPage({
+  params,
+}: {
+  params: Promise<{ id: string; branchId: string }>;
+}) {
+  const { id: projectId, branchId } = await params;
+  const { project, branch, branches } = await loadBranch(projectId, branchId);
+  const status = await ifFound(neonRaw.getAnonymizedStatus(projectId, branchId));
+
+  if (!status) {
+    return (
+      <MaskingEmptyState
+        projectId={projectId}
+        branchId={branchId}
+        branches={branches.map((b) => ({ id: b.id, name: b.name, default: b.default }))}
+      />
+    );
+  }
+
+  const [{ masking_rules }, { data }] = await Promise.all([
+    neonRaw.getMaskingRules(projectId, branchId),
+    neon.listProjectBranchDatabases(projectId, branchId),
+  ]);
+  // The branch refuses connections while anonymization runs.
+  const ready = status.state !== "anonymizing";
+  const columns: MaskColumn[] = ready
+    ? (
+        await Promise.all(
+          data.databases.map(async (db) => {
+            const { rows } = await runProjectSql(projectId, COLUMNS_SQL, {
+              branchId,
+              databaseName: db.name,
+            });
+            return rows.map(
+              (r): MaskColumn => ({
+                database: db.name,
+                schema: String(r.table_schema),
+                table: String(r.table_name),
+                name: String(r.column_name),
+                type: String(r.udt_name),
+                kind: columnKind(String(r.data_type), String(r.udt_name)),
+                nullable: r.nullable === true,
+                primaryKey: r.primary_key === true,
+                foreignKey: r.foreign_key === true,
+              })
+            );
+          })
+        )
+      ).flat()
+    : [];
+
   return (
-    <div className="max-w-3xl px-8 py-10">
-      <Card className="flex flex-col items-center px-8 py-12 text-center">
-        <span className="grid h-11 w-11 place-items-center rounded-md bg-primary/10">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-        </span>
-        <div className="mt-4 flex items-center gap-2">
-          <h1 className="text-xl font-semibold">
-            Mask and anonymize sensitive data
-          </h1>
-          <Badge variant="secondary">Beta</Badge>
-        </div>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Mask sensitive information according to rules you define, giving you
-          realistic, production-shaped data without exposing PII. When you’re
-          done, simply delete the branch and move on.
-        </p>
-        <div className="mt-6 flex items-center gap-2">
-          <Button disabled title="The public Neon API does not expose Data Masking operations.">
-            Create anonymized branch
-          </Button>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={
-              <a
-                href="https://neon.com/docs/guides/data-masking"
-                target="_blank"
-                rel="noreferrer"
-              />
-            }
-          >
-            Learn more <ArrowUpRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-        <p className="mt-5 max-w-lg text-xs text-muted-foreground">
-          This operation is available in the Neon Console, but the public REST
-          API does not yet expose masking rules or anonymized-branch creation.
-        </p>
-      </Card>
-    </div>
+    <MaskingEditor
+      projectId={projectId}
+      branchId={branchId}
+      project={project}
+      branch={branch}
+      state={status.state}
+      statusMessage={status.status_message}
+      columns={columns}
+      rules={masking_rules}
+    />
   );
 }

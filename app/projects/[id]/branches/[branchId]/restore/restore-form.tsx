@@ -13,14 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { restoreToTimestampAction } from "@/app/actions";
-
-interface BranchOpt {
-  id: string;
-  name: string;
-  default: boolean;
-}
 
 function defaultIso(): string {
   const d = new Date(Date.now() - 5 * 60 * 1000);
@@ -29,16 +22,13 @@ function defaultIso(): string {
 
 export function RestoreForm({
   projectId,
-  branches,
-  retentionDays,
+  branchId,
+  branchName,
 }: {
   projectId: string;
-  branches: BranchOpt[];
-  retentionDays: number;
+  branchId: string;
+  branchName: string;
 }) {
-  const [branchId, setBranchId] = useState(
-    branches.find((b) => b.default)?.id ?? branches[0]?.id ?? ""
-  );
   const [timestamp, setTimestamp] = useState(defaultIso());
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -47,10 +37,7 @@ export function RestoreForm({
     e.preventDefault();
     setPending(true);
     const iso = new Date(timestamp).toISOString();
-    const preserveName = `before-restore-${new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, 19)}`;
+    const preserveName = `${branchName}_old_${new Date().toISOString().slice(0, 19)}`;
     try {
       await restoreToTimestampAction(projectId, branchId, iso, preserveName);
       toast.success("Restore initiated. The previous state is saved.");
@@ -78,31 +65,16 @@ export function RestoreForm({
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
-          <Label className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
-            Source branch
-          </Label>
-          <NativeSelect
-            value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
-            wrapperClassName="min-w-[200px]"
-          >
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-                {b.default ? " (default)" : ""}
-              </option>
-            ))}
-          </NativeSelect>
+          <Label>Source branch</Label>
+          <Input value={branchName} disabled readOnly className="h-8 min-w-[300px]" />
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
-            Point in time
-          </Label>
+          <Label>Point in time</Label>
           <Input
             type="datetime-local"
             value={timestamp}
             onChange={(e) => setTimestamp(e.target.value)}
-            className="h-9 min-w-[220px]"
+            className="h-8 min-w-[220px]"
           />
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -123,9 +95,10 @@ export function RestoreForm({
                 <DialogHeader>
                   <DialogTitle>Restore branch to {timestamp}?</DialogTitle>
                   <DialogDescription>
-                    The current branch state will be preserved under a new
-                    branch so this action is reversible. Reads from existing
-                    endpoints may briefly fail while the restore completes.
+                    {branchName} is restored to this point in time. Its current
+                    state is saved as a backup branch named{" "}
+                    <code className="font-mono">{branchName}_old_&lt;timestamp&gt;</code>.
+                    Connections are briefly interrupted while the restore completes.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="mt-4">
@@ -147,8 +120,7 @@ export function RestoreForm({
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Anywhere in the last {retentionDays} day
-        {retentionDays === 1 ? "" : "s"}
+        {Intl.DateTimeFormat().resolvedOptions().timeZone}
         {utc && ` · UTC: ${utc}`}
       </p>
     </div>

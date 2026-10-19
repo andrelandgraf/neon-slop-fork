@@ -1,131 +1,88 @@
-import { neon } from "@/lib/neon";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { History, RotateCcw, Camera } from "lucide-react";
+import Link from "next/link";
+import { History } from "lucide-react";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { formatHistoryRetention } from "@/lib/format";
+import type { ScheduleChoice } from "@/lib/snapshots/actions";
 import { RestoreForm } from "./restore-form";
-import { SnapshotsPanel } from "./snapshots-panel";
+import { CreateSnapshotCard, SnapshotList } from "./snapshots";
 
 export const dynamic = "force-dynamic";
 
-interface NeonSnapshot {
-  id: string;
-  name: string;
-  lsn?: string;
-  timestamp?: string;
-  source_branch_id?: string;
-  created_at: string;
-  expires_at?: string;
-  manual?: boolean;
-  full_size?: number;
-  diff_size?: number;
+function scheduleChoice(frequency: string | undefined): ScheduleChoice {
+  return frequency === "daily" || frequency === "weekly" || frequency === "monthly"
+    ? frequency
+    : "none";
 }
 
-export default async function BackupPage({
+export default async function RestorePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; branchId: string }>;
 }) {
-  const { id } = await params;
-  const [pRes, bRes, sRes] = await Promise.all([
-    neon.getProject(id),
-    neon.listProjectBranches({ projectId: id }),
-    // SDK returns `{ snapshots }` only when the endpoint succeeds —
-    // on a project that has never created one it may still be 200,
-    // but we coerce defensively just in case (the page should still
-    // render even if the Beta endpoint goes away on a deploy).
-    neon
-      .listSnapshots(id)
-      .then((r) => r.data.snapshots as NeonSnapshot[])
-      .catch(() => [] as NeonSnapshot[]),
+  const { id: projectId, branchId } = await params;
+  const { project, branch, branches } = await loadBranch(projectId, branchId);
+  const isRoot = !branch.parent_id;
+  const [snapshots, schedule] = await Promise.all([
+    neonSdk.snapshots.list({ projectId }),
+    isRoot ? neonSdk.snapshots.getSchedule({ projectId, branchId }) : null,
   ]);
-  const project = pRes.data.project;
-  const branches = bRes.data.branches;
-  const defaultBranch = branches.find((b) => b.default) ?? branches[0];
-  const snapshots = sRes;
-
-  const retentionDays = Math.round(
-    (project.history_retention_seconds ?? 86400) / 86400
-  );
-
-  // Snapshots are only takeable from root (non-forked) branches. The
-  // Neon API rejects non-root snapshot creates with a clear error, but
-  // we hide the create button on non-root branches to avoid a confusing
-  // 400 round-trip.
-  const rootBranchIds = new Set(
-    branches.filter((b) => !b.parent_id).map((b) => b.id)
-  );
+  const branchName = new Map(branches.map((b) => [b.id, b.name]));
+  const items = snapshots
+    .filter((s) => s.source_branch_id === branchId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      sourceBranchId: s.source_branch_id ?? null,
+      sourceBranchName: s.source_branch_id ? (branchName.get(s.source_branch_id) ?? s.source_branch_id) : "—",
+      createdAt: s.created_at,
+      expiresAt: s.expires_at ?? null,
+    }));
 
   return (
-    <div className="px-8 py-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-semibold">Backup &amp; Restore</h1>
-      </div>
-      <p className="text-sm text-muted-foreground mb-6">{project.name}</p>
-
-      <Card className="p-5 mb-4">
-        <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-md bg-muted grid place-items-center shrink-0">
-            <History className="h-4 w-4" />
-          </div>
-          <div className="flex-1">
-            <div className="font-semibold mb-0.5">Restore from history</div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Instantly revert a branch to any point in the last{" "}
-              <Badge variant="secondary" className="mx-0.5">
-                {retentionDays} day{retentionDays === 1 ? "" : "s"}
-              </Badge>
-              . Restores via{" "}
-              <code className="text-[10px] font-mono">
-                POST /projects/{`{id}`}/branches/{`{branch}`}/restore
-              </code>{" "}
-              and preserves the previous state as a renamed branch.
+    <PageBody>
+      <PageHeader title="Backup & Restore" project={project} branch={branch} />
+      <div className="rounded-[3px] border border-panel-border px-5 py-4">
+        <div className="flex items-start gap-3 border-panel-border border-b pb-4">
+          <History className="mt-0.5 size-5 text-muted-foreground" />
+          <div>
+            <div className="font-semibold text-sm">Restore from history</div>
+            <p className="text-muted-foreground text-xs">
+              Instantly restore this branch to any point in the past{" "}
+              <strong className="text-foreground">
+                {formatHistoryRetention(project.history_retention_seconds)} history window
+              </strong>
+              .{" "}
+              <Link
+                href={`/projects/${projectId}/settings/postgres?branch=${branchId}`}
+                className="font-semibold text-link"
+              >
+                Configure
+              </Link>
             </p>
-            {defaultBranch ? (
-              <RestoreForm
-                projectId={id}
-                branches={branches.map((b) => ({
-                  id: b.id,
-                  name: b.name,
-                  default: b.default,
-                }))}
-                retentionDays={retentionDays}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No branches available to restore.
-              </p>
-            )}
           </div>
         </div>
-      </Card>
-
-      <SnapshotsPanel
-        projectId={id}
-        snapshots={snapshots}
-        branches={branches.map((b) => ({
-          id: b.id,
-          name: b.name,
-          default: b.default,
-          parent_id: b.parent_id ?? null,
-        }))}
-        rootBranchIds={[...rootBranchIds]}
-      />
-
-      <p className="mt-6 text-xs text-muted-foreground flex items-center gap-1.5">
-        <RotateCcw className="h-3 w-3" />
-        Snapshots use the Beta{" "}
-        <a
-          href="https://api-docs.neon.tech/reference/createsnapshot"
-          target="_blank"
-          rel="noreferrer"
-          className="text-primary hover:underline"
-        >
-          Snapshot API
-        </a>
-        . Free plans cap manual snapshots at 1; paid plans at 10. Schedule-driven
-        snapshots don&apos;t count.
-        <Camera className="h-3 w-3 ml-2" />
-      </p>
-    </div>
+        <div className="pt-4">
+          <RestoreForm projectId={projectId} branchId={branchId} branchName={branch.name} />
+        </div>
+      </div>
+      <div className="my-8 flex items-center gap-4 text-muted-foreground text-xs">
+        <span className="h-px flex-1 bg-panel-border" />
+        Or restore from a snapshot
+        <span className="h-px flex-1 bg-panel-border" />
+      </div>
+      <div className="space-y-4">
+        <CreateSnapshotCard
+          projectId={projectId}
+          branchId={branchId}
+          snapshotCount={items.length}
+          schedule={scheduleChoice(schedule?.schedule[0]?.frequency)}
+          canSnapshot={isRoot}
+        />
+        <SnapshotList projectId={projectId} snapshots={items} />
+      </div>
+    </PageBody>
   );
 }
