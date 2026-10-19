@@ -1,413 +1,358 @@
 import Link from "next/link";
-import { ConsumptionHistoryGranularity } from "@/lib/neon";
-import { neon, ORG_ID } from "@/lib/neon";
-import { Card } from "@/components/ui/card";
-import { Activity, RefreshCw, Info } from "lucide-react";
+import { LineChart } from "lucide-react";
+import { LogViewer } from "@/components/logs/log-viewer";
+import { PageBody, PageHeader } from "@/components/page-header";
+import { getProjectCapabilities } from "@/lib/capabilities";
+import { ifFound, neon, neonSdk } from "@/lib/neon";
+import { loadBranch } from "@/lib/project-context";
+import { runProjectSql } from "@/lib/sql";
+import { formatCuRange } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-interface UsagePoint {
-  timeframe_start: string;
-  timeframe_end: string;
-  active_time_seconds: number;
-  compute_time_seconds: number;
-  written_data_bytes: number;
-  synthetic_storage_size_bytes: number;
-}
+type Tab = "postgres" | "storage" | "functions" | "realtime";
+type View = "metrics" | "active-queries" | "query-performance" | "advisors" | "operations";
 
-async function loadConsumption(
-  projectId: string,
-  range: "hour" | "day" | "week"
-): Promise<{ points: UsagePoint[]; error: string | null }> {
-  const now = new Date();
-  const rangeMs = {
-    hour: 60 * 60 * 1000,
-    day: 24 * 60 * 60 * 1000,
-    week: 7 * 24 * 60 * 60 * 1000,
-  } as const;
-  const from = new Date(now.getTime() - rangeMs[range]);
-  try {
-    const res = await neon.getConsumptionHistoryPerProject({
-      project_ids: [projectId],
-      from: from.toISOString(),
-      to: now.toISOString(),
-      granularity: ConsumptionHistoryGranularity.Hourly,
-      org_id: ORG_ID,
-    });
-    const project = res.data.projects?.[0];
-    const points: UsagePoint[] =
-      project?.periods?.flatMap((p) => p.consumption ?? []) ?? [];
-    return { points: points as UsagePoint[], error: null };
-  } catch (e) {
-    return {
-      points: [],
-      error: e instanceof Error ? e.message : String(e),
-    };
-  }
+const VIEWS: { value: View; label: string }[] = [
+  { value: "metrics", label: "Metrics" },
+  { value: "active-queries", label: "Active queries" },
+  { value: "query-performance", label: "Query performance" },
+  { value: "advisors", label: "Data API Advisors" },
+  { value: "operations", label: "System operations" },
+];
+
+function isView(v: string | undefined): v is View {
+  return VIEWS.some((x) => x.value === v);
 }
 
 export default async function MonitoringPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ branch?: string; range?: string }>;
+  params: Promise<{ id: string; branchId: string }>;
+  searchParams: Promise<{ tab?: string; view?: string }>;
 }) {
-  const { id } = await params;
-  const { branch: branchParam, range: rangeParam } = await searchParams;
-  const range =
-    rangeParam === "hour" || rangeParam === "week" ? rangeParam : "day";
-  const [pRes, bRes, consumption] = await Promise.all([
-    neon.getProject(id),
-    neon.listProjectBranches({ projectId: id }),
-    loadConsumption(id, range),
-  ]);
-  const project = pRes.data.project;
-  const defaultBranch =
-    bRes.data.branches.find((b) => b.default) ?? bRes.data.branches[0];
-  const activeBranch =
-    bRes.data.branches.find((branch) => branch.id === branchParam) ??
-    defaultBranch;
-
-  const endpoints = activeBranch
-    ? await neon
-        .listProjectBranchEndpoints(id, activeBranch.id)
-        .then((r) => r.data.endpoints)
-        .catch(() => [])
-    : [];
-  const primary = endpoints[0];
-
-  const minCu = primary?.autoscaling_limit_min_cu ?? 0.25;
-  const maxCu = primary?.autoscaling_limit_max_cu ?? 0.25;
-  const suspend = primary?.suspend_timeout_seconds ?? 0;
+  const { id: projectId, branchId } = await params;
+  const query = await searchParams;
+  const { project, branch, defaultBranch } = await loadBranch(projectId, branchId);
+  const capabilities = await getProjectCapabilities(projectId, defaultBranch.id);
+  const tabs: { value: Tab; label: string; show: boolean }[] = [
+    { value: "postgres", label: "Postgres", show: true },
+    { value: "storage", label: "Storage", show: capabilities.logs && capabilities.storage },
+    { value: "functions", label: "Functions", show: capabilities.logs && capabilities.functions },
+    { value: "realtime", label: "Realtime", show: capabilities.logs && capabilities.realtime },
+  ];
+  const tab: Tab = tabs.find((t) => t.show && t.value === query.tab)?.value ?? "postgres";
+  const view: View = isView(query.view) ? query.view : "metrics";
+  const base = `/projects/${projectId}/branches/${branchId}/monitoring`;
 
   return (
-    <div className="px-8 py-6">
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-semibold">Monitoring</h1>
-      </div>
-      <p className="text-sm text-muted-foreground mb-4">{project.name}</p>
-
-      <div className="border-b mb-5 -mx-8 px-8">
-        <Tabs />
-      </div>
-
-      <div className="flex items-center gap-4 mb-5">
-        <Field label="Branch">
-          <div className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
-            <span className="font-mono">{activeBranch?.name ?? "—"}</span>
-            {activeBranch?.default && (
-              <span className="text-muted-foreground">Default</span>
-            )}
-          </div>
-        </Field>
-        <Field label="Compute">
-          <div
-            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
-            title="The public API does not yet expose per-endpoint live state, only the latest snapshot."
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                primary?.current_state === "active"
-                  ? "bg-status-active"
-                  : "bg-gray-400"
-              }`}
-            />
-            <span className="font-mono capitalize">
-              {primary?.type ?? "—"}
-            </span>
-            <span className="text-muted-foreground">
-              {primary?.current_state ?? "—"}
-            </span>
-          </div>
-        </Field>
-        <div className="ml-auto flex items-center gap-2">
-          <RangeButton
-            href={monitoringHref(id, branchParam, "hour")}
-            selected={range === "hour"}
-          >
-            Last hour
-          </RangeButton>
-          <RangeButton
-            href={monitoringHref(id, branchParam, "day")}
-            selected={range === "day"}
-          >
-            Last day
-          </RangeButton>
-          <RangeButton
-            href={monitoringHref(id, branchParam, "week")}
-            selected={range === "week"}
-          >
-            Last 7 days
-          </RangeButton>
-          <Link
-            href={monitoringHref(id, branchParam, range)}
-            title="Consumption history updates hourly; reload to retrieve the latest samples."
-            className="rounded-md border px-2 py-1 text-xs inline-flex items-center gap-1 text-muted-foreground hover:bg-muted"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Refresh
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <Card className="p-4">
-          <div className="text-xs font-semibold mb-2 flex items-center gap-1">
-            Compute settings
-            <Info className="h-3 w-3 text-muted-foreground" />
-          </div>
-          <div className="space-y-1 text-xs">
-            <Row label="Min" value={`${minCu} CU (~${(minCu * 4).toFixed(2)} GB RAM)`} />
-            <Row label="Max" value={`${maxCu} CU (~${(maxCu * 4).toFixed(2)} GB RAM)`} />
-            <Row
-              label="Autosuspend delay"
-              value={suspend > 0 ? `${suspend}s` : "never"}
-            />
-          </div>
-          <a
-            href={`/projects/${id}/overview?tab=computes${
-              branchParam ? `&branch=${branchParam}` : ""
-            }`}
-            className="mt-3 inline-block text-primary text-xs hover:underline"
-          >
-            Edit endpoint →
-          </a>
-        </Card>
-
-        <ChartCard
-          title="RAM"
-          legend={["Endpoint Inactive", "Allocated", "Used"]}
-          unavailable
-        />
-        <ChartCard
-          title="CPU"
-          legend={["Endpoint Inactive", "Allocated", "Used"]}
-          unavailable
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <ChartCard
-          title="Databases"
-          subtitle="COUNT"
-          consumption={consumption.points}
-          metric="written_data_bytes"
-          unavailable={consumption.points.length === 0}
-        />
-        <ChartCard
-          title="Roles"
-          subtitle="COUNT"
-          legend={["Endpoint Inactive", "Inserted", "Updated", "Deleted"]}
-          unavailable
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <ChartCard
-          title="Local file cache hit rate"
-          subtitle="PERCENT"
-          unavailable
-        />
-        <ChartCard
-          title="Working set size"
-          legend={["Endpoint Inactive", "RAM", "LFC USED + DISK READ"]}
-          unavailable
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <ChartCard
-          title="Master client connections"
-          subtitle="Idle: 50/100 · Max idle: 50/100"
-          legend={["Endpoint Inactive", "Active", "Reserved Idle", "Idle"]}
-          unavailable
-        />
-        <ChartCard
-          title="Postgres connections count"
-          legend={["Endpoint Inactive", "Active", "Idle", "Total", "Max"]}
-          unavailable
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <ChartCard
-          title="Master server connections"
-          legend={["Endpoint Inactive", "Idle in Tx Aborted", "Idle in Tx", "Active", "Idle"]}
-          unavailable
-        />
-        <ChartCard
-          title="Database size"
-          subtitle={`${((project.synthetic_storage_size ?? 0) / 1024 / 1024).toFixed(2)} MB`}
-          legend={["Endpoint Inactive", "Per database", "All databases"]}
-          unavailable
-        />
-      </div>
-    </div>
+    <PageBody>
+      <PageHeader title="Monitoring" project={project} branch={branch} />
+      <TabBar
+        items={tabs
+          .filter((t) => t.show)
+          .map((t) => ({ label: t.label, href: `${base}?tab=${t.value}`, active: t.value === tab }))}
+        size="lg"
+      />
+      {tab === "postgres" ? (
+        <>
+          <TabBar
+            items={VIEWS.map((v) => ({
+              label: v.label,
+              href: `${base}?view=${v.value}`,
+              active: v.value === view,
+            }))}
+          />
+          {view === "metrics" && <MetricsView projectId={projectId} branchId={branchId} />}
+          {view === "active-queries" && <ActiveQueries projectId={projectId} branchId={branchId} />}
+          {view === "query-performance" && <QueryPerformance projectId={projectId} branchId={branchId} />}
+          {view === "advisors" && <Advisors projectId={projectId} branchId={branchId} />}
+          {view === "operations" && <Operations projectId={projectId} branchId={branchId} />}
+        </>
+      ) : (
+        <LogViewer projectId={projectId} branchId={branchId} entity={tab === "functions" ? "function" : tab} />
+      )}
+    </PageBody>
   );
 }
 
-function Tabs() {
-  const tabs = [
-    { label: "Metrics", active: true },
-    { label: "Active queries" },
-    { label: "Query performance" },
-    { label: "System operations" },
-    { label: "Data API Advisors" },
-  ];
+function TabBar({
+  items,
+  size = "sm",
+}: {
+  items: { label: string; href: string; active: boolean }[];
+  size?: "sm" | "lg";
+}) {
   return (
-    <div className="flex items-center gap-5 -mb-px">
-      {tabs.map((t) => (
-        <div
-          key={t.label}
-          className={`pb-3 text-sm border-b-2 ${
-            t.active
-              ? "border-foreground font-medium"
-              : "border-transparent text-muted-foreground"
-          }`}
-          title={t.active ? undefined : "Not implemented in this clone"}
+    <div className="mb-4 flex gap-5 border-panel-border border-b">
+      {items.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className={cn(
+            "-mb-px border-b-2 pb-2",
+            size === "lg" ? "text-sm" : "text-xs",
+            item.active
+              ? "border-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
         >
-          {t.label}
-        </div>
+          {item.label}
+        </Link>
       ))}
     </div>
   );
 }
 
-function monitoringHref(
-  projectId: string,
-  branch: string | undefined,
-  range: "hour" | "day" | "week"
-) {
-  const params = new URLSearchParams({ range });
-  if (branch) params.set("branch", branch);
-  return `/projects/${projectId}/monitoring?${params.toString()}`;
-}
-
-function RangeButton({
-  children,
-  href,
-  selected,
-}: {
-  children: React.ReactNode;
-  href: string;
-  selected?: boolean;
-}) {
+async function MetricsView({ projectId, branchId }: { projectId: string; branchId: string }) {
+  const { data } = await neon.listProjectBranchEndpoints(projectId, branchId);
+  const primary = data.endpoints.find((e) => e.type === "read_write");
+  const charts = [
+    "RAM",
+    "CPU",
+    "Deadlocks",
+    "Rows",
+    "Compute cache hit rate",
+    "Working set size",
+    "Postgres connections count",
+    "Database size",
+  ];
   return (
-    <Link
-      href={href}
-      className={
-        selected
-          ? "rounded-md border border-primary/40 bg-primary/10 px-2 py-1 font-medium text-primary text-xs"
-          : "rounded-md border border-border/60 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
-      }
-    >
-      {children}
-    </Link>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-[11px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono text-foreground/85">{value}</span>
-    </div>
-  );
-}
-
-function ChartCard({
-  title,
-  subtitle,
-  legend,
-  unavailable,
-  consumption,
-  metric,
-}: {
-  title: string;
-  subtitle?: string;
-  legend?: string[];
-  unavailable?: boolean;
-  consumption?: UsagePoint[];
-  metric?: keyof UsagePoint;
-}) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between mb-1">
-        <div>
-          <div className="text-xs font-semibold">{title}</div>
-          {subtitle && (
-            <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {subtitle}
-            </div>
-          )}
-        </div>
-      </div>
-      {legend && (
-        <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground mb-2">
-          {legend.map((l) => (
-            <span key={l} className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-              {l}
+    <div className="space-y-4">
+      {primary && (
+        <div className="flex items-center gap-8 rounded-[3px] border border-panel-border px-5 py-3 text-sm">
+          <span className="font-semibold">
+            Primary{" "}
+            <span className="font-normal text-muted-foreground">
+              {primary.current_state === "active" ? "Active" : "Idle"}
             </span>
-          ))}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Autoscaling </span>
+            {formatCuRange(primary.autoscaling_limit_min_cu, primary.autoscaling_limit_max_cu)}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Scale to 0 after </span>
+            {primary.suspend_timeout_seconds < 0
+              ? "never"
+              : primary.suspend_timeout_seconds === 0
+                ? "5 minutes (default)"
+                : `${primary.suspend_timeout_seconds}s`}
+          </span>
+          <Link
+            href={`/projects/${projectId}/branches/${branchId}/computes`}
+            className="ml-auto font-semibold text-link"
+          >
+            Edit compute
+          </Link>
         </div>
       )}
-      <div className="h-[140px] grid place-items-center text-[11px] text-muted-foreground bg-muted/20 rounded">
-        {unavailable && (consumption?.length ?? 0) === 0 ? (
-          <span className="flex items-center gap-1">
-            <Activity className="h-3 w-3 opacity-40" />
-            Live series not exposed by the public Neon API.
-          </span>
-        ) : consumption && metric ? (
-          <SparkLine points={consumption} metric={metric} />
-        ) : (
-          <span>No data</span>
-        )}
+      <div className="grid grid-cols-2 gap-3">
+        {charts.map((title) => (
+          <div key={title} className="rounded-[3px] border border-panel-border">
+            <div className="px-4 py-3 font-semibold text-sm">{title}</div>
+            <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-sm">
+              <LineChart className="size-4 text-muted-foreground" />
+              There is no data to display at the moment.
+            </div>
+          </div>
+        ))}
       </div>
-    </Card>
+      <p className="text-muted-foreground text-xs">
+        Compute metrics come from Neon&apos;s internal monitoring, which the public API
+        doesn&apos;t expose. Active queries, query performance, and system operations are
+        live.
+      </p>
+    </div>
   );
 }
 
-function SparkLine({
-  points,
-  metric,
-}: {
-  points: UsagePoint[];
-  metric: keyof UsagePoint;
-}) {
-  const values = points
-    .map((p) => Number(p[metric]))
-    .filter((v) => Number.isFinite(v));
-  if (values.length === 0) return <span>No data</span>;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const w = 280;
-  const h = 100;
-  const span = Math.max(max - min, 1);
-  const step = w / Math.max(values.length - 1, 1);
-  const points2 = values
-    .map((v, i) => `${i * step},${h - ((v - min) / span) * h}`)
-    .join(" ");
+async function ActiveQueries({ projectId, branchId }: { projectId: string; branchId: string }) {
+  const { rows } = await runProjectSql(
+    projectId,
+    `SELECT pid, usename, state, wait_event_type, now() - query_start AS duration, left(query, 400) AS query
+       FROM pg_stat_activity
+      WHERE datname = current_database() AND pid <> pg_backend_pid()
+        AND backend_type = 'client backend' AND state <> 'idle'
+      ORDER BY query_start`,
+    { branchId }
+  );
+  if (rows.length === 0) return <EmptyCard title="No active queries" />;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full">
-      <polyline
-        fill="none"
-        stroke="var(--foreground)"
-        strokeWidth={1.5}
-        points={points2}
+    <SqlTable
+      columns={["PID", "Role", "State", "Wait", "Duration", "Query"]}
+      rows={rows.map((r) => [
+        r.pid,
+        r.usename,
+        r.state,
+        r.wait_event_type ?? "—",
+        String(r.duration ?? ""),
+        r.query,
+      ])}
+    />
+  );
+}
+
+async function QueryPerformance({ projectId, branchId }: { projectId: string; branchId: string }) {
+  const installed = await runProjectSql(
+    projectId,
+    "SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'",
+    { branchId }
+  );
+  if (installed.rows.length === 0) {
+    return (
+      <EmptyCard
+        title="Query statistics are not enabled"
+        body={
+          <>
+            Run <code className="font-mono">CREATE EXTENSION pg_stat_statements;</code> in the{" "}
+            <Link
+              className="text-link"
+              href={`/projects/${projectId}/branches/${branchId}/sql-editor`}
+            >
+              SQL Editor
+            </Link>{" "}
+            to start collecting query performance data.
+          </>
+        }
       />
-    </svg>
+    );
+  }
+  const { rows } = await runProjectSql(
+    projectId,
+    `SELECT r.rolname, s.calls, round(s.mean_exec_time::numeric, 1) AS mean_ms,
+            round(s.total_exec_time::numeric, 1) AS total_ms, left(s.query, 400) AS query
+       FROM pg_stat_statements s JOIN pg_roles r ON r.oid = s.userid
+      ORDER BY s.total_exec_time DESC LIMIT 100`,
+    { branchId }
+  );
+  if (rows.length === 0) return <EmptyCard title="No queries recorded yet" />;
+  return (
+    <SqlTable
+      columns={["Role", "Calls", "Average time", "Total time", "Query"]}
+      rows={rows.map((r) => [r.rolname, r.calls, `${r.mean_ms} ms`, `${r.total_ms} ms`, r.query])}
+    />
+  );
+}
+
+async function Advisors({ projectId, branchId }: { projectId: string; branchId: string }) {
+  const { data } = await neon.listProjectBranchDatabases(projectId, branchId);
+  const databaseName = data.databases[0]?.name;
+  const dataApi = databaseName
+    ? await ifFound(neonSdk.postgres.dataApi.get({ projectId, branchId, databaseName }))
+    : null;
+  if (!dataApi) {
+    return (
+      <EmptyCard
+        title="Data API not enabled"
+        body="The advisories are only related to Neon's Data API, an optional feature that allows you to access your database through auto-generated REST API endpoints."
+        action={
+          <Link
+            className="font-semibold text-link"
+            href={`/projects/${projectId}/branches/${branchId}/data-api`}
+          >
+            Go to Data API
+          </Link>
+        }
+      />
+    );
+  }
+  return (
+    <EmptyCard
+      title="Advisories aren't available in this clone"
+      body="Neon computes Data API advisories internally; the public API doesn't return them."
+    />
+  );
+}
+
+async function Operations({ projectId, branchId }: { projectId: string; branchId: string }) {
+  const page = await neonSdk.operations.list({ projectId }).page();
+  const operations = page.items.filter((op) => !op.branch_id || op.branch_id === branchId);
+  return (
+    <div className="space-y-3">
+      <p className="text-sm">
+        An operation is an action performed by the Neon control plane on an object or
+        resource, such as starting a compute or creating a branch. Monitor here for the
+        health and progress of your Neon project operations.{" "}
+        <a
+          className="text-link"
+          href="https://neon.com/docs/manage/operations"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Learn more
+        </a>
+      </p>
+      <SqlTable
+        columns={["Operation", "Compute", "Operation status", "Duration", "Date"]}
+        rows={operations.map((op) => [
+          op.action.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+          op.endpoint_id ?? "",
+          op.status === "finished" ? "OK" : op.status,
+          op.total_duration_ms >= 1000
+            ? `${Math.round(op.total_duration_ms / 1000)} s`
+            : `${op.total_duration_ms} ms`,
+          new Date(op.created_at).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+        ])}
+      />
+    </div>
+  );
+}
+
+function SqlTable({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
+  return (
+    <div className="overflow-x-auto rounded-[3px] border border-panel-border">
+      <table className="w-full text-sm">
+        <thead className="bg-table-head text-left">
+          <tr>
+            {columns.map((c) => (
+              <th key={c} className="whitespace-nowrap px-4 py-2.5 font-semibold">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-panel-border border-t align-top">
+              {row.map((cell, j) => (
+                <td
+                  key={j}
+                  className={cn("px-4 py-2", j === row.length - 1 && "font-mono text-xs")}
+                >
+                  {cell === null || cell === undefined ? "—" : String(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EmptyCard({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-[3px] border border-panel-border px-6 py-12 text-center">
+      <div className="font-semibold">{title}</div>
+      {body && <p className="max-w-lg text-muted-foreground text-sm">{body}</p>}
+      {action}
+    </div>
   );
 }
