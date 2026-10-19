@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
@@ -10,16 +10,31 @@ interface MobileNav {
 
 const MobileNavContext = createContext<MobileNav>({ open: false, setOpen: () => {} });
 
+/** Tailwind's `md` breakpoint. */
+const MOBILE_QUERY = "(max-width: 767.98px)";
+
+function subscribeMobile(listener: () => void) {
+  const query = window.matchMedia(MOBILE_QUERY);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
 /**
  * Below the `md` breakpoint the sidebar becomes a full-screen drawer, as in
  * the Console. The drawer belongs to the path it was opened on, so any
- * navigation from inside it closes it.
+ * navigation from inside it closes it, and it counts as closed whenever the
+ * viewport is wide enough for the regular sidebar.
  */
 export function MobileNavProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const mobile = useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false
+  );
   const [openOn, setOpenOn] = useState<string | null>(null);
   const value: MobileNav = {
-    open: openOn === pathname,
+    open: mobile && openOn === pathname,
     setOpen: (open) => setOpenOn(open ? pathname : null),
   };
   return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;

@@ -30,7 +30,9 @@ export const TEMPLATES = {
   "_connstring_dotnet": "Host={{#preferPooled}}{{{poolerHost}}}{{/preferPooled}}{{^preferPooled}}{{{host}}}{{/preferPooled}}; Database={{{pgEncodedDatabase}}}; Username={{{pgEncodedRole}}}; {{#storePasswords}}{{#pgEncodedPasswordOrPlaceholder}}Password={{{pgEncodedPasswordOrPlaceholder}}}; {{/pgEncodedPasswordOrPlaceholder}}{{/storePasswords}}SSL Mode=VerifyFull;{{#channelBinding}} Channel Binding=Require;{{/channelBinding}}",
   "psql": "psql '{{> connstring}}'",
   "psql_passwordless": "psql -h pg.neon.tech",
-  "parameters": "{{#preferPooled}}\nPGHOST='{{{poolerHost}}}'\n{{/preferPooled}}\n{{^preferPooled}}\nPGHOST='{{{host}}}'\n{{/preferPooled}}\nPGDATABASE='{{{pgEncodedDatabase}}}'\nPGUSER='{{{pgRole}}}'\n{{#pgPasswordOrPlaceholder}}PGPASSWORD='{{{pgPasswordOrPlaceholder}}}'{{/pgPasswordOrPlaceholder}}\nPGSSLMODE='require'\n{{#channelBinding}}PGCHANNELBINDING='require'{{/channelBinding}}",
+  // The Console percent-encodes the database here, but shell variables are
+  // read literally, so this uses the raw name.
+  "parameters": "{{#preferPooled}}\nPGHOST='{{{poolerHost}}}'\n{{/preferPooled}}\n{{^preferPooled}}\nPGHOST='{{{host}}}'\n{{/preferPooled}}\nPGDATABASE='{{{pgDatabase}}}'\nPGUSER='{{{pgRole}}}'\n{{#pgPasswordOrPlaceholder}}PGPASSWORD='{{{pgPasswordOrPlaceholder}}}'{{/pgPasswordOrPlaceholder}}\nPGSSLMODE='require'\n{{#channelBinding}}PGCHANNELBINDING='require'{{/channelBinding}}",
   "nextjs": "// app/actions.ts\n\"use server\";\nimport { neon } from \"@neondatabase/serverless\";\n\nexport async function getData() {\n    const sql = neon(process.env.DATABASE_URL);\n    const data = await sql`...`;\n    return data;\n}",
   "nextjs_env": "# keep Neon credentials secure: do not expose them to client-side code\n\nDATABASE_URL='{{> connstring}}'",
   "prismajs": "// prisma/schema.prisma\ndatasource db {\n  provider  = \"postgresql\"\n  url  \t    = env(\"DATABASE_URL\")\n  // uncomment next line if you use Prisma <5.10\n  // directUrl = env(\"DATABASE_URL_UNPOOLED\")\n}",
@@ -168,29 +170,29 @@ export const PASSWORD_MASK = "********";
 
 type View = Record<string, string | boolean>;
 
-/**
- * Role and database names are user-chosen and land inside single-quoted
- * shell and JavaScript strings. `encodeURIComponent` leaves `'` alone, so it
- * is encoded on top; every other character keeps the Console's encoding.
- */
-function encodeUriPart(value: string): string {
-  return encodeURIComponent(value).replace(/'/g, "%27");
-}
-
 /** Raw values only appear inside `'…'` in the shell `parameters` snippet. */
 function shellQuoted(value: string): string {
   return value.replace(/'/g, `'\\''`);
 }
 
-function view(parts: ConnectionParts, pooled: boolean): View {
+/** .NET connection strings sit in double quotes and are never percent-decoded. */
+const DOTNET_TEMPLATES = new Set<TemplateName>(["dotnet_ssl", "dotnet_appsettings"]);
+
+function view(parts: ConnectionParts, pooled: boolean, template: TemplateName): View {
+  // Role and database names are user-chosen and land inside single-quoted
+  // shell and JavaScript strings, which `encodeURIComponent` doesn't protect
+  // because it leaves `'` alone.
+  const encode = DOTNET_TEMPLATES.has(template)
+    ? encodeURIComponent
+    : (value: string) => encodeURIComponent(value).replace(/'/g, "%27");
   const password = parts.password ?? PASSWORD_MASK;
   return {
-    pgEncodedRole: encodeUriPart(parts.role),
+    pgEncodedRole: encode(parts.role),
     pgRole: shellQuoted(parts.role),
-    pgEncodedPasswordOrPlaceholder:
-      parts.password === null ? password : encodeUriPart(password),
+    pgEncodedPasswordOrPlaceholder: parts.password === null ? password : encode(password),
     pgPasswordOrPlaceholder: shellQuoted(password),
-    pgEncodedDatabase: encodeUriPart(parts.database),
+    pgEncodedDatabase: encode(parts.database),
+    pgDatabase: shellQuoted(parts.database),
     host: parts.host,
     poolerHost: parts.poolerHost,
     preferPooled: pooled,
@@ -244,7 +246,7 @@ export function renderSnippet(
   parts: ConnectionParts,
   pooled: boolean
 ): string {
-  return renderTemplate(TEMPLATES[template], view(parts, pooled));
+  return renderTemplate(TEMPLATES[template], view(parts, pooled, template));
 }
 
 /** Splits a Neon connection URI into the parts the templates need. */

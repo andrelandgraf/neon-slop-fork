@@ -56,11 +56,16 @@ describe("renderSnippet", () => {
     expect(decodeURIComponent(new URL(uri).username)).toBe(role);
   });
 
-  test("characters the Console leaves literal stay literal", () => {
-    const snippet = renderSnippet("parameters", { ...parts, database: "app(prod)" }, true);
-    expect(snippet).toContain("PGDATABASE='app(prod)'");
-    expect(renderSnippet("dotnet_ssl", { ...parts, password: "pass!word" }, false)).toContain(
-      "Password=pass!word;"
+  test("shell parameters carry the literal database name", () => {
+    const database = "app'(prod) db";
+    const snippet = renderSnippet("parameters", { ...parts, database }, true);
+    const run = Bun.spawnSync(["sh", "-c", `${snippet}\nprintf %s "$PGDATABASE"`]);
+    expect(run.stdout.toString()).toBe(database);
+  });
+
+  test(".NET keeps the Console's encoding, apostrophes included", () => {
+    expect(renderSnippet("dotnet_ssl", { ...parts, password: "pass'!word" }, false)).toContain(
+      "Password=pass'!word;"
     );
   });
 
